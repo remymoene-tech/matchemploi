@@ -5,7 +5,8 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { exigerUtilisateur } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { iaConfiguree, lireCV, motsClesDepuisProfil } from "@/lib/ia";
+import { iaConfiguree, motsClesDepuisProfil } from "@/lib/ia";
+import { analyserCV, cheminCV, majCandidat, stockerCV, telechargerCV } from "@/lib/cv";
 import { rechercherPourCandidat } from "@/lib/matching";
 import { AVIS, CONTRATS, type Candidat } from "@/lib/types";
 
@@ -47,57 +48,33 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
   if (!contrats.length) return { erreur: "Choisis au moins un type de contrat." };
   if (!donnees.consentement) return { erreur: "Coche la case d'accord pour que l'on puisse chercher des offres pour toi." };
 
-  // CV en PDF : stocké en privé puis lu par l'IA
+  // CV en PDF : stocké en privé puis lu par l'IA (une analyse ratée ne bloque pas l'inscription)
   const cv = f.get("cv");
-  if (cv instanceof File && cv.size > 0) {
-    if (cv.type !== "application/pdf") return { erreur: "Le CV doit être un fichier PDF." };
-    if (cv.size > 3.5 * 1024 * 1024) return { erreur: "Le CV dépasse 3,5 Mo. Exporte-le en PDF plus léger." };
-    const octets = Buffer.from(await cv.arrayBuffer());
-    const chemin = `${user.id}/cv.pdf`;
-    const { error } = await createAdminClient().storage.from("cv").upload(chemin, octets, {
-      contentType: "application/pdf",
-      upsert: true,
-    });
-    if (error) return { erreur: "L'envoi du CV a échoué. Réessaie." };
-    donnees.cv_chemin = chemin;
-    if (iaConfiguree()) try {
-      const lu = await lireCV(octets.toString("base64"), donnees.poste_vise, donnees.projet);
-      Object.assign(donnees, {
-        cv_texte: lu.texte.slice(0, 6000),
-        competences: lu.competences.slice(0, 10),
-        mots_cles: lu.mots_cles,
-        cv_conseils: lu.conseils,
-      });
-    } catch {
-      return { erreur: "Nous n'avons pas réussi à lire ce CV. Vérifie que le PDF s'ouvre bien, puis réessaie." };
-    }
+  const nouveauCV = cv instanceof File && cv.size > 0;
+  if (nouveauCV) {
+    const r = await stockerCV(user.id, cv);
+    if ("erreur" in r) return r;
+    donnees.cv_chemin = cheminCV(user.id);
+    const lu = await analyserCV(r.octets, donnees.poste_vise, donnees.projet);
+    if (lu) Object.assign(donnees, lu);
   }
   if (!iaConfiguree()) {
     donnees.mots_cles ||= donnees.poste_vise;
-  } else if (!(cv instanceof File && cv.size > 0) && (!donnees.mots_cles || avant?.poste_vise !== donnees.poste_vise)) {
+  } else if (!nouveauCV && (!donnees.mots_cles || avant?.poste_vise !== donnees.poste_vise)) {
     try {
       donnees.mots_cles = await motsClesDepuisProfil(donnees);
     } catch {
       donnees.mots_cles = donnees.poste_vise;
     }
   }
+  donnees.mots_cles ||= donnees.poste_vise;
 
-  let { error } = await supabase
-    .from("candidats")
-    .upsert({ ...donnees, recherche_en_cours: true }, { onConflict: "user_id" });
-  if (error && /cv_conseils/.test(error.message)) {
-    // La colonne des conseils n'existe pas encore dans la base : on enregistre sans.
-    const { cv_conseils: _ignore, ...sansConseils } = donnees;
-    void _ignore;
-    ({ error } = await supabase
-      .from("candidats")
-      .upsert({ ...sansConseils, recherche_en_cours: true }, { onConflict: "user_id" }));
-  }
-  if (error) return { erreur: "L'enregistrement a échoué. Réessaie dans un instant." };
+  const { ok } = await majCandidat(supabase, { ...donnees, recherche_en_cours: true });
+  if (!ok) return { erreur: "L'enregistrement a échoué. Réessaie dans un instant." };
 
   after(() => rechercherPourCandidat(user.id));
   // Nouveau CV analysé : on montre d'abord les conseils
-  redirect(cv instanceof File && cv.size > 0 && donnees.cv_conseils ? "/espace/cv?nouveau=1" : "/espace");
+  redirect(nouveauCV ? "/espace/cv?nouveau=1" : "/espace");
 }
 
 export async function relancerRecherche() {
@@ -125,4 +102,48 @@ export async function supprimerCompte() {
   await admin.storage.from("cv").remove([`${user.id}/cv.pdf`]);
   await admin.auth.admin.deleteUser(user.id); // supprime aussi le profil et les correspondances
   redirect("/");
+}
+
+export type EtatCV = { erreur?: string; info?: string };
+
+/** Dépôt (ou remplacement) du CV directement depuis l'onglet « Mon CV ». */
+export async function deposerCV(_: EtatCV, f: FormData): Promise<EtatCV> {
+  const { user, supabase } = await exigerUtilisateur();
+  const fichier = f.get("cv");
+  if (!(fichier instanceof File) || !fichier.size) return { erreur: "Choisis d'abord ton CV en PDF." };
+  const r = await stockerCV(user.id, fichier);
+  if ("erreur" in r) return r;
+  const { data: c } = await supabase.from("candidats").select("*").eq("user_id", user.id).maybeSingle<Candidat>();
+  const lu = await analyserCV(r.octets, c?.poste_vise ?? "", c?.projet ?? "");
+  const { ok, colonneConseilsManquante } = await majCandidat(supabase, {
+    user_id: user.id,
+    email: user.email!,
+    cv_chemin: cheminCV(user.id),
+    ...(lu ?? {}),
+    updated_at: new Date().toISOString(),
+    ...(c?.consentement ? { recherche_en_cours: true } : {}),
+  });
+  if (!ok) return { erreur: "Le CV est bien envoyé, mais l'enregistrement de ta fiche a échoué. Réessaie." };
+  if (c?.consentement) after(() => rechercherPourCandidat(user.id));
+  revalidatePath("/espace/cv");
+  if (!lu) return { info: "Ton CV est bien enregistré. L'analyse n'a pas pu se faire pour l'instant : réessaie avec le bouton « Analyser mon CV »." };
+  if (colonneConseilsManquante) return { info: "Ton CV est enregistré et lu, mais les conseils ne peuvent pas encore être sauvegardés (mise à jour de la base à faire par l'équipe)." };
+  return {};
+}
+
+/** Relance l'analyse du CV déjà déposé. */
+export async function relancerAnalyseCV(): Promise<EtatCV> {
+  const { user, supabase } = await exigerUtilisateur();
+  const octets = await telechargerCV(user.id);
+  if (!octets) return { erreur: "Aucun CV trouvé : dépose-le d'abord." };
+  const { data: c } = await supabase.from("candidats").select("*").eq("user_id", user.id).maybeSingle<Candidat>();
+  const lu = await analyserCV(octets, c?.poste_vise ?? "", c?.projet ?? "");
+  if (!lu) return { erreur: "L'analyse a échoué. Réessaie dans quelques minutes ; si ça continue, préviens l'équipe." };
+  const { ok, colonneConseilsManquante } = await majCandidat(supabase, {
+    user_id: user.id, email: user.email!, ...lu, updated_at: new Date().toISOString(),
+  });
+  if (!ok) return { erreur: "L'enregistrement a échoué. Réessaie." };
+  revalidatePath("/espace/cv");
+  if (colonneConseilsManquante) return { info: "CV analysé, mais les conseils ne peuvent pas encore être sauvegardés (mise à jour de la base à faire par l'équipe)." };
+  return {};
 }

@@ -2,8 +2,10 @@ import Link from "next/link";
 import { exigerUtilisateur } from "@/lib/auth";
 import type { Candidat } from "@/lib/types";
 import { Copier } from "@/components/Copier";
+import { BoutonAnalyser, FormCV } from "@/components/FormCV";
 
 export const metadata = { title: "Mon CV · MatchEmploi" };
+export const maxDuration = 300;
 
 export default async function MonCV({ searchParams }: { searchParams: Promise<{ nouveau?: string }> }) {
   const { nouveau } = await searchParams;
@@ -11,18 +13,48 @@ export default async function MonCV({ searchParams }: { searchParams: Promise<{ 
   const { data: c } = await supabase.from("candidats").select("*").eq("user_id", user.id).maybeSingle<Candidat>();
   const k = c?.cv_conseils;
 
+  const blocCV = (
+    <section className="card flex flex-col gap-3 p-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col">
+          <span className="eyebrow">Mon CV</span>
+          <h2 className="text-lg font-semibold">{c?.cv_chemin ? "Ton CV est bien déposé ✓" : "Tu n'as pas encore déposé de CV"}</h2>
+        </div>
+        {c?.cv_chemin && (
+          <a className="btn" href="/espace/cv/fichier" target="_blank" rel="noopener">Voir mon CV (PDF)</a>
+        )}
+      </div>
+      {!!c?.competences?.length && (
+        <div className="flex flex-wrap gap-1.5">{c.competences.map((x) => <span key={x} className="chip chip-tag">{x}</span>)}</div>
+      )}
+      <FormCV dejaDepose={!!c?.cv_chemin} />
+    </section>
+  );
+
   if (!k) {
     return (
-      <div className="mx-auto flex max-w-3xl flex-col gap-4">
+      <div className="mx-auto flex max-w-3xl flex-col gap-6">
         <h1 className="text-3xl font-extrabold">Mon CV</h1>
-        <div className="card flex flex-col items-start gap-3 border-dashed p-6">
-          <h2 className="text-lg font-semibold">Fais relire ton CV par l&apos;IA</h2>
-          <p className="max-w-[60ch] text-sm text-muted">
-            Dépose ton CV en PDF dans ton profil : tu recevras une note, tes points forts et des conseils concrets
-            pour l&apos;améliorer (expériences, compétences, orthographe, présentation, photo).
+        {nouveau && c?.cv_chemin && (
+          <p className="rounded-xl bg-good-soft p-4 text-sm text-good">
+            Ton profil est enregistré et la recherche d&apos;offres a démarré. <Link className="font-semibold underline" href="/espace">Voir mes offres</Link>
           </p>
-          <Link className="btn btn-primary" href="/espace/profil">Déposer mon CV</Link>
-        </div>
+        )}
+        {blocCV}
+        {c?.cv_chemin ? (
+          <section className="card flex flex-col gap-3 p-5">
+            <h2 className="text-lg font-semibold">L&apos;avis sur ton CV n&apos;est pas encore prêt</h2>
+            <p className="max-w-[60ch] text-sm text-muted">
+              Lance l&apos;analyse : tu recevras une note, l&apos;avis sur la mise en page, une description de ton projet à mettre en haut du CV
+              et des conseils concrets pour l&apos;améliorer.
+            </p>
+            <BoutonAnalyser />
+          </section>
+        ) : (
+          <p className="text-sm text-muted">
+            Dépose ton CV : tu recevras une note, l&apos;avis sur la mise en page, une description de ton projet et des conseils concrets pour l&apos;améliorer.
+          </p>
+        )}
       </div>
     );
   }
@@ -51,6 +83,8 @@ export default async function MonCV({ searchParams }: { searchParams: Promise<{ 
           {c?.poste_vise && <p className="text-sm text-muted">Analysé pour le poste visé : {c.poste_vise}</p>}
         </div>
       </section>
+
+      {blocCV}
 
       {(k.mise_en_page || k.description_proposee) && (
         <section className="grid gap-3 md:grid-cols-2">
@@ -110,11 +144,7 @@ export default async function MonCV({ searchParams }: { searchParams: Promise<{ 
         ) : null,
       )}
 
-      <div className="card flex flex-wrap items-center justify-between gap-3 p-5">
-        <p className="text-sm text-muted">Tu as amélioré ton CV ? Dépose la nouvelle version : tu auras un nouvel avis et des offres mieux notées.</p>
-        <Link className="btn btn-primary" href="/espace/profil">Déposer mon nouveau CV</Link>
-      </div>
-      <p className="hint">Conseils générés par une IA : garde ton esprit critique. En France, la photo sur un CV est facultative.</p>
+      <p className="hint">Tu as amélioré ton CV ? Dépose la nouvelle version ci-dessus pour un nouvel avis. Conseils générés par une IA : garde ton esprit critique. En France, la photo sur un CV est facultative.</p>
     </div>
   );
 }
