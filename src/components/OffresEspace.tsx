@@ -25,6 +25,7 @@ export type LigneOffre = {
   latitude: number | null;
   longitude: number | null;
   prepa: boolean;
+  recherche: string;
 };
 
 const AVIS = [
@@ -34,7 +35,11 @@ const AVIS = [
 ];
 
 /** Carte et liste des offres côte à côte, reliées entre elles. */
-export function OffresEspace({ lignes, seuil, domicile, candidatId }: { lignes: LigneOffre[]; seuil: number; domicile: Domicile | null; candidatId: string }) {
+export function OffresEspace({ lignes: toutes, seuil, domicile, candidatId, recherches = [] }: {
+  lignes: LigneOffre[]; seuil: number; domicile: Domicile | null; candidatId: string; recherches?: string[];
+}) {
+  const [filtre, setFiltre] = useState<string | null>(null);
+  const lignes = useMemo(() => (filtre ? toutes.filter((l) => l.recherche === filtre) : toutes), [toutes, filtre]);
   const [selection, setSelection] = useState<string | null>(null);
   const [refusOuvert, setRefusOuvert] = useState<string | null>(null);
 
@@ -58,6 +63,20 @@ export function OffresEspace({ lignes, seuil, domicile, candidatId }: { lignes: 
   }, []);
 
   return (
+    <div className="flex flex-col gap-3">
+    {recherches.length > 1 && (
+      <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrer par recherche">
+        {[null, ...recherches].map((r) => {
+          const n = r ? toutes.filter((l) => l.recherche === r).length : toutes.length;
+          return (
+            <button key={r ?? "toutes"} type="button" onClick={() => { setFiltre(r); setSelection(null); }} aria-pressed={filtre === r}
+              className={`btn btn-sm ${filtre === r ? "border-accent bg-accent-soft text-accent" : ""}`}>
+              {r ?? "Toutes"} ({n})
+            </button>
+          );
+        })}
+      </div>
+    )}
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
       <div className="flex flex-col gap-2 lg:sticky lg:top-4 lg:self-start">
         <Carte
@@ -177,6 +196,7 @@ export function OffresEspace({ lignes, seuil, domicile, candidatId }: { lignes: 
           );
         })}
       </ul>
+    </div>
     </div>
   );
 }

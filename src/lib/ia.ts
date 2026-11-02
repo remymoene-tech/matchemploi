@@ -2,7 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
-import type { Candidat, Offre } from "@/lib/types";
+import type { Candidat, Offre, Piste } from "@/lib/types";
 
 /**
  * Modèle léger et économique par défaut (≈ 40 fois moins cher que le plus puissant).
@@ -164,7 +164,7 @@ ${o.description.slice(0, 2500)}`;
 /** Note jusqu'à ~8 offres pour un candidat en un seul appel. */
 export type Refus = { intitule: string; entreprise: string; lieu: string; contrat: string; raison: string };
 
-export async function noterOffres(c: Candidat, offres: Offre[], refus: Refus[] = []): Promise<Note[]> {
+export async function noterOffres(c: Candidat, offres: Offre[], refus: Refus[] = [], contexte = ""): Promise<Note[]> {
   const cle = new Map(offres.map((o, i) => [`O${i + 1}`, o.id]));
   const r = await demander(
     NotesSchema,
@@ -186,6 +186,7 @@ OFFRES QUE LE CANDIDAT A ÉCARTÉES, ET POURQUOI (ses préférences réelles, à
 ${refus.map((r) => `- « ${r.intitule} »${r.entreprise ? ` chez ${r.entreprise}` : ""} (${[r.lieu, r.contrat].filter(Boolean).join(", ")}) → ${r.raison}`).join("\n")}
 Si une offre ressemble à une offre écartée pour la même raison (même distance, même métier, même type de contrat, même secteur…), baisse nettement sa note et cite cette raison dans les manques.
 ` : ""}
+${contexte ? `${contexte}\n` : ""}
 OFFRES
 ${offres.map((o, i) => `[O${i + 1}]\n${offreTexte(o)}`).join("\n\n")}
 
@@ -292,4 +293,29 @@ RECHERCHE INTERNET SUR L'ENTREPRISE (notes brutes)
 ${recherche}` : "\n(Aucune recherche internet disponible : appuie-toi sur l'annonce et liste les vérifications à faire.)"}`,
     "medium",
   );
+}
+
+// ---------- 5. Pistes : métiers voisins à partir de l'expérience ----------
+const PistesSchema = z.object({
+  pistes: z.array(z.object({
+    metier: z.string().describe("Intitulé de métier court et courant, ex. « Conseiller clientèle »"),
+    mots_cles: z.string().describe("1 à 3 mots-clés de recherche d'offres pour ce métier"),
+    raison: z.string().describe("1 à 2 phrases en tutoyant, qui citent une expérience ou une compétence PRÉCISE de son CV"),
+  })).describe("2 ou 3 métiers voisins"),
+});
+
+/** Propose 2-3 métiers que le candidat n'a pas demandés mais pour lesquels son expérience est un vrai atout. */
+export async function proposerPistes(c: Candidat, dejaRecherches: string[], aEviter: string[]): Promise<Piste[]> {
+  const r = await demander(
+    PistesSchema,
+    `Tu es conseiller en évolution professionnelle. À partir du CV et du projet de ce candidat, propose 2 ou 3 métiers VOISINS qu'il n'a pas demandés, mais pour lesquels son expérience réelle est un atout concret et qui recrutent souvent, au même niveau de qualification.
+Reste réaliste et proche de son projet : pas de reconversion lointaine, pas de métier qui demande un diplôme qu'il n'a pas.
+Ses recherches actuelles (à ne pas reproposer) : ${dejaRecherches.join(", ") || "aucune"}.
+Métiers qu'il a déjà refusés (à ne pas reproposer) : ${aEviter.join(", ") || "aucun"}.
+
+CANDIDAT
+${profil(c)}`,
+    "low",
+  );
+  return r.pistes.slice(0, 3).map((p) => ({ metier: p.metier, mots_cles: p.mots_cles, raison: p.raison }));
 }

@@ -4,7 +4,9 @@ import { exigerUtilisateur } from "@/lib/auth";
 import { Rafraichir } from "@/components/Rafraichir";
 import { OffresEspace, type LigneOffre } from "@/components/OffresEspace";
 import { relancerRecherche } from "./actions";
-import { SEUIL, contratLabel, estOffreEquipe, sourceLabel, type Candidat } from "@/lib/types";
+import { SEUIL, contratLabel, estOffreEquipe, sourceLabel, type Candidat, type Piste } from "@/lib/types";
+import { adopterPiste, ecarterPiste } from "./actions";
+import { Chips, Score } from "@/components/Score";
 
 export const metadata = { title: "Mes offres · Jobaprox" };
 export const maxDuration = 300;
@@ -18,6 +20,8 @@ type Ligne = {
   avis_candidat: string;
   raison_refus?: string | null;
   preparation_le?: string | null;
+  recherche_id?: string | null;
+  piste?: string | null;
   calcule_le: string;
   offres: {
     source: string; entreprise: string; intitule: string; contrat: string; contrat_libelle: string;
@@ -36,22 +40,34 @@ export default async function Espace() {
 
   const champs = "offre_id, score, forts, manques, resume, avis_candidat, calcule_le";
   const champsOffre = "source, entreprise, intitule, contrat, contrat_libelle, lieu, salaire, lien, ouverte";
-  const lire = (raison: boolean, gps: boolean, prepa: boolean) =>
-    supabase
+  // Du plus complet au plus simple : si la base n'a pas encore les colonnes récentes, on lit ce qui existe
+  const variantes = [
+    [", raison_refus, preparation_le, recherche_id, piste", ", latitude, longitude"],
+    [", raison_refus, preparation_le", ", latitude, longitude"],
+    [", raison_refus", ", latitude, longitude"],
+    ["", ", latitude, longitude"],
+    ["", ""],
+  ];
+  let data: Ligne[] | null = null;
+  for (const [extra, gps] of variantes) {
+    const r = await supabase
       .from("correspondances")
-      .select(`${champs}${raison ? ", raison_refus" : ""}${prepa ? ", preparation_le" : ""}, offres(${champsOffre}${gps ? ", latitude, longitude" : ""})`)
+      .select(`${champs}${extra}, offres(${champsOffre}${gps})`)
       .eq("candidat_id", user.id)
       .order("score", { ascending: false })
       .returns<Ligne[]>();
-  // Si la base n'a pas encore toutes les colonnes récentes, on lit ce qui existe
-  let data: Ligne[] | null = null;
-  for (const [raison, gps, prepa] of [[true, true, true], [true, true, false], [false, true, false], [false, false, false]] as const) {
-    const r = await lire(raison, gps, prepa);
     if (!r.error) { data = r.data; break; }
   }
 
+  // Ses recherches (pour les filtres) et les pistes proposées par Jobaprox
+  const { data: rechData } = await supabase.from("recherches").select("id, poste, active").eq("candidat_id", user.id).order("created_at");
+  const autresRecherches = (rechData ?? []) as { id: string; poste: string; active: boolean }[];
+  const pistes = ((c.pistes ?? []) as Piste[]).filter((p) => !p.ecartee);
+
   // Les offres saisies par l'équipe ne sont jamais montrées : c'est l'équipe qui fait le lien
-  const ouvertes = (data ?? []).filter((l) => l.offres?.ouverte && !estOffreEquipe(l.offres.source));
+  const visibles = (data ?? []).filter((l) => l.offres?.ouverte && !estOffreEquipe(l.offres.source));
+  const ouvertes = visibles.filter((l) => !l.piste); // les pistes ont leur propre encadré
+  const suggestions = visibles.filter((l) => l.piste && l.score >= SEUIL && l.avis_candidat !== "pas_interesse" && pistes.some((p) => p.metier === l.piste));
   // Toutes les offres notées, strictement du plus grand % au plus petit
   const lignes: LigneOffre[] = [...ouvertes]
     .sort((a, b) => Number(b.score) - Number(a.score))
@@ -74,6 +90,7 @@ export default async function Espace() {
       latitude: l.offres!.latitude ?? null,
       longitude: l.offres!.longitude ?? null,
       prepa: Boolean(l.preparation_le),
+      recherche: l.recherche_id ? autresRecherches.find((r) => r.id === l.recherche_id)?.poste ?? c.poste_vise : c.poste_vise,
     }));
 
   // Fiches d'entretien prêtes (y compris pour les offres sur lesquelles l'équipe l'a positionné)
@@ -106,15 +123,20 @@ export default async function Espace() {
         <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-extrabold">Bonjour {c.nom.split(" ")[0]}</h1>
           <p className="text-muted">
-            {c.ville ? `Offres autour de ${c.ville}, dans un rayon de ${c.mobilite_km} km.` : "Tes offres notées."}
+            {autresRecherches.some((r) => r.active)
+              ? `${1 + autresRecherches.filter((r) => r.active).length} recherches : ${[c.poste_vise, ...autresRecherches.filter((r) => r.active).map((r) => r.poste)].join(", ")}.`
+              : c.ville ? `Offres de ${c.poste_vise || "ton métier"} autour de ${c.ville}, dans un rayon de ${c.mobilite_km} km.` : "Tes offres notées."}
             {c.derniere_recherche && ` Dernière recherche : ${dateFr(c.derniere_recherche)}.`}
           </p>
         </div>
-        <form action={relancerRecherche}>
-          <button className="btn btn-primary" disabled={c.recherche_en_cours}>
-            {c.recherche_en_cours ? "Recherche en cours…" : "Chercher de nouvelles offres"}
-          </button>
-        </form>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/espace/recherches" className="btn">Mes recherches ({1 + autresRecherches.filter((r) => r.active).length})</Link>
+          <form action={relancerRecherche}>
+            <button className="btn btn-primary" disabled={c.recherche_en_cours}>
+              {c.recherche_en_cours ? "Recherche en cours…" : "Chercher de nouvelles offres"}
+            </button>
+          </form>
+        </div>
       </div>
 
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" aria-label="Statistiques">
@@ -159,8 +181,51 @@ export default async function Espace() {
         </p>
       )}
 
+      {!!suggestions.length && (
+        <section className="flex flex-col gap-4 rounded-2xl p-5" style={{ background: "var(--accent-soft)" }}>
+          <div className="flex flex-col gap-1">
+            <span className="eyebrow">Proposé par Jobaprox</span>
+            <h2 className="text-xl font-extrabold">
+              J&apos;ai aussi trouvé {suggestions.length} offre{suggestions.length > 1 ? "s" : ""} qui pourrai{suggestions.length > 1 ? "ent" : "t"} correspondre à ton CV
+            </h2>
+            <p className="text-sm text-muted">Des métiers que tu n&apos;as pas demandés, mais où ton expérience est un vrai atout.</p>
+          </div>
+          {pistes.filter((p) => suggestions.some((l) => l.piste === p.metier)).map((p) => {
+            const offres = suggestions.filter((l) => l.piste === p.metier);
+            return (
+              <article key={p.metier} className="card flex flex-col gap-3 p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex min-w-0 flex-col gap-1">
+                    <h3 className="text-lg font-semibold">{p.metier}</h3>
+                    <p className="text-sm">{p.raison}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <form action={adopterPiste}><input type="hidden" name="metier" value={p.metier} /><button className="btn btn-primary btn-sm">Ajouter ce métier à mes recherches</button></form>
+                    <form action={ecarterPiste}><input type="hidden" name="metier" value={p.metier} /><button className="btn btn-sm">Pas pour moi</button></form>
+                  </div>
+                </div>
+                <ul className="grid gap-2 md:grid-cols-2">
+                  {offres.map((l) => (
+                    <li key={l.offre_id} className="flex gap-3 rounded-lg border border-line p-3">
+                      <Score score={l.score} seuil={SEUIL} />
+                      <div className="flex min-w-0 flex-col gap-1">
+                        <p className="text-sm font-semibold leading-snug">{l.offres!.intitule}</p>
+                        <p className="text-xs text-muted">{[l.offres!.entreprise, l.offres!.lieu, l.offres!.contrat_libelle || contratLabel(l.offres!.contrat)].filter(Boolean).join(" · ")}</p>
+                        <p className="text-xs">{l.resume}</p>
+                        <Chips forts={l.forts.slice(0, 2)} manques={[]} />
+                        {l.offres!.lien && <a className="text-xs font-semibold text-accent" href={l.offres!.lien} target="_blank" rel="noopener noreferrer">Voir l&apos;annonce</a>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </article>
+            );
+          })}
+        </section>
+      )}
+
       {lignes.length ? (
-        <OffresEspace lignes={lignes} seuil={SEUIL} domicile={domicile} candidatId={user.id} />
+        <OffresEspace lignes={lignes} seuil={SEUIL} domicile={domicile} candidatId={user.id} recherches={[c.poste_vise, ...autresRecherches.filter((r) => r.active).map((r) => r.poste)].filter(Boolean)} />
       ) : (
         !c.recherche_en_cours && (
           <div className="card flex flex-col gap-2 border-dashed p-6">

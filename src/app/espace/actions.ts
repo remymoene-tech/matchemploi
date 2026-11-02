@@ -11,7 +11,7 @@ import { localiserCommune } from "@/lib/geo";
 import { ecoleParCode } from "@/lib/ecoles";
 import { genererPreparation } from "@/lib/preparation";
 import { rechercherPourCandidat } from "@/lib/matching";
-import { AVIS, CONTRATS, RAISONS_REFUS, type Candidat } from "@/lib/types";
+import { AVIS, CONTRATS, MAX_RECHERCHES, RAISONS_REFUS, type Candidat, type Piste } from "@/lib/types";
 
 export type EtatProfil = { erreur?: string };
 
@@ -191,4 +191,84 @@ export async function relancerAnalyseCV(): Promise<EtatCV> {
   revalidatePath("/espace/cv");
   if (colonneConseilsManquante) return { info: "CV analysé, mais les conseils ne peuvent pas encore être sauvegardés (mise à jour de la base à faire par l'équipe)." };
   return {};
+}
+
+/* ---------- Plusieurs recherches ---------- */
+
+export type EtatRecherche = { erreur?: string; ok?: boolean };
+
+function lireRecherche(f: FormData) {
+  return {
+    poste: texte(f, "poste", 120),
+    contrats: CONTRATS.map((c) => c.id).filter((id) => f.get(`contrat_${id}`) === "on"),
+    mobilite_km: Math.max(1, Math.min(200, Number(f.get("mobilite_km")) || 20)),
+  };
+}
+
+/** Relance la recherche en arrière-plan après un changement. */
+async function relancer(userId: string) {
+  const { supabase } = await exigerUtilisateur();
+  await supabase.from("candidats").update({ recherche_en_cours: true }).eq("user_id", userId);
+  after(() => rechercherPourCandidat(userId));
+}
+
+export async function ajouterRecherche(_: EtatRecherche, f: FormData): Promise<EtatRecherche> {
+  const { user, supabase } = await exigerUtilisateur();
+  const r = lireRecherche(f);
+  if (!r.poste) return { erreur: "Indique le métier que tu recherches." };
+  if (!r.contrats.length) return { erreur: "Choisis au moins un type de contrat." };
+  const { count } = await supabase.from("recherches").select("id", { count: "exact", head: true }).eq("candidat_id", user.id);
+  if ((count ?? 0) >= MAX_RECHERCHES) return { erreur: `Tu peux avoir ${MAX_RECHERCHES} recherches en plus de ta recherche principale.` };
+  const { error } = await supabase.from("recherches").insert({ ...r, mots_cles: r.poste, candidat_id: user.id });
+  if (error) return { erreur: "L'enregistrement a échoué. Si ça continue, préviens ton école (mise à jour du site à faire)." };
+  await relancer(user.id);
+  revalidatePath("/espace/recherches");
+  return { ok: true };
+}
+
+export async function modifierRecherche(f: FormData) {
+  const { user, supabase } = await exigerUtilisateur();
+  const r = lireRecherche(f);
+  if (!r.poste || !r.contrats.length) return;
+  await supabase.from("recherches").update({ ...r, mots_cles: r.poste, active: f.get("active") === "on" }).eq("id", texte(f, "id", 60)).eq("candidat_id", user.id);
+  await relancer(user.id);
+  revalidatePath("/espace/recherches");
+}
+
+export async function supprimerRecherche(f: FormData) {
+  const { user, supabase } = await exigerUtilisateur();
+  await supabase.from("recherches").delete().eq("id", texte(f, "id", 60)).eq("candidat_id", user.id);
+  revalidatePath("/espace/recherches");
+  revalidatePath("/espace");
+}
+
+/* ---------- Pistes proposées par Jobaprox ---------- */
+
+export async function adopterPiste(f: FormData) {
+  const { user, supabase } = await exigerUtilisateur();
+  const metier = texte(f, "metier", 120);
+  const { data: c } = await supabase.from("candidats").select("*").eq("user_id", user.id).maybeSingle<Candidat>();
+  const piste = (c?.pistes ?? []).find((p) => p.metier === metier);
+  if (!c || !piste) return;
+  const { data: r, error } = await supabase
+    .from("recherches")
+    .insert({ candidat_id: user.id, poste: piste.metier, mots_cles: piste.mots_cles || piste.metier, contrats: c.contrats, mobilite_km: c.mobilite_km })
+    .select("id")
+    .single();
+  if (error || !r) return;
+  // Les offres trouvées pour cette piste rejoignent la nouvelle recherche
+  await createAdminClient().from("correspondances").update({ piste: null, recherche_id: r.id }).eq("candidat_id", user.id).eq("piste", metier);
+  const pistes: Piste[] = (c.pistes ?? []).filter((p) => p.metier !== metier);
+  await supabase.from("candidats").update({ pistes }).eq("user_id", user.id);
+  await relancer(user.id);
+  revalidatePath("/espace");
+}
+
+export async function ecarterPiste(f: FormData) {
+  const { user, supabase } = await exigerUtilisateur();
+  const metier = texte(f, "metier", 120);
+  const { data: c } = await supabase.from("candidats").select("pistes").eq("user_id", user.id).maybeSingle();
+  const pistes = ((c?.pistes ?? []) as Piste[]).map((p) => (p.metier === metier ? { ...p, ecartee: true } : p));
+  await supabase.from("candidats").update({ pistes }).eq("user_id", user.id);
+  revalidatePath("/espace");
 }

@@ -64,6 +64,8 @@ export type Candidat = {
   longitude?: number | null;
   code_commune?: string | null;
   ecole_id?: string | null;
+  pistes?: Piste[] | null;
+  pistes_le?: string | null;
   updated_at: string;
 };
 
@@ -103,7 +105,24 @@ export type Correspondance = {
   notifie_le: string | null;
   calcule_le: string;
   preparation_le?: string | null;
+  recherche_id?: string | null;
+  piste?: string | null;
 };
+
+/** Une recherche du candidat (la principale vient de son profil, les autres de la table recherches). */
+export type Recherche = {
+  id: string; // "principale" pour celle du profil
+  poste: string;
+  mots_cles: string;
+  contrats: string[];
+  mobilite_km: number;
+  active: boolean;
+};
+
+/** Métier voisin que Jobaprox propose à partir de l'expérience du candidat. */
+export type Piste = { metier: string; mots_cles: string; raison: string; ecartee?: boolean };
+
+export const MAX_RECHERCHES = 4; // en plus de la recherche principale
 
 export const SEUIL = Number(process.env.MATCH_SEUIL ?? 75);
 

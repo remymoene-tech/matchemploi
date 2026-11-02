@@ -29,7 +29,15 @@ alter table public.offres add column if not exists contact_tel text not null def
 drop policy if exists "candidat lit ses offres" on public.offres;
 create policy "candidat lit ses offres" on public.offres for select using (source in ('france_travail', 'adzuna') and exists (select 1 from public.correspondances c where c.offre_id = offres.id and c.candidat_id = auth.uid()));
 alter table public.correspondances add column if not exists preparation jsonb;
-alter table public.correspondances add column if not exists preparation_le timestamptz;`;
+alter table public.correspondances add column if not exists preparation_le timestamptz;
+create table if not exists public.recherches (id uuid primary key default gen_random_uuid(), candidat_id uuid not null references public.candidats(user_id) on delete cascade, poste text not null, mots_cles text not null default '', contrats text[] not null default '{}', mobilite_km integer not null default 20, active boolean not null default true, created_at timestamptz not null default now());
+alter table public.recherches enable row level security;
+drop policy if exists "candidat gère ses recherches" on public.recherches;
+create policy "candidat gère ses recherches" on public.recherches for all using (auth.uid() = candidat_id) with check (auth.uid() = candidat_id);
+alter table public.correspondances add column if not exists recherche_id uuid references public.recherches(id) on delete set null;
+alter table public.correspondances add column if not exists piste text;
+alter table public.candidats add column if not exists pistes jsonb;
+alter table public.candidats add column if not exists pistes_le timestamptz;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -49,6 +57,9 @@ async function verifierBase() {
     db.from("correspondances").select("raison_refus").limit(1),
     db.from("offres").select("contact_tel").limit(1),
     db.from("correspondances").select("preparation, preparation_le").limit(1),
+    db.from("recherches").select("id").limit(1),
+    db.from("correspondances").select("recherche_id, piste").limit(1),
+    db.from("candidats").select("pistes, pistes_le").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -66,6 +77,9 @@ async function verifierBase() {
     "Raisons des refus (« Pas pour moi »)",
     "Téléphone des entreprises",
     "Fiches de préparation d'entretien",
+    "Plusieurs recherches par candidat",
+    "Recherche et piste de chaque offre",
+    "Pistes proposées par Jobaprox",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

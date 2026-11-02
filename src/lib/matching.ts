@@ -1,11 +1,11 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { iaConfiguree, noterOffres, type Note, type Refus } from "@/lib/ia";
+import { iaConfiguree, noterOffres, proposerPistes, type Note, type Refus } from "@/lib/ia";
 import { franceTravailConfigure, offresPourCandidat } from "@/lib/france-travail";
 import { adzunaConfigure, offresAdzunaPourCandidat } from "@/lib/adzuna";
 import { envoyerEmail, echapper } from "@/lib/email";
 import { distanceKm, localiserLieu } from "@/lib/geo";
-import { SEUIL, SOURCES_AUTO, type Candidat, type Offre, type Correspondance } from "@/lib/types";
+import { SEUIL, SOURCES_AUTO, type Candidat, type Offre, type Correspondance, type Piste, type Recherche } from "@/lib/types";
 
 const PAR_APPEL = 8;      // offres notées par appel à l'IA
 const MAX_PAR_RUN = 32;   // offres notées au maximum par recherche (maîtrise des coûts)
@@ -31,21 +31,28 @@ function compatible(c: Candidat, o: Offre) {
   return true;
 }
 
-async function enregistrerNotes(candidatId: string, notes: Note[]) {
+async function enregistrerNotes(candidatId: string, notes: Note[], origine: { recherche_id?: string | null; piste?: string | null } = {}) {
   if (!notes.length) return;
   const db = createAdminClient();
-  const { error } = await db.from("correspondances").upsert(
-    notes.map((n) => ({
-      candidat_id: candidatId,
-      offre_id: n.offre_id,
-      score: n.score,
-      forts: n.forts,
-      manques: n.manques,
-      resume: n.resume,
-      calcule_le: new Date().toISOString(),
-    })),
-    { onConflict: "candidat_id,offre_id" },
-  );
+  const lignes = notes.map((n) => ({
+    candidat_id: candidatId,
+    offre_id: n.offre_id,
+    score: n.score,
+    forts: n.forts,
+    manques: n.manques,
+    resume: n.resume,
+    calcule_le: new Date().toISOString(),
+    recherche_id: origine.recherche_id ?? null,
+    piste: origine.piste ?? null,
+  }));
+  let { error } = await db.from("correspondances").upsert(lignes, { onConflict: "candidat_id,offre_id" });
+  if (error && /recherche_id|piste/.test(error.message)) {
+    // Base pas encore à jour : on enregistre sans l'origine
+    ({ error } = await db.from("correspondances").upsert(
+      lignes.map(({ recherche_id: _r, piste: _p, ...l }) => (void _r, void _p, l)),
+      { onConflict: "candidat_id,offre_id" },
+    ));
+  }
   if (error) throw error;
 }
 
@@ -53,14 +60,19 @@ async function enregistrerNotes(candidatId: string, notes: Note[]) {
 async function notifier(c: Candidat) {
   if (!c.alertes_email) return;
   const db = createAdminClient();
-  const { data } = await db
-    .from("correspondances")
-    .select("score, offre_id, offres!inner(intitule, entreprise, lieu, contrat_libelle, source)")
-    .in("offres.source", SOURCES_AUTO) // les offres de l'équipe passent par l'équipe, pas par l'email
-    .eq("candidat_id", c.user_id)
-    .gte("score", SEUIL)
-    .is("notifie_le", null)
-    .order("score", { ascending: false });
+  const requete = (sansPistes: boolean) => {
+    let q = db
+      .from("correspondances")
+      .select("score, offre_id, offres!inner(intitule, entreprise, lieu, contrat_libelle, source)")
+      .in("offres.source", SOURCES_AUTO) // les offres de l'équipe passent par l'équipe, pas par l'email
+      .eq("candidat_id", c.user_id)
+      .gte("score", SEUIL)
+      .is("notifie_le", null);
+    if (sansPistes) q = q.is("piste", null); // les pistes sont proposées dans son espace, sans email
+    return q.order("score", { ascending: false });
+  };
+  const premier = await requete(true);
+  const data = premier.error ? (await requete(false)).data : premier.data; // base pas encore à jour
   if (!data?.length) return;
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const lignes = data
@@ -130,6 +142,28 @@ async function refusDuCandidat(candidatId: string): Promise<{ refus: Refus[]; id
  * 3. fait noter par l'IA celles qui ne l'ont pas encore été,
  * 4. envoie un email s'il y a de nouvelles offres au-dessus du seuil.
  */
+/** Le candidat vu à travers une recherche donnée (métier, contrats, distance de cette recherche). */
+function selon(c: Candidat, r: { poste: string; mots_cles: string; contrats: string[]; mobilite_km: number }): Candidat {
+  return { ...c, poste_vise: r.poste, mots_cles: r.mots_cles || r.poste, contrats: r.contrats.length ? r.contrats : c.contrats, mobilite_km: r.mobilite_km || c.mobilite_km };
+}
+
+/** Recherche principale (profil) + recherches supplémentaires actives. */
+export async function recherchesDuCandidat(c: Candidat): Promise<Recherche[]> {
+  const principale: Recherche = { id: "principale", poste: c.poste_vise, mots_cles: c.mots_cles, contrats: c.contrats, mobilite_km: c.mobilite_km, active: true };
+  const { data, error } = await createAdminClient().from("recherches").select("*").eq("candidat_id", c.user_id).eq("active", true).order("created_at");
+  return [principale, ...(error ? [] : ((data ?? []) as Recherche[]))];
+}
+
+const MAX_PISTES_PAR_RUN = 8; // offres « pistes » notées par recherche
+
+/**
+ * Recherche complète pour un candidat :
+ * 1. pour chacune de ses recherches, récupère les offres France Travail et Adzuna,
+ * 2. y ajoute les offres de l'équipe,
+ * 3. cherche aussi des offres pour 2 métiers voisins (« pistes ») tirés de son expérience,
+ * 4. fait noter par l'IA ce qui ne l'a pas encore été,
+ * 5. envoie un email s'il y a de nouvelles offres au-dessus du seuil (hors pistes).
+ */
 export async function rechercherPourCandidat(candidatId: string) {
   const db = createAdminClient();
   const { data: c } = await db.from("candidats").select("*").eq("user_id", candidatId).single<Candidat>();
@@ -139,31 +173,51 @@ export async function rechercherPourCandidat(candidatId: string) {
   let erreur: string | null = null;
   let notees = 0;
   try {
-    // 1. Sources automatiques : France Travail et Adzuna (une source en panne n'empêche pas l'autre)
-    const idsAuto: string[] = [];
-    const sources = [
-      { nom: "France Travail", actif: franceTravailConfigure(), chercher: () => offresPourCandidat(c) },
-      { nom: "Adzuna", actif: adzunaConfigure(), chercher: () => offresAdzunaPourCandidat(c) },
-    ];
-    if (c.mots_cles || c.poste_vise) {
-      for (const src of sources.filter((x) => x.actif)) {
+    const recherches = (await recherchesDuCandidat(c)).filter((r) => r.poste || r.mots_cles);
+    const { refus, ids: ecartees } = await refusDuCandidat(c.user_id);
+    const { data: deja } = await db.from("correspondances").select("offre_id, calcule_le").eq("candidat_id", c.user_id);
+    const calculees = new Map((deja ?? []).map((m) => [m.offre_id as string, m.calcule_le as string]));
+    const aRenoter = (o: Offre) => {
+      const t = calculees.get(o.id);
+      return !ecartees.has(o.id) && (!t || t < c.updated_at || t < o.updated_at);
+    };
+
+    // Va chercher les offres des sources automatiques pour un candidat « vu à travers » une recherche
+    const importer = async (cr: Candidat): Promise<Offre[]> => {
+      const ids: string[] = [];
+      for (const src of [
+        { nom: "France Travail", actif: franceTravailConfigure(), chercher: () => offresPourCandidat(cr) },
+        { nom: "Adzuna", actif: adzunaConfigure(), chercher: () => offresAdzunaPourCandidat(cr) },
+      ].filter((x) => x.actif)) {
         try {
-          idsAuto.push(...(await importerOffres(await src.chercher())));
+          ids.push(...(await importerOffres(await src.chercher())));
         } catch (e) {
           erreur = `${src.nom} : ${e instanceof Error ? e.message : "indisponible"}`;
         }
       }
+      if (!ids.length) return [];
+      const { data } = await db.from("offres").select("*").in("id", ids);
+      return (data ?? []) as Offre[];
+    };
+
+    // 1. Chaque recherche du candidat. Une offre trouvée par plusieurs recherches n'est notée qu'une fois.
+    type Groupe = { cr: Candidat; recherche_id: string | null; piste: string | null; contexte: string; offres: Offre[] };
+    const groupes: Groupe[] = [];
+    const prises = new Set<string>();
+    let budget = MAX_PAR_RUN;
+    for (const r of recherches) {
+      const cr = selon(c, r);
+      const g: Groupe = { cr, recherche_id: r.id === "principale" ? null : r.id, piste: null, contexte: "", offres: [] };
+      for (const o of await importer(cr)) {
+        if (budget <= 0) break;
+        if (prises.has(o.id) || !compatible(cr, o) || !aRenoter(o)) continue;
+        prises.add(o.id); g.offres.push(o); budget--;
+      }
+      groupes.push(g);
     }
 
-    // 2. Offres de l'équipe + offres trouvées automatiquement
+    // 2. Offres de l'équipe : rattachées à la première recherche avec laquelle elles sont compatibles
     const { data: internes } = await db.from("offres").select("*").not("source", "in", `(${SOURCES_AUTO.join(",")})`).eq("ouverte", true);
-    const { data: ft } = idsAuto.length
-      ? await db.from("offres").select("*").in("id", idsAuto)
-      : { data: [] as Offre[] };
-    const { data: deja } = await db.from("correspondances").select("offre_id, calcule_le").eq("candidat_id", c.user_id);
-    const calculees = new Map((deja ?? []).map((m) => [m.offre_id as string, m.calcule_le as string]));
-
-    // Offres de l'équipe pas encore placées sur la carte : on les localise (10 par recherche)
     const aLocaliser = ((internes ?? []) as Offre[]).filter((o) => o.lieu && o.latitude == null && "latitude" in o).slice(0, 10);
     for (const o of aLocaliser) {
       const p = await localiserLieu(o.lieu);
@@ -172,28 +226,57 @@ export async function rechercherPourCandidat(candidatId: string) {
         await db.from("offres").update(p).eq("id", o.id);
       }
     }
+    for (const o of (internes ?? []) as Offre[]) {
+      if (prises.has(o.id) || !aRenoter(o)) continue;
+      const g = groupes.find((x) => compatible(x.cr, o));
+      if (g) { prises.add(o.id); g.offres.push(o); }
+    }
 
-    const { refus, ids: ecartees } = await refusDuCandidat(c.user_id);
-    const aNoter = [...(internes ?? []), ...(ft ?? [])]
-      .filter((o: Offre) => compatible(c, o))
-      .filter((o: Offre) => !ecartees.has(o.id)) // déjà écartée par le candidat : inutile de la renoter
-      .filter((o: Offre) => {
-        const t = calculees.get(o.id);
-        return !t || t < c.updated_at || t < o.updated_at;
-      })
-      .slice(0, MAX_PAR_RUN) as Offre[];
+    // 3. Pistes : métiers voisins tirés de son expérience (renouvelées tous les 30 jours)
+    let pistes = (c.pistes ?? []) as Piste[];
+    const vieilles = !c.pistes_le || Date.now() - new Date(c.pistes_le).getTime() > 30 * 864e5;
+    if (iaConfiguree() && c.cv_texte && (vieilles || !pistes.some((p) => !p.ecartee))) {
+      try {
+        const nouvelles = await proposerPistes(c, recherches.map((r) => r.poste), pistes.filter((p) => p.ecartee).map((p) => p.metier));
+        pistes = [...pistes.filter((p) => p.ecartee), ...nouvelles];
+        const { error: e } = await db.from("candidats").update({ pistes, pistes_le: new Date().toISOString() }).eq("user_id", c.user_id);
+        if (e) pistes = []; // base pas encore à jour : pas de pistes
+      } catch {
+        /* pas de pistes cette fois */
+      }
+    }
+    let budgetPistes = MAX_PISTES_PAR_RUN;
+    const contratsTous = [...new Set(recherches.flatMap((r) => r.contrats))];
+    const distanceMax = Math.max(...recherches.map((r) => r.mobilite_km || 0), c.mobilite_km);
+    for (const p of pistes.filter((x) => !x.ecartee).slice(0, 2)) {
+      const cr = selon(c, { poste: p.metier, mots_cles: p.mots_cles, contrats: contratsTous, mobilite_km: distanceMax });
+      const g: Groupe = {
+        cr, recherche_id: null, piste: p.metier,
+        contexte: `PISTE PROPOSÉE PAR JOBAPROX : le candidat n'a PAS demandé le métier « ${p.metier} ». C'est un métier voisin de son expérience (${p.raison}).
+Pour ces offres, le critère « cohérence avec le poste visé et le projet » devient « cohérence avec son expérience réelle et ses compétences transférables ».
+Dans le résumé, explique en une phrase le lien avec une expérience PRÉCISE de son CV (ex. « Tes 2 ans en boulangerie… »).`,
+        offres: [],
+      };
+      for (const o of await importer(cr)) {
+        if (budgetPistes <= 0) break;
+        if (prises.has(o.id) || calculees.has(o.id) || ecartees.has(o.id) || !compatible(cr, o)) continue;
+        prises.add(o.id); g.offres.push(o); budgetPistes--;
+      }
+      groupes.push(g);
+    }
 
-    // 3. Notation par l'IA (ignorée tant que la clé n'est pas renseignée)
-    if (!iaConfiguree()) aNoter.length = 0;
-    const lots: Offre[][] = [];
-    for (let i = 0; i < aNoter.length; i += PAR_APPEL) lots.push(aNoter.slice(i, i + PAR_APPEL));
-    await parLots(lots, 3, async (lot) => {
-      const notes = await noterOffres(c, lot, refus);
-      await enregistrerNotes(c.user_id, notes);
-      notees += notes.length;
-    });
+    // 4. Notation par l'IA (ignorée tant que la clé n'est pas renseignée)
+    if (iaConfiguree()) {
+      const lots: { g: Groupe; offres: Offre[] }[] = [];
+      for (const g of groupes) for (let i = 0; i < g.offres.length; i += PAR_APPEL) lots.push({ g, offres: g.offres.slice(i, i + PAR_APPEL) });
+      await parLots(lots, 3, async ({ g, offres }) => {
+        const notes = await noterOffres(g.cr, offres, refus, g.contexte);
+        await enregistrerNotes(c.user_id, notes, { recherche_id: g.recherche_id, piste: g.piste });
+        notees += notes.length;
+      });
+    }
 
-    // 4. Alerte email
+    // 5. Alerte email
     await notifier(c);
   } catch (e) {
     erreur = e instanceof Error ? e.message : "Erreur inconnue";

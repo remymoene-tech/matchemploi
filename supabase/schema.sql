@@ -190,3 +190,25 @@ create policy "candidat lit ses offres" on public.offres
 -- ============================================================
 alter table public.correspondances add column if not exists preparation jsonb;
 alter table public.correspondances add column if not exists preparation_le timestamptz;
+
+-- ============================================================
+-- Plusieurs recherches par candidat + pistes proposées par Jobaprox
+-- ============================================================
+create table if not exists public.recherches (
+  id          uuid primary key default gen_random_uuid(),
+  candidat_id uuid not null references public.candidats(user_id) on delete cascade,
+  poste       text not null,
+  mots_cles   text not null default '',
+  contrats    text[] not null default '{}',
+  mobilite_km integer not null default 20,
+  active      boolean not null default true,
+  created_at  timestamptz not null default now()
+);
+alter table public.recherches enable row level security;
+drop policy if exists "candidat gère ses recherches" on public.recherches;
+create policy "candidat gère ses recherches" on public.recherches
+  for all using (auth.uid() = candidat_id) with check (auth.uid() = candidat_id);
+alter table public.correspondances add column if not exists recherche_id uuid references public.recherches(id) on delete set null;
+alter table public.correspondances add column if not exists piste text;   -- métier voisin proposé par Jobaprox
+alter table public.candidats add column if not exists pistes jsonb;
+alter table public.candidats add column if not exists pistes_le timestamptz;
