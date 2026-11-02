@@ -140,3 +140,25 @@ export async function offresPourCandidat(c: Candidat): Promise<OffreImportee[]> 
   }
   return [...vues.values()];
 }
+
+/** Test de connexion pour la page de diagnostic (n'affiche jamais les identifiants). */
+export async function testerFranceTravail(): Promise<{ etat: "non_configure" | "ok" | "erreur"; detail: string }> {
+  if (!franceTravailConfigure()) return { etat: "non_configure", detail: "Identifiants absents dans Vercel." };
+  try {
+    await obtenirJeton();
+  } catch (e) {
+    return {
+      etat: "erreur",
+      detail: `Connexion refusée : vérifie l'identifiant et la clé secrète (sans espace), et que l'API « Offres d'emploi v2 » est bien ajoutée à ton application. ${e instanceof Error ? e.message : ""}`,
+    };
+  }
+  try {
+    const offres = await chercher({ motsCles: "vendeur", departement: "13", range: "0-4" });
+    return { etat: "ok", detail: `Connexion réussie : recherche test « vendeur » dans les Bouches-du-Rhône → ${offres.length} offre(s) reçue(s).` };
+  } catch (e) {
+    return {
+      etat: "erreur",
+      detail: `Connexion OK mais la recherche est refusée : ajoute l'API « Offres d'emploi v2 » à ton application France Travail. ${e instanceof Error ? e.message : ""}`,
+    };
+  }
+}

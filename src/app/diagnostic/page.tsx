@@ -1,5 +1,6 @@
 import { verifierConfig } from "@/lib/config";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { testerFranceTravail } from "@/lib/france-travail";
 
 export const metadata = { title: "Diagnostic · Jobaprox" };
 export const dynamic = "force-dynamic";
@@ -43,6 +44,7 @@ async function verifierBase() {
 export default async function Diagnostic() {
   const { controles, supabaseOk } = verifierConfig();
   const base = supabaseOk ? await verifierBase().catch(() => null) : null;
+  const ft = await testerFranceTravail();
   const majManquante = base?.some((b, i) => i >= 3 && i !== 5 && !b.ok);
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
@@ -87,6 +89,17 @@ export default async function Diagnostic() {
           <pre className="overflow-x-auto rounded-lg bg-surface p-3 font-mono text-xs">{SQL_MAJ}</pre>
         </div>
       )}
+
+      <h2 className="text-xl font-semibold">France Travail</h2>
+      <div className="card flex flex-col gap-1 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm">Connexion à l&apos;API Offres d&apos;emploi</span>
+          <span className={`chip ${ft.etat === "ok" ? "chip-plus" : ft.etat === "erreur" ? "chip-minus" : ""}`}>
+            {ft.etat === "ok" ? "OK" : ft.etat === "erreur" ? "À corriger" : "Pas encore branchée"}
+          </span>
+        </div>
+        <p className="text-sm text-muted">{ft.detail}</p>
+      </div>
 
       <p className="text-sm text-muted">
         Après une correction dans Vercel (Paramètres → Variables d&apos;environnement), il faut redéployer :
