@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { noterOffres, type Note } from "@/lib/ia";
+import { iaConfiguree, noterOffres, type Note } from "@/lib/ia";
 import { franceTravailConfigure, offresPourCandidat } from "@/lib/france-travail";
 import { envoyerEmail, echapper } from "@/lib/email";
 import { SEUIL, type Candidat, type Offre, type Correspondance } from "@/lib/types";
@@ -127,7 +127,8 @@ export async function rechercherPourCandidat(candidatId: string) {
       })
       .slice(0, MAX_PAR_RUN) as Offre[];
 
-    // 3. Notation par l'IA
+    // 3. Notation par l'IA (ignorée tant que la clé n'est pas renseignée)
+    if (!iaConfiguree()) aNoter.length = 0;
     const lots: Offre[][] = [];
     for (let i = 0; i < aNoter.length; i += PAR_APPEL) lots.push(aNoter.slice(i, i + PAR_APPEL));
     await parLots(lots, 3, async (lot) => {
@@ -152,6 +153,7 @@ export async function rechercherPourCandidat(candidatId: string) {
 /** Quand l'équipe ajoute ou modifie une offre : la compare à tous les candidats concernés. */
 export async function noterOffrePourTous(offreId: string) {
   const db = createAdminClient();
+  if (!iaConfiguree()) return;
   const { data: o } = await db.from("offres").select("*").eq("id", offreId).single<Offre>();
   if (!o || !o.ouverte) return;
   const { data: candidats } = await db.from("candidats").select("*").eq("consentement", true);

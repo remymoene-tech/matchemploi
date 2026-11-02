@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { exigerAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { lireAnnonce } from "@/lib/ia";
+import { iaConfiguree, lireAnnonce } from "@/lib/ia";
 import { noterOffrePourTous, rechercheQuotidienne } from "@/lib/matching";
 import { CONTRATS, SUIVIS } from "@/lib/types";
 
@@ -66,6 +66,7 @@ export type EtatAnnonce = { erreur?: string };
 export async function importerAnnonce(_: EtatAnnonce, f: FormData): Promise<EtatAnnonce> {
   await exigerAdmin();
   const texte = String(f.get("texte") ?? "").trim();
+  if (!iaConfiguree()) return { erreur: "La lecture automatique demande la clé IA (ANTHROPIC_API_KEY). En attendant, crée l'offre avec « Ajouter une offre »." };
   if (texte.length < 80) return { erreur: "Colle le texte complet de l'annonce (le lien seul ne suffit pas)." };
   let fiche;
   try {

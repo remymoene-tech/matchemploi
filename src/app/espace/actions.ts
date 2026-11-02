@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { exigerUtilisateur } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { lireCV, motsClesDepuisProfil } from "@/lib/ia";
+import { iaConfiguree, lireCV, motsClesDepuisProfil } from "@/lib/ia";
 import { rechercherPourCandidat } from "@/lib/matching";
 import { AVIS, CONTRATS, type Candidat } from "@/lib/types";
 
@@ -58,10 +58,10 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
       upsert: true,
     });
     if (error) return { erreur: "L'envoi du CV a échoué. Réessaie." };
-    try {
+    donnees.cv_chemin = chemin;
+    if (iaConfiguree()) try {
       const lu = await lireCV(octets.toString("base64"), donnees.poste_vise);
       Object.assign(donnees, {
-        cv_chemin: chemin,
         cv_texte: lu.texte.slice(0, 6000),
         competences: lu.competences.slice(0, 10),
         mots_cles: lu.mots_cles,
@@ -69,7 +69,10 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
     } catch {
       return { erreur: "Nous n'avons pas réussi à lire ce CV. Vérifie que le PDF s'ouvre bien, puis réessaie." };
     }
-  } else if (!donnees.mots_cles || avant?.poste_vise !== donnees.poste_vise) {
+  }
+  if (!iaConfiguree()) {
+    donnees.mots_cles ||= donnees.poste_vise;
+  } else if (!(cv instanceof File && cv.size > 0) && (!donnees.mots_cles || avant?.poste_vise !== donnees.poste_vise)) {
     try {
       donnees.mots_cles = await motsClesDepuisProfil(donnees);
     } catch {

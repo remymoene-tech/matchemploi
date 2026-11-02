@@ -2,6 +2,7 @@ import Link from "next/link";
 import { exigerAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { franceTravailConfigure } from "@/lib/france-travail";
+import { iaConfiguree } from "@/lib/ia";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
 import { changerSuivi, relancerTout } from "./actions";
@@ -51,6 +52,11 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
         </div>
       </div>
 
+      {!iaConfiguree() && (
+        <p className="rounded-xl bg-warn-soft p-4 text-sm">
+          L&apos;IA n&apos;est pas encore branchée : les candidats peuvent s&apos;inscrire et déposer leur CV, mais aucune offre n&apos;est notée. Ajoute ANTHROPIC_API_KEY dans Vercel pour activer la notation, puis clique sur « Relancer la recherche pour tous » dans l&apos;onglet Candidats.
+        </p>
+      )}
       {!franceTravailConfigure() && (
         <p className="rounded-xl bg-warn-soft p-4 text-sm">
           La recherche France Travail n&apos;est pas encore branchée : ajoute FRANCE_TRAVAIL_CLIENT_ID et FRANCE_TRAVAIL_CLIENT_SECRET (voir le guide). En attendant, seules tes offres sont proposées.

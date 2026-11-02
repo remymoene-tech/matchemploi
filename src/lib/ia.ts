@@ -4,8 +4,18 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import { z } from "zod";
 import type { Candidat, Offre } from "@/lib/types";
 
-const client = new Anthropic(); // lit ANTHROPIC_API_KEY
 const MODELE = "claude-opus-5-5";
+
+/** L'IA n'est utilisée que si la clé ANTHROPIC_API_KEY est renseignée. */
+export function iaConfiguree() {
+  return Boolean(process.env.ANTHROPIC_API_KEY);
+}
+
+let client: Anthropic | null = null;
+function ia() {
+  if (!iaConfiguree()) throw new Error("IA non configurée : ajoute ANTHROPIC_API_KEY");
+  return (client ??= new Anthropic()); // lit ANTHROPIC_API_KEY
+}
 
 /** Appel commun : sortie JSON validée + modèle de secours si une demande est refusée. */
 async function demander<T extends z.ZodType>(
@@ -13,7 +23,7 @@ async function demander<T extends z.ZodType>(
   content: Anthropic.Beta.BetaContentBlockParam[] | string,
   effort: "low" | "medium" = "medium",
 ): Promise<z.infer<T>> {
-  const res = await client.beta.messages.parse({
+  const res = await ia().beta.messages.parse({
     model: MODELE,
     max_tokens: 16000,
     betas: ["server-side-fallback-2026-07-01"],
