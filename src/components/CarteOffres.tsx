@@ -24,8 +24,26 @@ function couleur(score: number, seuil: number) {
   return score >= seuil ? "var(--good)" : score >= seuil - 20 ? "var(--warn)" : "var(--bad)";
 }
 
-export default function CarteOffres({ offres, domicile, seuil }: { offres: PointOffre[]; domicile: Domicile | null; seuil: number }) {
+export default function CarteOffres({ offres, domicile, seuil, selection, onSelect, className }: {
+  offres: PointOffre[];
+  domicile: Domicile | null;
+  seuil: number;
+  selection?: string | null;
+  onSelect?: (id: string) => void;
+  className?: string;
+}) {
   const conteneur = useRef<HTMLDivElement>(null);
+  const marqueurs = useRef(new Map<string, import("leaflet").Marker>());
+  const groupeRef = useRef<import("leaflet").MarkerClusterGroup | null>(null);
+  const onSelectRef = useRef(onSelect);
+  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
+
+  // Offre choisie dans la liste : on zoome dessus et on ouvre sa fiche
+  useEffect(() => {
+    if (!selection) return;
+    const m = marqueurs.current.get(selection);
+    if (m && groupeRef.current) groupeRef.current.zoomToShowLayer(m, () => m.openPopup());
+  }, [selection]);
 
   useEffect(() => {
     let carte: import("leaflet").Map | null = null;
@@ -73,6 +91,8 @@ export default function CarteOffres({ offres, domicile, seuil }: { offres: Point
           });
         },
       });
+      marqueurs.current.clear();
+      groupeRef.current = groupe;
       for (const o of offres) {
         const marqueur = L.marker([o.latitude, o.longitude], {
           score: o.score,
@@ -88,11 +108,11 @@ export default function CarteOffres({ offres, domicile, seuil }: { offres: Point
              <b class="carte-popup-score" style="color:${couleur(o.score, seuil)}">${o.score} %</b>
              <strong>${esc(o.intitule)}</strong>
              <span>${esc([o.entreprise, o.lieu, o.contrat].filter(Boolean).join(" · "))}</span>
-             ${o.lien
-               ? `<a href="${esc(o.lien)}" target="_blank" rel="noopener noreferrer">Voir l'annonce →</a>`
-               : `<a href="#offre-${esc(o.id)}">Voir dans la liste →</a>`}
+             ${o.lien ? `<a href="${esc(o.lien)}" target="_blank" rel="noopener noreferrer">Voir l'annonce →</a>` : ""}
            </div>`,
         );
+        marqueur.on("click", () => onSelectRef.current?.(o.id));
+        marqueurs.current.set(o.id, marqueur);
         groupe.addLayer(marqueur);
       }
       carte.addLayer(groupe);
@@ -107,5 +127,5 @@ export default function CarteOffres({ offres, domicile, seuil }: { offres: Point
     };
   }, [offres, domicile, seuil]);
 
-  return <div ref={conteneur} className="h-[60vh] min-h-[360px] w-full overflow-hidden rounded-xl border border-line" role="region" aria-label="Carte des offres" />;
+  return <div ref={conteneur} className={className ?? "h-[60vh] min-h-[360px] w-full overflow-hidden rounded-xl border border-line"} role="region" aria-label="Carte des offres" />;
 }
