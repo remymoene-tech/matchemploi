@@ -5,7 +5,8 @@ import { franceTravailConfigure } from "@/lib/france-travail";
 import { iaConfiguree } from "@/lib/ia";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
-import { changerSuivi, relancerTout } from "./actions";
+import { changerFrequence, changerSuivi, relancerTout } from "./actions";
+import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SUIVIS, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
 export const metadata = { title: "Admin · MatchEmploi" };
@@ -15,15 +16,17 @@ const VUES = [
   { id: "correspondances", label: "Correspondances" },
   { id: "candidats", label: "Candidats" },
   { id: "offres", label: "Offres" },
+  { id: "reglages", label: "Réglages" },
 ] as const;
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string }> }) {
   await exigerAdmin();
   const sp = await searchParams;
   const vue = VUES.some((v) => v.id === sp.vue) ? sp.vue! : "correspondances";
   const db = createAdminClient();
 
-  const [{ data: candidats }, { data: offres }, { data: matchs }] = await Promise.all([
+  const [{ frequence, tableOk }, { data: candidats }, { data: offres }, { data: matchs }] = await Promise.all([
+    lireFrequence(),
     db.from("candidats").select("*").order("nom"),
     db.from("offres").select("*").neq("source", "france_travail").order("created_at", { ascending: false }),
     db.from("correspondances").select("*").gte("score", SEUIL).order("score", { ascending: false }).limit(500),
@@ -62,7 +65,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           La recherche France Travail n&apos;est pas encore branchée : ajoute FRANCE_TRAVAIL_CLIENT_ID et FRANCE_TRAVAIL_CLIENT_SECRET (voir le guide). En attendant, seules tes offres sont proposées.
         </p>
       )}
-      {sp.ok && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Offre enregistrée. Elle est comparée aux candidats en arrière-plan.</p>}
+      {sp.ok && vue !== "reglages" && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Offre enregistrée. Elle est comparée aux candidats en arrière-plan.</p>}
       {sp.relance && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Recherche relancée pour tous les candidats. Les résultats arrivent dans quelques minutes.</p>}
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -158,6 +161,40 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             {!C.size && <p className="card border-dashed p-6 text-sm text-muted">Aucun candidat inscrit. Envoie le lien d&apos;inscription à tes étudiants.</p>}
           </div>
         </div>
+      )}
+
+      {vue === "reglages" && (
+        <form action={changerFrequence} className="card flex max-w-2xl flex-col gap-4 p-5">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold">Fréquence de recherche automatique</h2>
+            <p className="text-sm text-muted">
+              À quelle fréquence le site cherche de nouvelles offres pour tous les candidats et les note.
+              Moins souvent = moins de crédit IA consommé. Les candidats peuvent toujours lancer une recherche eux-mêmes.
+            </p>
+          </div>
+          {!tableOk && (
+            <p className="rounded-lg bg-warn-soft p-3 text-sm">
+              Pour enregistrer ce réglage, exécute d&apos;abord la fin du fichier <code>supabase/schema.sql</code> (bloc « Réglages ») dans Supabase &gt; SQL Editor.
+            </p>
+          )}
+          {sp.ok && <p className="rounded-lg bg-good-soft p-3 text-sm text-good">Réglage enregistré.</p>}
+          {sp.erreur && <p className="rounded-lg bg-bad-soft p-3 text-sm text-bad">L&apos;enregistrement a échoué. Vérifie que le bloc « Réglages » du fichier SQL a bien été exécuté.</p>}
+          <fieldset className="flex flex-col gap-2">
+            <legend className="sr-only">Fréquence</legend>
+            {FREQUENCES.map((f) => (
+              <label key={f.id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-line p-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft">
+                <input type="radio" name="frequence" value={f.id} defaultChecked={frequence === f.id} className="mt-1 accent-[var(--accent)]" />
+                <span className="flex flex-col">
+                  <span className="font-semibold">{f.label}</span>
+                  <span className="text-sm text-muted">{f.detail}</span>
+                </span>
+              </label>
+            ))}
+          </fieldset>
+          <div className="flex justify-end">
+            <button className="btn btn-primary">Enregistrer</button>
+          </div>
+        </form>
       )}
 
       {vue === "offres" && (

@@ -121,3 +121,14 @@ grant select (id, source, entreprise, intitule, contrat, contrat_libelle, lieu, 
 insert into storage.buckets (id, name, public)
 values ('cv', 'cv', false)
 on conflict (id) do nothing;
+
+-- ============================================================
+-- Réglages modifiables depuis l'espace admin (fréquence de recherche…)
+-- ============================================================
+create table if not exists public.reglages (
+  cle    text primary key,
+  valeur text not null
+);
+alter table public.reglages enable row level security; -- accessible au serveur uniquement
+insert into public.reglages (cle, valeur) values ('frequence', 'quotidienne')
+on conflict (cle) do nothing;

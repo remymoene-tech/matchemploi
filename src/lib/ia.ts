@@ -1,10 +1,14 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
-import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
+import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { Candidat, Offre } from "@/lib/types";
 
-const MODELE = "claude-opus-5-5";
+/**
+ * Modèle léger et économique par défaut (≈ 40 fois moins cher que le plus puissant).
+ * Pour plus de finesse, mettre IA_MODELE=claude-opus-5-5 dans les variables Vercel.
+ */
+const MODELE = process.env.IA_MODELE || "claude-haiku-5-5";
 
 /** L'IA n'est utilisée que si la clé ANTHROPIC_API_KEY est renseignée. */
 export function iaConfiguree() {
@@ -17,18 +21,16 @@ function ia() {
   return (client ??= new Anthropic()); // lit ANTHROPIC_API_KEY
 }
 
-/** Appel commun : sortie JSON validée + modèle de secours si une demande est refusée. */
+/** Appel commun : la réponse est un JSON validé par le schéma. */
 async function demander<T extends z.ZodType>(
   schema: T,
-  content: Anthropic.Beta.BetaContentBlockParam[] | string,
+  content: Anthropic.ContentBlockParam[] | string,
   effort: "low" | "medium" = "medium",
 ): Promise<z.infer<T>> {
-  const res = await ia().beta.messages.parse({
+  const res = await ia().messages.parse({
     model: MODELE,
     max_tokens: 16000,
-    betas: ["server-side-fallback-2026-07-01"],
-    fallbacks: "default",
-    output_config: { effort, format: betaZodOutputFormat(schema) },
+    output_config: { effort, format: zodOutputFormat(schema) },
     messages: [{ role: "user", content }],
   });
   if (res.stop_reason === "refusal") throw new Error("Demande refusée par le modèle");

@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, lireAnnonce } from "@/lib/ia";
 import { noterOffrePourTous, rechercheQuotidienne } from "@/lib/matching";
 import { CONTRATS, SUIVIS } from "@/lib/types";
+import { FREQUENCES, ecrireFrequence, type Frequence } from "@/lib/reglages";
 
 const t = (f: FormData, k: string, max = 300) => String(f.get(k) ?? "").trim().slice(0, max);
 
@@ -93,4 +94,12 @@ export async function relancerTout() {
   await exigerAdmin();
   after(() => rechercheQuotidienne());
   redirect("/admin?vue=candidats&relance=1");
+}
+
+export async function changerFrequence(f: FormData) {
+  await exigerAdmin();
+  const v = t(f, "frequence") as Frequence;
+  if (!FREQUENCES.some((x) => x.id === v)) return;
+  const ok = await ecrireFrequence(v);
+  redirect(`/admin?vue=reglages&${ok ? "ok=1" : "erreur=1"}`);
 }

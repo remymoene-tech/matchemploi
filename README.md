@@ -51,7 +51,9 @@ Garde un bloc-notes ouvert pour y coller les clés au fur et à mesure.
    (quelques euros suffisent pour démarrer ; tu peux fixer une limite de dépense).
 2. **API Keys → Create Key** → copie-la dans `ANTHROPIC_API_KEY`.
 
-Coût indicatif : quelques centimes par CV lu et par lot de 8 offres notées.
+Ce n'est pas un abonnement : c'est un crédit prépayé, consommé à l'usage.
+Avec le modèle léger utilisé par défaut, compter environ 1 à 3 € par mois pour 30 candidats suivis chaque jour.
+La fréquence de recherche (tous les jours, 2 fois par semaine, 1 fois par semaine, à la demande) se règle dans **Admin → Réglages**.
 
 ## Étape 4 — France Travail (les offres d'emploi)
 1. Crée un compte sur https://francetravail.io (espace développeur).
