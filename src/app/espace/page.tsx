@@ -45,9 +45,9 @@ export default async function Espace() {
   if (premier.error) data = (await lire(false)).data; // base pas encore à jour pour la carte
 
   const ouvertes = (data ?? []).filter((l) => l.offres?.ouverte);
-  // Toutes les offres notées, les meilleures d'abord ; celles écartées par le candidat à la fin
-  const lignes: LigneOffre[] = ouvertes
-    .sort((a, b) => Number(a.avis_candidat === "pas_interesse") - Number(b.avis_candidat === "pas_interesse") || b.score - a.score)
+  // Toutes les offres notées, strictement du plus grand % au plus petit
+  const lignes: LigneOffre[] = [...ouvertes]
+    .sort((a, b) => Number(b.score) - Number(a.score))
     .map((l) => ({
       offre_id: l.offre_id,
       score: l.score,
