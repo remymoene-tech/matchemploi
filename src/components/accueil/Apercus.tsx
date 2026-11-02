@@ -39,9 +39,9 @@ export function ApercuCarte() {
           <Pastille x={130} y={168} n="88" c="var(--good)" />
           <Pastille x={84} y={205} n="77" c="var(--good)" />
           <Pastille x={176} y={110} n="81" c="var(--good)" />
-          <Pastille x={190} y={220} n="62" c="var(--warn)" />
+          <Pastille x={190} y={220} n="67" c="var(--warn)" />
           <Pastille x={60} y={120} n="79" c="var(--good)" />
-          <Pastille x={238} y={258} n="54" c="var(--bad)" />
+          <Pastille x={238} y={258} n="66" c="var(--warn)" />
         </svg>
         <div className="flex min-w-0 flex-col gap-2">
           {[
@@ -95,7 +95,7 @@ export function ApercuApprend() {
     <Ecran url="espace">
       <div className="flex h-full flex-col gap-3">
         <div className="flex gap-3 rounded-lg border border-line p-3 opacity-75">
-          <Score score={72} seuil={75} />
+          <Score score={68} seuil={75} />
           <div><p className="text-[13px] font-semibold">Hôte(sse) d&apos;accueil · Marseille</p><p className="text-[11px] text-muted">CDD · week-ends</p></div>
         </div>
         <div className="flex flex-col gap-2 rounded-lg border border-line bg-bg p-3">

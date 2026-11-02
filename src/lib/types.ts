@@ -126,6 +126,11 @@ export const MAX_RECHERCHES = 4; // en plus de la recherche principale
 
 export const SEUIL = Number(process.env.MATCH_SEUIL ?? 75);
 
+/** Couleurs des scores, et note minimale pour qu'une offre soit montrée au candidat. */
+export const SCORE_VERT = 70;
+export const SCORE_ORANGE = 65; // en dessous : l'offre n'est pas montrée au candidat
+export const tonScore = (score: number) => (score >= SCORE_VERT ? "good" : score >= SCORE_ORANGE ? "warn" : "bad");
+
 export const sourceLabel = (s: string) =>
   s === "france_travail" ? "France Travail" : s === "adzuna" ? "Adzuna" : s === "externe" ? "Annonce externe" : "Entreprise partenaire";
 

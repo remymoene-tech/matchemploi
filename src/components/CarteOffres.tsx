@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
+import { tonScore } from "@/lib/types";
 
 export type PointOffre = {
   id: string;
@@ -20,8 +21,10 @@ export type Domicile = { latitude: number; longitude: number; rayonKm: number; v
 const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-function couleur(score: number, seuil: number) {
-  return score >= seuil ? "var(--good)" : score >= seuil - 20 ? "var(--warn)" : "var(--bad)";
+function couleur(score: number, _seuil?: number) {
+  void _seuil;
+  const t = tonScore(score);
+  return t === "good" ? "var(--good)" : t === "warn" ? "var(--warn)" : "var(--bad)";
 }
 
 export default function CarteOffres({ offres, domicile, seuil, selection, onSelect, className }: {

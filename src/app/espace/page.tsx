@@ -4,7 +4,7 @@ import { exigerUtilisateur } from "@/lib/auth";
 import { Rafraichir } from "@/components/Rafraichir";
 import { OffresEspace, type LigneOffre } from "@/components/OffresEspace";
 import { relancerRecherche } from "./actions";
-import { SEUIL, contratLabel, estOffreEquipe, sourceLabel, type Candidat, type Piste } from "@/lib/types";
+import { SCORE_ORANGE, SCORE_VERT, SEUIL, contratLabel, estOffreEquipe, sourceLabel, type Candidat, type Piste } from "@/lib/types";
 import { adopterPiste, ecarterPiste } from "./actions";
 import { Chips, Score } from "@/components/Score";
 
@@ -66,8 +66,9 @@ export default async function Espace() {
 
   // Les offres saisies par l'équipe ne sont jamais montrées : c'est l'équipe qui fait le lien
   const visibles = (data ?? []).filter((l) => l.offres?.ouverte && !estOffreEquipe(l.offres.source));
-  const ouvertes = visibles.filter((l) => !l.piste); // les pistes ont leur propre encadré
-  const suggestions = visibles.filter((l) => l.piste && l.score >= SEUIL && l.avis_candidat !== "pas_interesse" && pistes.some((p) => p.metier === l.piste));
+  // Seules les offres à 65 % ou plus sont proposées (orange de 65 à 69 %, vert à partir de 70 %)
+  const ouvertes = visibles.filter((l) => !l.piste && l.score >= SCORE_ORANGE); // les pistes ont leur propre encadré
+  const suggestions = visibles.filter((l) => l.piste && l.score >= SCORE_VERT && l.avis_candidat !== "pas_interesse" && pistes.some((p) => p.metier === l.piste));
   // Toutes les offres notées, strictement du plus grand % au plus petit
   const lignes: LigneOffre[] = [...ouvertes]
     .sort((a, b) => Number(b.score) - Number(a.score))
@@ -101,7 +102,7 @@ export default async function Espace() {
     .not("preparation_le", "is", null)
     .order("preparation_le", { ascending: false });
   const entretiens = ((fiches ?? []) as unknown as { offre_id: string; meta: { intitule?: string; entreprise?: string } | null }[]).filter((x) => x.meta);
-  const auDessus = ouvertes.filter((l) => l.score >= SEUIL).length;
+  const auDessus = ouvertes.filter((l) => l.score >= SCORE_VERT).length;
   const interesse = ouvertes.filter((l) => l.avis_candidat === "interesse").length;
   const postule = ouvertes.filter((l) => l.avis_candidat === "postule").length;
   const domicile = c.latitude != null && c.longitude != null
@@ -110,7 +111,7 @@ export default async function Espace() {
 
   const stats: { label: string; valeur: string; lien?: string }[] = [
     { label: "Offres trouvées", valeur: String(ouvertes.length) },
-    { label: `À ${SEUIL} % et plus`, valeur: String(auDessus) },
+    { label: `En vert (${SCORE_VERT} % et plus)`, valeur: String(auDessus) },
     { label: "Ça m'intéresse", valeur: String(interesse) },
     { label: "Candidatures", valeur: String(postule) },
     { label: "Note de ton CV", valeur: c.cv_conseils ? `${c.cv_conseils.note}/10` : "—", lien: "/espace/cv" },

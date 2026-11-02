@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Carte, type Domicile, type PointOffre } from "@/components/Carte";
 import { Chips, Score } from "@/components/Score";
 import { donnerAvis } from "@/app/espace/actions";
-import { RAISONS_REFUS } from "@/lib/types";
+import { RAISONS_REFUS, SCORE_ORANGE, SCORE_VERT } from "@/lib/types";
 
 export type LigneOffre = {
   offre_id: string;
@@ -87,6 +87,11 @@ export function OffresEspace({ lignes: toutes, seuil, domicile, candidatId, rech
           onSelect={depuisCarte}
           className="h-[50vh] min-h-[320px] w-full overflow-hidden rounded-xl border border-line lg:h-[calc(100vh-2rem)] lg:max-h-[760px]"
         />
+        <div className="flex flex-wrap items-center gap-4 text-xs text-muted" aria-label="Légende">
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full border-[3px] border-good" /> {SCORE_VERT} % et plus</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-full border-[3px] border-warn" /> {SCORE_ORANGE} à {SCORE_VERT - 1} %</span>
+          <span className="flex items-center gap-1.5"><span className="h-3 w-3 rounded-md bg-accent" /> Chez toi</span>
+        </div>
         <p className="hint">
           Zoome pour séparer les offres regroupées. Clique sur une pastille pour retrouver l&apos;offre dans la liste.
           {!domicile && " Ta commune n'a pas pu être placée : vérifie ton code postal dans ton profil."}
@@ -102,7 +107,7 @@ export function OffresEspace({ lignes: toutes, seuil, domicile, candidatId, rech
             <li
               key={l.offre_id}
               id={`offre-${l.offre_id}`}
-              className={`card flex scroll-mt-4 flex-col gap-2 p-4 transition ${choisie ? "border-accent ring-2 ring-accent/30" : ""} ${l.score < seuil || l.avis_candidat === "pas_interesse" ? "opacity-75" : ""}`}
+              className={`card flex scroll-mt-4 flex-col gap-2 p-4 transition ${choisie ? "border-accent ring-2 ring-accent/30" : ""} ${l.avis_candidat === "pas_interesse" ? "opacity-75" : ""}`}
             >
               <div className="flex gap-3">
                 <Score score={l.score} seuil={seuil} />
