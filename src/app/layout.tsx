@@ -12,7 +12,7 @@ const figtree = Figtree({ variable: "--font-figtree", subsets: ["latin"] });
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], weight: ["500", "700"] });
 
 export const metadata: Metadata = {
-  title: "MatchEmploi",
+  title: "JobMee",
   description: "Dépose ton CV, on cherche pour toi les offres qui te correspondent à 75 % ou plus.",
 };
 
@@ -33,7 +33,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <header className="border-b border-line bg-surface">
           <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
             <Link href="/" className="font-display text-xl font-extrabold tracking-tight">
-              Match<span className="text-accent">Emploi</span>
+              Job<span className="text-accent">Mee</span>
             </Link>
             <nav className="flex flex-wrap items-center gap-1 text-sm">
               {user ? (
@@ -57,7 +57,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         </header>
         <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8">{children}</main>
         <footer className="border-t border-line py-6 text-center text-xs text-muted">
-          MatchEmploi · Tes données ne sont partagées avec une entreprise qu&apos;avec ton accord.
+          JobMee · Tes données ne sont partagées avec une entreprise qu&apos;avec ton accord.
         </footer>
       </body>
     </html>

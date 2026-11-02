@@ -1,5 +1,5 @@
 -- ============================================================
--- MatchEmploi : structure de la base de données
+-- JobMee : structure de la base de données
 -- À coller une seule fois dans Supabase > SQL Editor > New query > Run
 -- ============================================================
 

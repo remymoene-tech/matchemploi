@@ -3,7 +3,7 @@ import { FormProfil } from "@/components/FormProfil";
 import { supprimerCompte } from "../actions";
 import type { Candidat } from "@/lib/types";
 
-export const metadata = { title: "Mon profil · MatchEmploi" };
+export const metadata = { title: "Mon profil · JobMee" };
 export const maxDuration = 300; // lecture du CV + recherche en arrière-plan
 
 export default async function Page() {

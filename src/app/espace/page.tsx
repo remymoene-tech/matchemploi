@@ -7,7 +7,7 @@ import { Carte, type PointOffre } from "@/components/Carte";
 import { donnerAvis, relancerRecherche } from "./actions";
 import { AVIS, SEUIL, contratLabel, sourceLabel, type Candidat } from "@/lib/types";
 
-export const metadata = { title: "Mes offres · MatchEmploi" };
+export const metadata = { title: "Mes offres · JobMee" };
 export const maxDuration = 300;
 
 type Ligne = {

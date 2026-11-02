@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FormAuth } from "@/components/FormAuth";
 import { connexion } from "../actions";
 
-export const metadata = { title: "Connexion · MatchEmploi" };
+export const metadata = { title: "Connexion · JobMee" };
 
 export default function Page() {
   return (

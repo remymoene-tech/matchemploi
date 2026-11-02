@@ -4,7 +4,7 @@ import type { Candidat } from "@/lib/types";
 import { Copier } from "@/components/Copier";
 import { BoutonAnalyser, FormCV } from "@/components/FormCV";
 
-export const metadata = { title: "Mon CV · MatchEmploi" };
+export const metadata = { title: "Mon CV · JobMee" };
 export const maxDuration = 300;
 
 export default async function MonCV({ searchParams }: { searchParams: Promise<{ nouveau?: string }> }) {

@@ -1,7 +1,7 @@
 import { verifierConfig } from "@/lib/config";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const metadata = { title: "Diagnostic · MatchEmploi" };
+export const metadata = { title: "Diagnostic · JobMee" };
 export const dynamic = "force-dynamic";
 
 const SQL_MAJ = `create table if not exists public.reglages (cle text primary key, valeur text not null);
