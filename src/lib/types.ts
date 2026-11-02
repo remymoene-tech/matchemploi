@@ -16,6 +16,17 @@ export const AVIS = [
   { id: "pas_interesse", label: "Pas pour moi" },
 ] as const;
 
+/** Raisons proposées quand un candidat écarte une offre (« Pas pour moi »). */
+export const RAISONS_REFUS = [
+  "Trop loin",
+  "Pas le bon métier",
+  "Type de contrat",
+  "Salaire",
+  "Horaires",
+  "Secteur ou entreprise",
+  "Niveau demandé trop élevé",
+] as const;
+
 export const SUIVIS = [
   { id: "a_traiter", label: "À traiter" },
   { id: "propose_candidat", label: "Proposé au candidat" },

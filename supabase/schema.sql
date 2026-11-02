@@ -167,3 +167,9 @@ alter table public.ecoles enable row level security;        -- accessibles au se
 alter table public.responsables enable row level security;
 alter table public.candidats add column if not exists ecole_id uuid references public.ecoles(id) on delete set null;
 alter table public.offres add column if not exists ecole_id uuid references public.ecoles(id) on delete cascade;
+
+-- ============================================================
+-- « Pas pour moi » : la raison donnée par le candidat (l'IA en tient compte)
+-- ============================================================
+alter table public.correspondances add column if not exists raison_refus text;
+grant update (avis_candidat, raison_refus) on public.correspondances to authenticated;

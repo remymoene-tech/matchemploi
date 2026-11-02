@@ -10,7 +10,7 @@ import { analyserCV, cheminCV, majCandidat, stockerCV, telechargerCV } from "@/l
 import { localiserCommune } from "@/lib/geo";
 import { ecoleParCode } from "@/lib/ecoles";
 import { rechercherPourCandidat } from "@/lib/matching";
-import { AVIS, CONTRATS, type Candidat } from "@/lib/types";
+import { AVIS, CONTRATS, RAISONS_REFUS, type Candidat } from "@/lib/types";
 
 export type EtatProfil = { erreur?: string };
 
@@ -111,11 +111,29 @@ export async function donnerAvis(f: FormData) {
   const { user, supabase } = await exigerUtilisateur();
   const avis = String(f.get("avis"));
   if (!AVIS.some((a) => a.id === avis)) return;
-  await supabase
+  const offreId = String(f.get("offre_id"));
+
+  // Raison du refus : choix rapides + précision libre
+  const raisons = f.getAll("raison").map(String).filter((r) => (RAISONS_REFUS as readonly string[]).includes(r));
+  const precision = String(f.get("precision") ?? "").trim().slice(0, 300);
+  const raison = avis === "pas_interesse" ? [raisons.join(", "), precision].filter(Boolean).join(" : ") : "";
+
+  let { error } = await supabase
     .from("correspondances")
-    .update({ avis_candidat: avis })
+    .update({ avis_candidat: avis, raison_refus: raison || null })
     .eq("candidat_id", user.id)
-    .eq("offre_id", String(f.get("offre_id")));
+    .eq("offre_id", offreId);
+  if (error && /raison_refus/.test(error.message)) {
+    // Base pas encore à jour : on enregistre au moins l'avis
+    ({ error } = await supabase.from("correspondances").update({ avis_candidat: avis }).eq("candidat_id", user.id).eq("offre_id", offreId));
+  }
+
+  // Un refus expliqué : on renote les autres offres en tenant compte de cette préférence
+  if (!error && raison) {
+    const { data: c } = await supabase.from("candidats").select("recherche_en_cours").eq("user_id", user.id).maybeSingle();
+    await supabase.from("candidats").update({ updated_at: new Date().toISOString(), ...(c?.recherche_en_cours ? {} : { recherche_en_cours: true }) }).eq("user_id", user.id);
+    if (!c?.recherche_en_cours) after(() => rechercherPourCandidat(user.id));
+  }
   revalidatePath("/espace");
 }
 

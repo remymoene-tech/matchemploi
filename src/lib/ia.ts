@@ -162,7 +162,9 @@ ${o.description.slice(0, 2500)}`;
 }
 
 /** Note jusqu'à ~8 offres pour un candidat en un seul appel. */
-export async function noterOffres(c: Candidat, offres: Offre[]): Promise<Note[]> {
+export type Refus = { intitule: string; entreprise: string; lieu: string; contrat: string; raison: string };
+
+export async function noterOffres(c: Candidat, offres: Offre[], refus: Refus[] = []): Promise<Note[]> {
   const cle = new Map(offres.map((o, i) => [`O${i + 1}`, o.id]));
   const r = await demander(
     NotesSchema,
@@ -179,7 +181,11 @@ Sois exigeant : 75 ou plus veut dire « candidature à envoyer sans hésiter ».
 
 CANDIDAT
 ${profil(c)}
-
+${refus.length ? `
+OFFRES QUE LE CANDIDAT A ÉCARTÉES, ET POURQUOI (ses préférences réelles, à respecter en priorité)
+${refus.map((r) => `- « ${r.intitule} »${r.entreprise ? ` chez ${r.entreprise}` : ""} (${[r.lieu, r.contrat].filter(Boolean).join(", ")}) → ${r.raison}`).join("\n")}
+Si une offre ressemble à une offre écartée pour la même raison (même distance, même métier, même type de contrat, même secteur…), baisse nettement sa note et cite cette raison dans les manques.
+` : ""}
 OFFRES
 ${offres.map((o, i) => `[O${i + 1}]\n${offreTexte(o)}`).join("\n\n")}
 

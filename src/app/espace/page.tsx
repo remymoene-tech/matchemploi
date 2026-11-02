@@ -16,6 +16,7 @@ type Ligne = {
   manques: string[];
   resume: string;
   avis_candidat: string;
+  raison_refus?: string | null;
   calcule_le: string;
   offres: {
     source: string; entreprise: string; intitule: string; contrat: string; contrat_libelle: string;
@@ -32,17 +33,21 @@ export default async function Espace() {
   const { data: c } = await supabase.from("candidats").select("*").eq("user_id", user.id).maybeSingle<Candidat>();
   if (!c) redirect("/espace/profil");
 
-  const champs = "offre_id, score, forts, manques, resume, avis_candidat, calcule_le, offres(source, entreprise, intitule, contrat, contrat_libelle, lieu, salaire, lien, ouverte";
-  const lire = (gps: boolean) =>
+  const champs = "offre_id, score, forts, manques, resume, avis_candidat, calcule_le";
+  const champsOffre = "source, entreprise, intitule, contrat, contrat_libelle, lieu, salaire, lien, ouverte";
+  const lire = (raison: boolean, gps: boolean) =>
     supabase
       .from("correspondances")
-      .select(`${champs}${gps ? ", latitude, longitude" : ""})`)
+      .select(`${champs}${raison ? ", raison_refus" : ""}, offres(${champsOffre}${gps ? ", latitude, longitude" : ""})`)
       .eq("candidat_id", user.id)
       .order("score", { ascending: false })
       .returns<Ligne[]>();
-  const premier = await lire(true);
-  let data = premier.data;
-  if (premier.error) data = (await lire(false)).data; // base pas encore à jour pour la carte
+  // Si la base n'a pas encore toutes les colonnes récentes, on lit ce qui existe
+  let data: Ligne[] | null = null;
+  for (const [raison, gps] of [[true, true], [false, true], [false, false]] as const) {
+    const r = await lire(raison, gps);
+    if (!r.error) { data = r.data; break; }
+  }
 
   const ouvertes = (data ?? []).filter((l) => l.offres?.ouverte);
   // Toutes les offres notées, strictement du plus grand % au plus petit
@@ -55,6 +60,7 @@ export default async function Espace() {
       manques: l.manques,
       resume: l.resume,
       avis_candidat: l.avis_candidat,
+      raison_refus: l.raison_refus ?? "",
       source: l.offres!.source,
       sourceLabel: sourceLabel(l.offres!.source),
       entreprise: l.offres!.entreprise,

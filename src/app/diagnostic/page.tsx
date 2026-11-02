@@ -21,7 +21,9 @@ create table if not exists public.responsables (email text primary key, ecole_id
 alter table public.ecoles enable row level security;
 alter table public.responsables enable row level security;
 alter table public.candidats add column if not exists ecole_id uuid references public.ecoles(id) on delete set null;
-alter table public.offres add column if not exists ecole_id uuid references public.ecoles(id) on delete cascade;`;
+alter table public.offres add column if not exists ecole_id uuid references public.ecoles(id) on delete cascade;
+alter table public.correspondances add column if not exists raison_refus text;
+grant update (avis_candidat, raison_refus) on public.correspondances to authenticated;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -38,6 +40,7 @@ async function verifierBase() {
     db.from("responsables").select("email").limit(1),
     db.from("candidats").select("ecole_id").limit(1),
     db.from("offres").select("ecole_id").limit(1),
+    db.from("correspondances").select("raison_refus").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -52,6 +55,7 @@ async function verifierBase() {
     "Espace École : responsables",
     "Espace École : école des étudiants",
     "Espace École : offres des écoles",
+    "Raisons des refus (« Pas pour moi »)",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

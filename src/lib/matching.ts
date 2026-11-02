@@ -1,6 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { iaConfiguree, noterOffres, type Note } from "@/lib/ia";
+import { iaConfiguree, noterOffres, type Note, type Refus } from "@/lib/ia";
 import { franceTravailConfigure, offresPourCandidat } from "@/lib/france-travail";
 import { adzunaConfigure, offresAdzunaPourCandidat } from "@/lib/adzuna";
 import { envoyerEmail, echapper } from "@/lib/email";
@@ -99,6 +99,28 @@ async function importerOffres(importees: (Record<string, unknown> & { latitude?:
   return (up ?? []).map((o) => o.id as string);
 }
 
+/** Offres écartées par le candidat avec leur raison : l'IA s'en sert pour ne pas refaire les mêmes erreurs. */
+async function refusDuCandidat(candidatId: string): Promise<{ refus: Refus[]; ids: Set<string> }> {
+  const db = createAdminClient();
+  const { data, error } = await db
+    .from("correspondances")
+    .select("offre_id, raison_refus, offres(intitule, entreprise, lieu, contrat_libelle, contrat)")
+    .eq("candidat_id", candidatId)
+    .eq("avis_candidat", "pas_interesse")
+    .order("calcule_le", { ascending: false })
+    .limit(30);
+  if (error || !data) return { refus: [], ids: new Set() };
+  const ids = new Set(data.map((d) => d.offre_id as string));
+  const refus = data
+    .filter((d) => d.raison_refus)
+    .slice(0, 15)
+    .map((d) => {
+      const o = d.offres as unknown as { intitule: string; entreprise: string; lieu: string; contrat_libelle: string; contrat: string } | null;
+      return { intitule: o?.intitule ?? "", entreprise: o?.entreprise ?? "", lieu: o?.lieu ?? "", contrat: o?.contrat_libelle || o?.contrat || "", raison: d.raison_refus as string };
+    });
+  return { refus, ids };
+}
+
 /**
  * Recherche complète pour un candidat :
  * 1. récupère les offres France Travail qui collent à ses critères,
@@ -149,8 +171,10 @@ export async function rechercherPourCandidat(candidatId: string) {
       }
     }
 
+    const { refus, ids: ecartees } = await refusDuCandidat(c.user_id);
     const aNoter = [...(internes ?? []), ...(ft ?? [])]
       .filter((o: Offre) => compatible(c, o))
+      .filter((o: Offre) => !ecartees.has(o.id)) // déjà écartée par le candidat : inutile de la renoter
       .filter((o: Offre) => {
         const t = calculees.get(o.id);
         return !t || t < c.updated_at || t < o.updated_at;
@@ -162,7 +186,7 @@ export async function rechercherPourCandidat(candidatId: string) {
     const lots: Offre[][] = [];
     for (let i = 0; i < aNoter.length; i += PAR_APPEL) lots.push(aNoter.slice(i, i + PAR_APPEL));
     await parLots(lots, 3, async (lot) => {
-      const notes = await noterOffres(c, lot);
+      const notes = await noterOffres(c, lot, refus);
       await enregistrerNotes(c.user_id, notes);
       notees += notes.length;
     });
@@ -192,7 +216,7 @@ export async function noterOffrePourTous(offreId: string) {
   const cibles = ((candidats ?? []) as Candidat[]).filter((c) => compatible(c, o));
   await parLots(cibles, 4, async (c) => {
     try {
-      await enregistrerNotes(c.user_id, await noterOffres(c, [o]));
+      await enregistrerNotes(c.user_id, await noterOffres(c, [o], (await refusDuCandidat(c.user_id)).refus));
       await notifier(c);
     } catch {
       /* un échec n'empêche pas les autres candidats */

@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 import { Carte, type Domicile, type PointOffre } from "@/components/Carte";
 import { Chips, Score } from "@/components/Score";
 import { donnerAvis } from "@/app/espace/actions";
+import { RAISONS_REFUS } from "@/lib/types";
 
 export type LigneOffre = {
   offre_id: string;
@@ -12,6 +13,7 @@ export type LigneOffre = {
   manques: string[];
   resume: string;
   avis_candidat: string;
+  raison_refus: string;
   source: string;
   sourceLabel: string;
   entreprise: string;
@@ -33,6 +35,7 @@ const AVIS = [
 /** Carte et liste des offres côte à côte, reliées entre elles. */
 export function OffresEspace({ lignes, seuil, domicile }: { lignes: LigneOffre[]; seuil: number; domicile: Domicile | null }) {
   const [selection, setSelection] = useState<string | null>(null);
+  const [refusOuvert, setRefusOuvert] = useState<string | null>(null);
 
   // Mémorisé : la carte n'est reconstruite que si les offres changent (pas à chaque clic)
   const points: PointOffre[] = useMemo(
@@ -111,17 +114,59 @@ export function OffresEspace({ lignes, seuil, domicile }: { lignes: LigneOffre[]
                   <span className="text-muted">Ton école fait le lien avec l&apos;entreprise</span>
                 )}
               </div>
+              {l.avis_candidat === "pas_interesse" && l.raison_refus && (
+                <p className="text-sm text-muted">Écartée : {l.raison_refus}</p>
+              )}
               <div className="flex flex-wrap gap-1.5 border-t border-line pt-2">
-                {AVIS.map((a) => (
-                  <form key={a.id} action={donnerAvis}>
-                    <input type="hidden" name="offre_id" value={l.offre_id} />
-                    <input type="hidden" name="avis" value={a.id} />
-                    <button className={`btn btn-sm ${l.avis_candidat === a.id ? "border-accent bg-accent-soft text-accent" : ""}`} aria-pressed={l.avis_candidat === a.id}>
+                {AVIS.map((a) =>
+                  a.id === "pas_interesse" ? (
+                    <button
+                      key={a.id}
+                      type="button"
+                      className={`btn btn-sm ${l.avis_candidat === a.id ? "border-accent bg-accent-soft text-accent" : ""}`}
+                      aria-pressed={l.avis_candidat === a.id}
+                      aria-expanded={refusOuvert === l.offre_id}
+                      onClick={() => setRefusOuvert(refusOuvert === l.offre_id ? null : l.offre_id)}
+                    >
                       {a.label}
                     </button>
-                  </form>
-                ))}
+                  ) : (
+                    <form key={a.id} action={donnerAvis}>
+                      <input type="hidden" name="offre_id" value={l.offre_id} />
+                      <input type="hidden" name="avis" value={a.id} />
+                      <button className={`btn btn-sm ${l.avis_candidat === a.id ? "border-accent bg-accent-soft text-accent" : ""}`} aria-pressed={l.avis_candidat === a.id}>
+                        {a.label}
+                      </button>
+                    </form>
+                  ),
+                )}
               </div>
+              {refusOuvert === l.offre_id && (
+                <form action={donnerAvis} onSubmit={() => setRefusOuvert(null)} className="flex flex-col gap-3 rounded-lg border border-line bg-bg p-3">
+                  <input type="hidden" name="offre_id" value={l.offre_id} />
+                  <input type="hidden" name="avis" value="pas_interesse" />
+                  <fieldset className="flex flex-col gap-2">
+                    <legend className="mb-1 text-sm font-semibold">Pourquoi cette offre n&apos;est pas pour toi ?</legend>
+                    <div className="flex flex-wrap gap-1.5">
+                      {RAISONS_REFUS.map((r) => (
+                        <label key={r} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:checked]:text-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent">
+                          <input type="checkbox" name="raison" value={r} className="sr-only" />
+                          {r}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-sm" htmlFor={`precision-${l.offre_id}`}>Tu veux préciser ? (facultatif)</label>
+                    <input className="input" id={`precision-${l.offre_id}`} name="precision" maxLength={300} placeholder="Ex. je ne veux pas travailler le week-end" />
+                  </div>
+                  <p className="hint">L&apos;IA en tiendra compte pour mieux noter tes prochaines offres.</p>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <button type="button" className="btn btn-sm btn-ghost" onClick={() => setRefusOuvert(null)}>Annuler</button>
+                    <button className="btn btn-sm btn-primary">Écarter cette offre</button>
+                  </div>
+                </form>
+              )}
             </li>
           );
         })}
