@@ -17,7 +17,7 @@ export default function Accueil() {
             Arrête d&apos;éplucher les annonces. <span className="text-accent">On les trie pour toi.</span>
           </h1>
           <p className="max-w-[56ch] text-lg text-muted">
-            Dépose ton CV une fois. Chaque jour, JobMee lit les nouvelles offres, les note par rapport à ton profil
+            Dépose ton CV une fois. Chaque jour, Jobaprox lit les nouvelles offres, les note par rapport à ton profil
             et ne te garde que celles qui te correspondent vraiment, avec l&apos;explication de la note.
           </p>
           <div className="flex flex-wrap gap-3">

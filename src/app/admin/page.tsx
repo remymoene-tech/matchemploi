@@ -9,7 +9,7 @@ import { changerFrequence, changerSuivi, relancerTout } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SUIVIS, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
-export const metadata = { title: "Admin · JobMee" };
+export const metadata = { title: "Admin · Jobaprox" };
 export const maxDuration = 300;
 
 const VUES = [

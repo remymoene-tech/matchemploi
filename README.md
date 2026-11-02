@@ -1,4 +1,4 @@
-# JobMee
+# Jobaprox
 
 Site qui aide les gens à trouver un emploi ou une alternance :
 le candidat crée son espace, dépose son CV et décrit son projet ;

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { exigerAdmin } from "@/lib/auth";
 import { FormAnnonce } from "@/components/FormAnnonce";
 
-export const metadata = { title: "Coller une annonce · JobMee" };
+export const metadata = { title: "Coller une annonce · Jobaprox" };
 
 export default async function Page() {
   await exigerAdmin();

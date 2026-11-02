@@ -1,17 +1,20 @@
 @import "tailwindcss";
 
-/* Palette : encre bleu nuit, accent cobalt, verts/ambres/rouges réservés au score */
+/* Palette Jobaprox : vert pâle et frais, encre vert sapin. Le vert pâle remplit les boutons,
+   un vert plus soutenu sert aux liens et au texte pour rester lisible. Ambre/rouge réservés aux scores. */
 :root {
-  --bg: #f4f5f8;
+  --bg: #f2f8f3;
   --surface: #ffffff;
-  --ink: #151a2c;
-  --muted: #5a6377;
-  --line: #dde1ea;
-  --accent: #2f4bd8;
+  --ink: #15261c;
+  --muted: #55695c;
+  --line: #d6e6da;
+  --accent: #2f7d52;
   --accent-ink: #ffffff;
-  --accent-soft: #e7ebfc;
-  --good: #11744a;
-  --good-soft: #dcf2e6;
+  --accent-soft: #e2f3e7;
+  --primary-bg: #a9dfbc;
+  --primary-ink: #0f3a22;
+  --good: #13734a;
+  --good-soft: #d8f0e2;
   --warn: #8f5b00;
   --warn-soft: #fbefd4;
   --bad: #ad2f2c;
@@ -19,14 +22,16 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0f1320;
-    --surface: #171c2c;
-    --ink: #e8ebf4;
-    --muted: #9aa3b8;
-    --line: #2a3146;
-    --accent: #8ea2ff;
-    --accent-ink: #0f1320;
-    --accent-soft: #232c52;
+    --bg: #0e1611;
+    --surface: #15201a;
+    --ink: #e5f0e8;
+    --muted: #9ab0a1;
+    --line: #2a3b31;
+    --accent: #8fd6aa;
+    --accent-ink: #0e1611;
+    --accent-soft: #1c3326;
+    --primary-bg: #8fd6aa;
+    --primary-ink: #0d2a19;
     --good: #5fd39b;
     --good-soft: #173528;
     --warn: #f0b65a;
@@ -67,8 +72,8 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
   .btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; border-radius:.5rem; border:1px solid var(--line); background:var(--surface); color:var(--ink); padding:.5rem 1rem; font-size:.875rem; font-weight:600; white-space:nowrap; cursor:pointer; transition:border-color .15s, filter .15s; }
   .btn:hover { border-color: var(--muted); }
   .btn:disabled { opacity:.5; cursor:not-allowed; }
-  .btn-primary { background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
-  .btn-primary:hover { border-color:var(--accent); filter:brightness(1.1); }
+  .btn-primary { background:var(--primary-bg); border-color:var(--primary-bg); color:var(--primary-ink); }
+  .btn-primary:hover { border-color:var(--accent); filter:brightness(1.04); }
   .btn-sm { padding:.375rem .75rem; font-size:13px; }
   .btn-ghost { background:transparent; border-color:transparent; color:var(--muted); }
   .btn-ghost:hover { color:var(--ink); border-color:transparent; }
@@ -94,11 +99,11 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
 .carte-groupe b { font: 700 15px/1 var(--font-jetbrains), ui-monospace, monospace; }
 .carte-groupe span { font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
 .carte-maison { position: relative; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
-  background: #2f4bd8; color: #fff; font-size: 18px; border: 2px solid #fff; box-shadow: 0 2px 6px rgb(0 0 0 / .3); }
+  background: var(--accent); color: #fff; font-size: 18px; border: 2px solid #fff; box-shadow: 0 2px 6px rgb(0 0 0 / .3); }
 .carte-maison::after { content: ""; position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%);
-  border: 6px solid transparent; border-top-color: #2f4bd8; }
+  border: 6px solid transparent; border-top-color: var(--accent); }
 .carte-popup { display: flex; flex-direction: column; gap: 4px; font-family: var(--font-figtree), system-ui, sans-serif; min-width: 200px; }
 .carte-popup-score { font: 700 18px/1 var(--font-jetbrains), ui-monospace, monospace; }
 .carte-popup span { color: #5a6377; font-size: 12px; }
-.carte-popup a { font-weight: 600; color: #2f4bd8; }
+.carte-popup a { font-weight: 600; color: #2f7d52; }
 .leaflet-container { font-family: var(--font-figtree), system-ui, sans-serif; }

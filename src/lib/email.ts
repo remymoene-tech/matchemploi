@@ -11,7 +11,7 @@ export async function envoyerEmail(to: string, subject: string, html: string) {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: process.env.EMAIL_EXPEDITEUR ?? "JobMee <onboarding@resend.dev>",
+      from: process.env.EMAIL_EXPEDITEUR ?? "Jobaprox <onboarding@resend.dev>",
       to,
       subject,
       html,

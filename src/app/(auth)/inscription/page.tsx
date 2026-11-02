@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FormAuth } from "@/components/FormAuth";
 import { inscription } from "../actions";
 
-export const metadata = { title: "Créer mon espace · JobMee" };
+export const metadata = { title: "Créer mon espace · Jobaprox" };
 
 export default function Page() {
   return (
