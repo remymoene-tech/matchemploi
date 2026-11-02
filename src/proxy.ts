@@ -1,9 +1,18 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { verifierConfig } from "@/lib/config";
 
 // Rafraîchit la session Supabase à chaque requête et protège les espaces privés.
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
+  if (!verifierConfig().supabaseOk) {
+    // Configuration incomplète : on envoie vers la page de diagnostic au lieu de planter.
+    if (request.nextUrl.pathname === "/diagnostic") return response;
+    const url = request.nextUrl.clone();
+    url.pathname = "/diagnostic";
+    url.search = "";
+    return NextResponse.redirect(url);
+  }
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,9 +33,12 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    ({ data: { user } } = await supabase.auth.getUser());
+  } catch {
+    user = null;
+  }
 
   const path = request.nextUrl.pathname;
   if (!user && (path.startsWith("/espace") || path.startsWith("/admin"))) {

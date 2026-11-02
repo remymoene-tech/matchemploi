@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Bricolage_Grotesque, Figtree, JetBrains_Mono } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
 import { estAdmin } from "@/lib/auth";
+import { verifierConfig } from "@/lib/config";
 import { deconnexion } from "@/app/(auth)/actions";
 import "./globals.css";
 
@@ -16,10 +17,15 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user: { email?: string } | null = null;
+  if (verifierConfig().supabaseOk) {
+    try {
+      const supabase = await createClient();
+      user = (await supabase.auth.getUser()).data.user;
+    } catch {
+      user = null; // Supabase injoignable : on affiche quand même la page
+    }
+  }
 
   return (
     <html lang="fr" className={`${bricolage.variable} ${figtree.variable} ${jetbrains.variable} h-full antialiased`}>
