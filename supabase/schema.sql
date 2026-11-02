@@ -132,3 +132,8 @@ create table if not exists public.reglages (
 alter table public.reglages enable row level security; -- accessible au serveur uniquement
 insert into public.reglages (cle, valeur) values ('frequence', 'quotidienne')
 on conflict (cle) do nothing;
+
+-- ============================================================
+-- Conseils de l'IA pour améliorer le CV
+-- ============================================================
+alter table public.candidats add column if not exists cv_conseils jsonb;

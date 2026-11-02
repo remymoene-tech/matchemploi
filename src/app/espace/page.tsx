@@ -69,6 +69,15 @@ export default async function Espace({ searchParams }: { searchParams: Promise<{
           On lit les offres et on les compare à ton profil. Ça prend en général moins d&apos;une minute ; la page se met à jour toute seule.
         </div>
       )}
+      {c.cv_conseils && (
+        <Link href="/espace/cv" className="card flex flex-wrap items-center justify-between gap-3 p-4 text-sm hover:border-accent">
+          <span>
+            <b className="font-mono">{c.cv_conseils.note}/10</b> pour ton CV ·{" "}
+            {c.cv_conseils.ameliorations.filter((a) => a.priorite === "important").length} conseil(s) important(s) pour l&apos;améliorer
+          </span>
+          <span className="font-semibold text-accent">Voir les conseils →</span>
+        </Link>
+      )}
       {!c.cv_chemin && (
         <p className="rounded-xl bg-warn-soft p-4 text-sm">
           Tu n&apos;as pas encore déposé de CV : les notes seront plus justes avec. <Link className="font-semibold underline" href="/espace/profil">Ajouter mon CV</Link>

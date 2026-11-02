@@ -43,6 +43,7 @@ export type Candidat = {
   cv_chemin: string | null;
   cv_texte: string;
   competences: string[];
+  cv_conseils?: CvConseils | null;
   mots_cles: string;
   consentement: boolean;
   alertes_email: boolean;
@@ -97,3 +98,10 @@ export function departementDepuisCP(cp: string): string {
   if (c.startsWith("20")) return Number(c) < 20200 ? "2A" : "2B";
   return c.slice(0, 2);
 }
+
+export type CvConseils = {
+  note: number;
+  resume: string;
+  points_forts: string[];
+  ameliorations: { categorie: string; priorite: "important" | "conseillé"; conseil: string; exemple: string }[];
+};

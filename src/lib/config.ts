@@ -7,7 +7,7 @@ export function verifierConfig() {
   const controles = [
     {
       nom: "NEXT_PUBLIC_SUPABASE_URL",
-      ok: /^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url),
+      ok: /^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url) || /^http:\/\/(127\.0\.0\.1|localhost):\d+$/.test(url), // local : supabase start
       aide: url
         ? `Doit être exactement de la forme https://xxxx.supabase.co (sans espace, guillemets ni / à la fin). Actuellement : ${url.length} caractères, commence par « ${url.slice(0, 8)} », finit par « ${url.slice(-4)} ».`
         : "Absente.",

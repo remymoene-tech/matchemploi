@@ -39,6 +39,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               {user ? (
                 <>
                   <Link className="btn btn-ghost btn-sm" href="/espace">Mes offres</Link>
+                  <Link className="btn btn-ghost btn-sm" href="/espace/cv">Mon CV</Link>
                   <Link className="btn btn-ghost btn-sm" href="/espace/profil">Mon profil</Link>
                   {estAdmin(user.email) && <Link className="btn btn-ghost btn-sm" href="/admin">Admin</Link>}
                   <form action={deconnexion}>

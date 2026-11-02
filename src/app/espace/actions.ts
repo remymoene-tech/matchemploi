@@ -39,6 +39,7 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
     cv_chemin: avant?.cv_chemin ?? null,
     cv_texte: avant?.cv_texte ?? "",
     competences: avant?.competences ?? [],
+    cv_conseils: avant?.cv_conseils ?? null,
     updated_at: new Date().toISOString(),
   };
 
@@ -65,6 +66,7 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
         cv_texte: lu.texte.slice(0, 6000),
         competences: lu.competences.slice(0, 10),
         mots_cles: lu.mots_cles,
+        cv_conseils: lu.conseils,
       });
     } catch {
       return { erreur: "Nous n'avons pas réussi à lire ce CV. Vérifie que le PDF s'ouvre bien, puis réessaie." };
@@ -80,13 +82,22 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
     }
   }
 
-  const { error } = await supabase
+  let { error } = await supabase
     .from("candidats")
     .upsert({ ...donnees, recherche_en_cours: true }, { onConflict: "user_id" });
+  if (error && /cv_conseils/.test(error.message)) {
+    // La colonne des conseils n'existe pas encore dans la base : on enregistre sans.
+    const { cv_conseils: _ignore, ...sansConseils } = donnees;
+    void _ignore;
+    ({ error } = await supabase
+      .from("candidats")
+      .upsert({ ...sansConseils, recherche_en_cours: true }, { onConflict: "user_id" }));
+  }
   if (error) return { erreur: "L'enregistrement a échoué. Réessaie dans un instant." };
 
   after(() => rechercherPourCandidat(user.id));
-  redirect("/espace");
+  // Nouveau CV analysé : on montre d'abord les conseils
+  redirect(cv instanceof File && cv.size > 0 && donnees.cv_conseils ? "/espace/cv?nouveau=1" : "/espace");
 }
 
 export async function relancerRecherche() {

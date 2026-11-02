@@ -38,11 +38,27 @@ async function demander<T extends z.ZodType>(
   return res.parsed_output;
 }
 
-// ---------- 1. Lecture d'un CV (PDF) ----------
+// ---------- 1. Lecture d'un CV (PDF) + conseils d'amélioration ----------
+const ConseilsSchema = z.object({
+  note: z.number().int().min(1).max(10).describe("Note globale du CV sur 10, honnête et encourageante"),
+  resume: z.string().describe("2 phrases maximum : l'impression générale, en tutoyant le candidat"),
+  points_forts: z.array(z.string()).describe("2 à 3 points forts du CV, phrases courtes"),
+  ameliorations: z.array(
+    z.object({
+      categorie: z.enum(["Expériences", "Compétences", "Présentation", "Photo", "Orthographe", "Formation", "Accroche", "Coordonnées"]),
+      priorite: z.enum(["important", "conseillé"]),
+      conseil: z.string().describe("Conseil concret et actionnable, en tutoyant, 1 à 2 phrases"),
+      exemple: z.string().describe("Exemple de réécriture tiré de SON CV (avant → après), ou chaîne vide"),
+    }),
+  ).describe("3 à 7 améliorations, les plus importantes en premier"),
+});
+export type ConseilsCV = z.infer<typeof ConseilsSchema>;
+
 const CvSchema = z.object({
   texte: z.string().describe("Contenu utile du CV en texte brut : expériences, formations, compétences, langues. 4000 caractères maximum."),
   competences: z.array(z.string()).describe("10 compétences clés maximum, 1 à 4 mots chacune"),
   mots_cles: z.string().describe("1 à 3 mots-clés de métier pour chercher des offres sur France Travail, séparés par des virgules, ex. 'assistant commercial'"),
+  conseils: ConseilsSchema,
 });
 
 export async function lireCV(pdfBase64: string, posteVise: string) {
@@ -52,11 +68,18 @@ export async function lireCV(pdfBase64: string, posteVise: string) {
       { type: "document", source: { type: "base64", media_type: "application/pdf", data: pdfBase64 } },
       {
         type: "text",
-        text: `Voici le CV d'une personne qui cherche un emploi ou une alternance en France. Poste visé indiqué par la personne : « ${posteVise || "non précisé"} ».
-Extrais son contenu utile. N'inclus pas l'âge, la date de naissance, l'adresse, la photo, la nationalité ni la situation familiale.`,
+        text: `Voici le CV d'une personne qui cherche un emploi ou une alternance en France. Poste visé : « ${posteVise || "non précisé"} ».
+
+1. Extrais son contenu utile (texte, compétences, mots-clés). N'y mets pas l'âge, la date de naissance, l'adresse, la photo, la nationalité ni la situation familiale.
+
+2. Comme un conseiller en insertion bienveillant, donne des conseils pour améliorer ce CV en vue du poste visé :
+- expériences trop vagues (missions, résultats chiffrés, verbes d'action), compétences manquantes ou mal mises en valeur, accroche, mise en page et lisibilité, fautes d'orthographe (cite-les), coordonnées manquantes (email, téléphone).
+- Photo : s'il y en a une, commente uniquement des éléments techniques et de présentation (cadrage, netteté, lumière, fond neutre, tenue adaptée au métier visé). Ne commente JAMAIS le physique, l'âge, l'apparence, la couleur de peau, la coiffure ou le style vestimentaire religieux ou culturel. S'il n'y a pas de photo, ne la réclame pas : en France elle est facultative.
+- Dans "exemple", propose une réécriture tirée de SON CV quand c'est utile.
+Tutoie la personne, reste concret et encourageant.`,
       },
     ],
-    "low",
+    "medium",
   );
 }
 
