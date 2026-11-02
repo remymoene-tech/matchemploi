@@ -3,6 +3,7 @@ import { exigerUtilisateur } from "@/lib/auth";
 import type { Candidat } from "@/lib/types";
 import { Copier } from "@/components/Copier";
 import { BoutonAnalyser, FormCV } from "@/components/FormCV";
+import { SchemaPourCategorie } from "@/components/SchemasCV";
 
 export const metadata = { title: "Mon CV · Jobaprox" };
 export const maxDuration = 300;
@@ -137,6 +138,13 @@ export default async function MonCV({ searchParams }: { searchParams: Promise<{ 
                     <span className="eyebrow mb-1 block">Exemple</span>
                     {a.exemple}
                   </p>
+                )}
+                {/* Schéma d'illustration, une seule fois par catégorie */}
+                {k.ameliorations.findIndex((x) => x.categorie === a.categorie) === k.ameliorations.indexOf(a) && SchemaPourCategorie({ categorie: a.categorie }) && (
+                  <details className="rounded-lg border border-line p-3" open={a.priorite === "important"}>
+                    <summary className="cursor-pointer text-sm font-semibold text-accent">Voir l&apos;exemple en image</summary>
+                    <div className="mt-3"><SchemaPourCategorie categorie={a.categorie} /></div>
+                  </details>
                 )}
               </article>
             ))}
