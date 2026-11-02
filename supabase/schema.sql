@@ -137,3 +137,13 @@ on conflict (cle) do nothing;
 -- Conseils de l'IA pour améliorer le CV
 -- ============================================================
 alter table public.candidats add column if not exists cv_conseils jsonb;
+
+-- ============================================================
+-- Carte des offres : coordonnées GPS
+-- ============================================================
+alter table public.candidats add column if not exists latitude double precision;
+alter table public.candidats add column if not exists longitude double precision;
+alter table public.candidats add column if not exists code_commune text;
+alter table public.offres add column if not exists latitude double precision;
+alter table public.offres add column if not exists longitude double precision;
+grant select (latitude, longitude) on public.offres to authenticated;

@@ -49,6 +49,9 @@ export type Candidat = {
   alertes_email: boolean;
   recherche_en_cours: boolean;
   derniere_recherche: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  code_commune?: string | null;
   updated_at: string;
 };
 
@@ -70,6 +73,8 @@ export type Offre = {
   ouverte: boolean;
   publiee_le: string | null;
   updated_at: string;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 export type Correspondance = {

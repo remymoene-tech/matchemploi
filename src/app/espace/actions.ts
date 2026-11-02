@@ -7,6 +7,7 @@ import { exigerUtilisateur } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, motsClesDepuisProfil } from "@/lib/ia";
 import { analyserCV, cheminCV, majCandidat, stockerCV, telechargerCV } from "@/lib/cv";
+import { localiserCommune } from "@/lib/geo";
 import { rechercherPourCandidat } from "@/lib/matching";
 import { AVIS, CONTRATS, type Candidat } from "@/lib/types";
 
@@ -69,7 +70,17 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
   }
   donnees.mots_cles ||= donnees.poste_vise;
 
-  const { ok } = await majCandidat(supabase, { ...donnees, recherche_en_cours: true });
+  // Position de la commune (recherche autour de chez lui + carte)
+  let position: Record<string, unknown> = {};
+  const lieuChange = avant?.code_postal !== donnees.code_postal || avant?.ville !== donnees.ville;
+  if (lieuChange || avant?.latitude == null) {
+    const commune = await localiserCommune(donnees.code_postal, donnees.ville);
+    position = commune
+      ? { latitude: commune.latitude, longitude: commune.longitude, code_commune: commune.code }
+      : { latitude: null, longitude: null, code_commune: null };
+  }
+
+  const { ok } = await majCandidat(supabase, { ...donnees, ...position, recherche_en_cours: true });
   if (!ok) return { erreur: "L'enregistrement a échoué. Réessaie dans un instant." };
 
   after(() => rechercherPourCandidat(user.id));

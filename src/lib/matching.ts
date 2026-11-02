@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, noterOffres, type Note } from "@/lib/ia";
 import { franceTravailConfigure, offresPourCandidat } from "@/lib/france-travail";
 import { envoyerEmail, echapper } from "@/lib/email";
+import { distanceKm, localiserLieu } from "@/lib/geo";
 import { SEUIL, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
 const PAR_APPEL = 8;      // offres notées par appel à l'IA
@@ -17,10 +18,15 @@ async function parLots<T>(items: T[], concurrence: number, fn: (t: T) => Promise
   );
 }
 
+/** Offre ouverte, du bon type de contrat, et pas trop loin de chez le candidat (si on connaît les deux positions). */
 function compatible(c: Candidat, o: Offre) {
   if (!o.ouverte) return false;
-  if (!c.contrats.length || !o.contrat) return true;
-  return c.contrats.includes(o.contrat);
+  if (c.contrats.length && o.contrat && !c.contrats.includes(o.contrat)) return false;
+  if (c.latitude != null && c.longitude != null && o.latitude != null && o.longitude != null) {
+    const km = distanceKm({ latitude: c.latitude, longitude: c.longitude }, { latitude: o.latitude, longitude: o.longitude });
+    if (km > (c.mobilite_km || 20) + 15) return false; // marge de 15 km : l'IA juge le reste
+  }
+  return true;
 }
 
 async function enregistrerNotes(candidatId: string, notes: Note[]) {
@@ -99,10 +105,15 @@ export async function rechercherPourCandidat(candidatId: string) {
       try {
         const importees = await offresPourCandidat(c);
         if (importees.length) {
-          const { data: up, error } = await db
+          let { data: up, error } = await db
             .from("offres")
             .upsert(importees, { onConflict: "source,source_id" })
             .select("id");
+          if (error && /latitude|longitude/.test(error.message)) {
+            // Base pas encore à jour pour la carte : on importe sans les coordonnées
+            const sansGPS = importees.map(({ latitude: _a, longitude: _b, ...o }) => (void _a, void _b, o));
+            ({ data: up, error } = await db.from("offres").upsert(sansGPS, { onConflict: "source,source_id" }).select("id"));
+          }
           if (error) throw error;
           idsFT = (up ?? []).map((o) => o.id);
         }
@@ -118,6 +129,16 @@ export async function rechercherPourCandidat(candidatId: string) {
       : { data: [] as Offre[] };
     const { data: deja } = await db.from("correspondances").select("offre_id, calcule_le").eq("candidat_id", c.user_id);
     const calculees = new Map((deja ?? []).map((m) => [m.offre_id as string, m.calcule_le as string]));
+
+    // Offres de l'équipe pas encore placées sur la carte : on les localise (10 par recherche)
+    const aLocaliser = ((internes ?? []) as Offre[]).filter((o) => o.lieu && o.latitude == null && "latitude" in o).slice(0, 10);
+    for (const o of aLocaliser) {
+      const p = await localiserLieu(o.lieu);
+      if (p) {
+        Object.assign(o, p);
+        await db.from("offres").update(p).eq("id", o.id);
+      }
+    }
 
     const aNoter = [...(internes ?? []), ...(ft ?? [])]
       .filter((o: Offre) => compatible(c, o))

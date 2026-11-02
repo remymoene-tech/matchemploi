@@ -39,7 +39,7 @@ type OffreFT = {
   intitule?: string;
   description?: string;
   dateCreation?: string;
-  lieuTravail?: { libelle?: string };
+  lieuTravail?: { libelle?: string; latitude?: number; longitude?: number };
   entreprise?: { nom?: string };
   typeContrat?: string;
   typeContratLibelle?: string;
@@ -62,6 +62,8 @@ export type OffreImportee = {
   description: string;
   lien: string;
   publiee_le: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 function convertir(o: OffreFT, departement: string): OffreImportee {
@@ -85,6 +87,8 @@ function convertir(o: OffreFT, departement: string): OffreImportee {
     description: (o.description ?? "").slice(0, 6000),
     lien: o.origineOffre?.urlOrigine ?? `https://candidat.francetravail.fr/offres/recherche/detail/${o.id}`,
     publiee_le: o.dateCreation ?? null,
+    latitude: o.lieuTravail?.latitude ?? null,
+    longitude: o.lieuTravail?.longitude ?? null,
   };
 }
 
@@ -107,7 +111,13 @@ export async function offresPourCandidat(c: Candidat): Promise<OffreImportee[]> 
   if (!motsCles) return [];
 
   const base: Record<string, string> = { motsCles, range: "0-29", publieeDepuis: "31", sort: "1" };
-  if (departement) base.departement = departement;
+  if (c.code_commune) {
+    // Rayon autour de la commune du candidat (France Travail accepte jusqu'à 200 km)
+    base.commune = c.code_commune;
+    base.distance = String(Math.max(1, Math.min(200, c.mobilite_km || 20)));
+  } else if (departement) {
+    base.departement = departement;
+  }
 
   const recherches: Record<string, string>[] = [];
   if (c.contrats.includes("alternance")) {

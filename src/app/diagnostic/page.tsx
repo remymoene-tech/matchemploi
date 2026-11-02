@@ -7,7 +7,13 @@ export const dynamic = "force-dynamic";
 const SQL_MAJ = `create table if not exists public.reglages (cle text primary key, valeur text not null);
 alter table public.reglages enable row level security;
 insert into public.reglages (cle, valeur) values ('frequence', 'quotidienne') on conflict (cle) do nothing;
-alter table public.candidats add column if not exists cv_conseils jsonb;`;
+alter table public.candidats add column if not exists cv_conseils jsonb;
+alter table public.candidats add column if not exists latitude double precision;
+alter table public.candidats add column if not exists longitude double precision;
+alter table public.candidats add column if not exists code_commune text;
+alter table public.offres add column if not exists latitude double precision;
+alter table public.offres add column if not exists longitude double precision;
+grant select (latitude, longitude) on public.offres to authenticated;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -18,6 +24,8 @@ async function verifierBase() {
     db.from("candidats").select("cv_conseils").limit(1),
     db.from("reglages").select("cle").limit(1),
     db.storage.from("cv").list("", { limit: 1 }),
+    db.from("candidats").select("latitude, longitude, code_commune").limit(1),
+    db.from("offres").select("latitude, longitude").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -26,6 +34,8 @@ async function verifierBase() {
     "Colonne des conseils CV (cv_conseils)",
     "Table des réglages",
     "Espace de stockage des CV",
+    "Carte : position des candidats",
+    "Carte : position des offres",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }
@@ -33,7 +43,7 @@ async function verifierBase() {
 export default async function Diagnostic() {
   const { controles, supabaseOk } = verifierConfig();
   const base = supabaseOk ? await verifierBase().catch(() => null) : null;
-  const majManquante = base?.slice(3, 5).some((b) => !b.ok);
+  const majManquante = base?.some((b, i) => i >= 3 && i !== 5 && !b.ok);
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <div className="flex flex-col gap-1">

@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, lireAnnonce } from "@/lib/ia";
 import { noterOffrePourTous, rechercheQuotidienne } from "@/lib/matching";
 import { CONTRATS, SUIVIS } from "@/lib/types";
+import { localiserLieu } from "@/lib/geo";
 import { FREQUENCES, ecrireFrequence, type Frequence } from "@/lib/reglages";
 
 const t = (f: FormData, k: string, max = 300) => String(f.get(k) ?? "").trim().slice(0, max);
@@ -45,13 +46,18 @@ export async function enregistrerOffre(f: FormData) {
   };
   if (!donnees.entreprise || !donnees.intitule) redirect(`/admin/offres/${id || "nouvelle"}?erreur=1`);
   const db = createAdminClient();
+  const position = donnees.lieu ? await localiserLieu(donnees.lieu) : null;
+  const avecGPS = { ...donnees, latitude: position?.latitude ?? null, longitude: position?.longitude ?? null };
   let offreId = id;
-  if (id) {
-    await db.from("offres").update(donnees).eq("id", id);
-  } else {
-    const { data } = await db.from("offres").insert(donnees).select("id").single();
-    offreId = data!.id;
-  }
+  const ecrire = async (ligne: typeof donnees) =>
+    id
+      ? (await db.from("offres").update(ligne).eq("id", id)).error
+      : await db.from("offres").insert(ligne).select("id").single().then(({ data, error }) => {
+          if (data) offreId = data.id;
+          return error;
+        });
+  const erreur = await ecrire(avecGPS);
+  if (erreur && /latitude|longitude/.test(erreur.message)) await ecrire(donnees); // base pas encore à jour pour la carte
   if (donnees.ouverte) after(() => noterOffrePourTous(offreId));
   redirect("/admin?vue=offres&ok=1");
 }

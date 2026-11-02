@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { exigerUtilisateur } from "@/lib/auth";
 import { Chips, Score } from "@/components/Score";
 import { Rafraichir } from "@/components/Rafraichir";
+import { Carte, type PointOffre } from "@/components/Carte";
 import { donnerAvis, relancerRecherche } from "./actions";
 import { AVIS, SEUIL, contratLabel, sourceLabel, type Candidat } from "@/lib/types";
 
@@ -20,24 +21,31 @@ type Ligne = {
   offres: {
     source: string; entreprise: string; intitule: string; contrat: string; contrat_libelle: string;
     lieu: string; salaire: string; lien: string; ouverte: boolean;
+    latitude?: number | null; longitude?: number | null;
   } | null;
 };
 
 const dateFr = (d: string) =>
   new Date(d).toLocaleString("fr-FR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
 
-export default async function Espace({ searchParams }: { searchParams: Promise<{ tout?: string }> }) {
-  const { tout } = await searchParams;
+export default async function Espace({ searchParams }: { searchParams: Promise<{ tout?: string; vue?: string }> }) {
+  const { tout, vue } = await searchParams;
+  const carte = vue === "carte";
   const { user, supabase } = await exigerUtilisateur();
   const { data: c } = await supabase.from("candidats").select("*").eq("user_id", user.id).maybeSingle<Candidat>();
   if (!c) redirect("/espace/profil");
 
-  const { data } = await supabase
-    .from("correspondances")
-    .select("offre_id, score, forts, manques, resume, avis_candidat, calcule_le, offres(source, entreprise, intitule, contrat, contrat_libelle, lieu, salaire, lien, ouverte)")
-    .eq("candidat_id", user.id)
-    .order("score", { ascending: false })
-    .returns<Ligne[]>();
+  const champs = "offre_id, score, forts, manques, resume, avis_candidat, calcule_le, offres(source, entreprise, intitule, contrat, contrat_libelle, lieu, salaire, lien, ouverte";
+  const lire = (gps: boolean) =>
+    supabase
+      .from("correspondances")
+      .select(`${champs}${gps ? ", latitude, longitude" : ""})`)
+      .eq("candidat_id", user.id)
+      .order("score", { ascending: false })
+      .returns<Ligne[]>();
+  const premier = await lire(true);
+  let data = premier.data;
+  if (premier.error) data = (await lire(false)).data; // base pas encore à jour pour la carte
 
   const lignes = (data ?? []).filter((l) => l.offres?.ouverte);
   const auDessus = lignes.filter((l) => l.score >= SEUIL);
@@ -84,10 +92,49 @@ export default async function Espace({ searchParams }: { searchParams: Promise<{
         </p>
       )}
 
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link href="/espace" className={`btn btn-sm ${!tout ? "border-accent text-accent" : ""}`}>À {SEUIL} % et plus ({auDessus.length})</Link>
-        <Link href="/espace?tout=1" className={`btn btn-sm ${tout ? "border-accent text-accent" : ""}`}>Toutes les offres notées ({lignes.length})</Link>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+        <div className="flex flex-wrap gap-2">
+          <Link href={`/espace${carte ? "?vue=carte" : ""}`} className={`btn btn-sm ${!tout ? "border-accent text-accent" : ""}`}>À {SEUIL} % et plus ({auDessus.length})</Link>
+          <Link href={`/espace?tout=1${carte ? "&vue=carte" : ""}`} className={`btn btn-sm ${tout ? "border-accent text-accent" : ""}`}>Toutes les offres notées ({lignes.length})</Link>
+        </div>
+        <div className="flex rounded-lg border border-line p-0.5" role="group" aria-label="Affichage">
+          <Link href={`/espace${tout ? "?tout=1" : ""}`} aria-current={!carte} className={`rounded-md px-3 py-1 font-semibold ${!carte ? "bg-accent text-accent-ink" : "text-muted"}`}>Liste</Link>
+          <Link href={`/espace?vue=carte${tout ? "&tout=1" : ""}`} aria-current={carte} className={`rounded-md px-3 py-1 font-semibold ${carte ? "bg-accent text-accent-ink" : "text-muted"}`}>Carte</Link>
+        </div>
       </div>
+
+      {carte && (() => {
+        const points: PointOffre[] = affichees
+          .filter((l) => l.offres?.latitude != null && l.offres?.longitude != null)
+          .map((l) => ({
+            id: l.offre_id,
+            latitude: l.offres!.latitude!,
+            longitude: l.offres!.longitude!,
+            score: l.score,
+            intitule: l.offres!.intitule,
+            entreprise: l.offres!.entreprise,
+            lieu: l.offres!.lieu,
+            contrat: l.offres!.contrat_libelle || contratLabel(l.offres!.contrat),
+            lien: l.offres!.lien,
+          }));
+        const sansPosition = affichees.length - points.length;
+        return (
+          <section className="flex flex-col gap-2">
+            <Carte
+              offres={points}
+              seuil={SEUIL}
+              domicile={c.latitude != null && c.longitude != null
+                ? { latitude: c.latitude, longitude: c.longitude, rayonKm: c.mobilite_km || 20, ville: c.ville || c.code_postal }
+                : null}
+            />
+            <p className="hint">
+              Zoome pour séparer les offres regroupées, clique sur une offre pour voir le détail et le lien.
+              {c.latitude == null && " Ta commune n'a pas pu être placée : vérifie ton code postal dans ton profil."}
+              {sansPosition > 0 && ` ${sansPosition} offre${sansPosition > 1 ? "s" : ""} sans adresse précise n'apparai${sansPosition > 1 ? "ssent" : "t"} que dans la liste.`}
+            </p>
+          </section>
+        );
+      })()}
 
       {!affichees.length && !c.recherche_en_cours && (
         <div className="card flex flex-col gap-2 border-dashed p-6">
@@ -103,7 +150,7 @@ export default async function Espace({ searchParams }: { searchParams: Promise<{
         {affichees.map((l) => {
           const o = l.offres!;
           return (
-            <li key={l.offre_id} className={`card grid gap-4 p-5 md:grid-cols-[5rem_1fr_13rem] ${l.score < SEUIL ? "opacity-75" : ""}`}>
+            <li key={l.offre_id} id={`offre-${l.offre_id}`} className={`card scroll-mt-4 grid gap-4 p-5 md:grid-cols-[5rem_1fr_13rem] ${l.score < SEUIL ? "opacity-75" : ""}`}>
               <Score score={l.score} seuil={SEUIL} />
               <div className="flex min-w-0 flex-col gap-1.5">
                 <h2 className="text-lg font-semibold">{o.intitule}</h2>

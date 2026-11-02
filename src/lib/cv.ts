@@ -40,21 +40,32 @@ export async function analyserCV(octets: Buffer, posteVise: string, projet: stri
   }
 }
 
-/**
- * Enregistre des champs du candidat. Si la colonne cv_conseils n'existe pas encore
- * dans la base (ligne SQL non exécutée), enregistre le reste et le signale.
- */
+/** Colonnes ajoutées après la première version : si la base n'est pas à jour, on enregistre sans elles. */
+const COLONNES_OPTIONNELLES = ["cv_conseils", "latitude", "longitude", "code_commune"];
+
+/** Retire les colonnes optionnelles qui n'existent pas encore dans la base, d'après le message d'erreur. */
+export function sansColonnesManquantes<T extends Record<string, unknown>>(ligne: T, message: string): T | null {
+  const manquantes = COLONNES_OPTIONNELLES.filter((c) => message.includes(c) && c in ligne);
+  if (!manquantes.length) return null;
+  // La base ne signale qu'une colonne à la fois : on retire toutes les colonnes récentes d'un coup.
+  const copie = { ...ligne };
+  for (const c of COLONNES_OPTIONNELLES) delete copie[c];
+  return copie;
+}
+
+/** Enregistre des champs du candidat, même si la base n'a pas encore toutes les colonnes récentes. */
 export async function majCandidat(
   supabase: SupabaseClient,
   ligne: Record<string, unknown> & { user_id: string },
 ): Promise<{ ok: boolean; colonneConseilsManquante: boolean }> {
   let { error } = await supabase.from("candidats").upsert(ligne, { onConflict: "user_id" });
-  if (error && /cv_conseils/.test(error.message)) {
-    const { cv_conseils: _ignore, ...sans } = ligne;
-    void _ignore;
-    ({ error } = await supabase.from("candidats").upsert(sans, { onConflict: "user_id" }));
-    return { ok: !error, colonneConseilsManquante: true };
+  if (error) {
+    const reduite = sansColonnesManquantes(ligne, error.message);
+    if (reduite) {
+      ({ error } = await supabase.from("candidats").upsert(reduite, { onConflict: "user_id" }));
+      return { ok: !error, colonneConseilsManquante: "cv_conseils" in ligne && !("cv_conseils" in reduite) };
+    }
+    console.error("Enregistrement du candidat impossible", error);
   }
-  if (error) console.error("Enregistrement du candidat impossible", error);
   return { ok: !error, colonneConseilsManquante: false };
 }

@@ -84,3 +84,21 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
   .chip-tag { border-color:transparent; background:var(--accent-soft); color:var(--accent); }
   :focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 }
+
+/* Carte des offres */
+.carte-offre { width: 38px; height: 38px; border-radius: 999px; display: grid; place-items: center;
+  background: var(--surface); color: var(--c); border: 3px solid var(--c);
+  font: 700 13px/1 var(--font-jetbrains), ui-monospace, monospace; box-shadow: 0 2px 6px rgb(0 0 0 / .25); }
+.carte-groupe { width: 46px; height: 46px; border-radius: 999px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--c); color: #fff; border: 3px solid var(--surface); box-shadow: 0 2px 8px rgb(0 0 0 / .3); line-height: 1; }
+.carte-groupe b { font: 700 15px/1 var(--font-jetbrains), ui-monospace, monospace; }
+.carte-groupe span { font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
+.carte-maison { position: relative; width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center;
+  background: #2f4bd8; color: #fff; font-size: 18px; border: 2px solid #fff; box-shadow: 0 2px 6px rgb(0 0 0 / .3); }
+.carte-maison::after { content: ""; position: absolute; left: 50%; bottom: -8px; transform: translateX(-50%);
+  border: 6px solid transparent; border-top-color: #2f4bd8; }
+.carte-popup { display: flex; flex-direction: column; gap: 4px; font-family: var(--font-figtree), system-ui, sans-serif; min-width: 200px; }
+.carte-popup-score { font: 700 18px/1 var(--font-jetbrains), ui-monospace, monospace; }
+.carte-popup span { color: #5a6377; font-size: 12px; }
+.carte-popup a { font-weight: 600; color: #2f4bd8; }
+.leaflet-container { font-family: var(--font-figtree), system-ui, sans-serif; }
