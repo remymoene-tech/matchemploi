@@ -1,0 +1,182 @@
+import Link from "next/link";
+import { exigerAdmin } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { franceTravailConfigure } from "@/lib/france-travail";
+import { Chips, Score } from "@/components/Score";
+import { SelectAuto } from "@/components/SelectAuto";
+import { changerSuivi, relancerTout } from "./actions";
+import { AVIS, SEUIL, SUIVIS, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
+
+export const metadata = { title: "Admin · MatchEmploi" };
+export const maxDuration = 300;
+
+const VUES = [
+  { id: "correspondances", label: "Correspondances" },
+  { id: "candidats", label: "Candidats" },
+  { id: "offres", label: "Offres" },
+] as const;
+
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string }> }) {
+  await exigerAdmin();
+  const sp = await searchParams;
+  const vue = VUES.some((v) => v.id === sp.vue) ? sp.vue! : "correspondances";
+  const db = createAdminClient();
+
+  const [{ data: candidats }, { data: offres }, { data: matchs }] = await Promise.all([
+    db.from("candidats").select("*").order("nom"),
+    db.from("offres").select("*").neq("source", "france_travail").order("created_at", { ascending: false }),
+    db.from("correspondances").select("*").gte("score", SEUIL).order("score", { ascending: false }).limit(500),
+  ]);
+  const C = new Map(((candidats ?? []) as Candidat[]).map((c) => [c.user_id, c]));
+  const M = (matchs ?? []) as Correspondance[];
+  const idsOffres = [...new Set(M.map((m) => m.offre_id))];
+  const { data: offresMatch } = idsOffres.length
+    ? await db.from("offres").select("*").in("id", idsOffres)
+    : { data: [] };
+  const O = new Map(((offresMatch ?? []) as Offre[]).map((o) => [o.id, o]));
+  const lignes = M.filter((m) => C.has(m.candidat_id) && O.get(m.offre_id)?.ouverte);
+  const aTraiter = lignes.filter((m) => m.suivi === "a_traiter").length;
+  const interesses = lignes.filter((m) => m.avis_candidat === "interesse" || m.avis_candidat === "postule").length;
+
+  return (
+    <div className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <span className="eyebrow">Espace équipe</span>
+          <h1 className="text-3xl font-extrabold">Tableau de bord</h1>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Link className="btn" href="/admin/annonce">Coller une annonce</Link>
+          <Link className="btn btn-primary" href="/admin/offres/nouvelle">Ajouter une offre</Link>
+        </div>
+      </div>
+
+      {!franceTravailConfigure() && (
+        <p className="rounded-xl bg-warn-soft p-4 text-sm">
+          La recherche France Travail n&apos;est pas encore branchée : ajoute FRANCE_TRAVAIL_CLIENT_ID et FRANCE_TRAVAIL_CLIENT_SECRET (voir le guide). En attendant, seules tes offres sont proposées.
+        </p>
+      )}
+      {sp.ok && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Offre enregistrée. Elle est comparée aux candidats en arrière-plan.</p>}
+      {sp.relance && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Recherche relancée pour tous les candidats. Les résultats arrivent dans quelques minutes.</p>}
+
+      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        {[
+          ["Candidats", C.size],
+          [`Duos ≥ ${SEUIL} %`, lignes.length],
+          ["À traiter", aTraiter],
+          ["Candidats intéressés", interesses],
+        ].map(([l, v]) => (
+          <div key={l} className="card flex flex-col p-4">
+            <span className="eyebrow">{l}</span>
+            <b className="font-mono text-2xl tabular-nums">{v}</b>
+          </div>
+        ))}
+      </section>
+
+      <nav className="flex gap-1 overflow-x-auto border-b border-line">
+        {VUES.map((v) => (
+          <Link key={v.id} href={`/admin?vue=${v.id}`}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold ${vue === v.id ? "border-accent text-ink" : "border-transparent text-muted"}`}>
+            {v.label}
+          </Link>
+        ))}
+      </nav>
+
+      {vue === "correspondances" && (
+        <ul className="flex flex-col gap-3">
+          {!lignes.length && <li className="card border-dashed p-6 text-sm text-muted">Aucune correspondance à {SEUIL} % ou plus pour l&apos;instant.</li>}
+          {lignes.map((m) => {
+            const c = C.get(m.candidat_id)!, o = O.get(m.offre_id)!;
+            return (
+              <li key={m.candidat_id + m.offre_id} className="card grid gap-4 p-5 md:grid-cols-[5rem_1fr_14rem]">
+                <Score score={m.score} seuil={SEUIL} />
+                <div className="flex min-w-0 flex-col gap-1.5">
+                  <h2 className="text-lg font-semibold">{c.nom} <span className="text-muted">→</span> {o.entreprise || "Entreprise"}</h2>
+                  <p className="text-sm text-muted">{[o.intitule, o.lieu, o.contrat_libelle || contratLabel(o.contrat)].filter(Boolean).join(" · ")}</p>
+                  <p className="text-sm">{m.resume}</p>
+                  <Chips forts={m.forts} manques={m.manques} />
+                  <p className="text-xs text-muted">
+                    {sourceLabel(o.source)} · Candidat : {c.email}{c.telephone && ` · ${c.telephone}`}
+                    {o.contact_email && ` · Entreprise : ${o.contact_nom ? o.contact_nom + ", " : ""}${o.contact_email}`}
+                    {o.lien && <> · <a className="text-accent" href={o.lien} target="_blank" rel="noopener noreferrer">annonce</a></>}
+                  </p>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <span className="eyebrow">Avis du candidat</span>
+                  <span className={`chip w-fit ${m.avis_candidat === "interesse" || m.avis_candidat === "postule" ? "chip-plus" : ""}`}>
+                    {AVIS.find((a) => a.id === m.avis_candidat)?.label}
+                  </span>
+                  <span className="eyebrow mt-1">Suivi</span>
+                  <form action={changerSuivi}>
+                    <input type="hidden" name="candidat_id" value={m.candidat_id} />
+                    <input type="hidden" name="offre_id" value={m.offre_id} />
+                    <SelectAuto name="suivi" label="Suivi" defaultValue={m.suivi} options={SUIVIS} />
+                  </form>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {vue === "candidats" && (
+        <div className="flex flex-col gap-3">
+          <form action={relancerTout} className="flex justify-end">
+            <button className="btn btn-sm">Relancer la recherche pour tous</button>
+          </form>
+          <div className="grid gap-3 md:grid-cols-2">
+            {[...C.values()].map((c) => {
+              const n = lignes.filter((m) => m.candidat_id === c.user_id).length;
+              return (
+                <article key={c.user_id} className="card flex flex-col gap-2 p-5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h2 className="text-lg font-semibold">{c.nom || c.email}</h2>
+                      <p className="text-sm text-muted">{c.formation || "Formation non précisée"}</p>
+                    </div>
+                    <span className="font-mono text-sm">{n} offre{n > 1 ? "s" : ""} ≥ {SEUIL} %</span>
+                  </div>
+                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+                    <dt className="text-muted">Vise</dt><dd>{c.poste_vise}</dd>
+                    <dt className="text-muted">Contrats</dt><dd>{c.contrats.map(contratLabel).join(", ")}</dd>
+                    <dt className="text-muted">Secteur</dt><dd>{c.ville} {c.code_postal} · {c.mobilite_km} km</dd>
+                    <dt className="text-muted">Contact</dt><dd className="break-all">{c.email}{c.telephone && ` · ${c.telephone}`}</dd>
+                  </dl>
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-sm">
+                    {c.cv_chemin ? <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">Ouvrir le CV</a> : <span className="text-muted">Pas de CV</span>}
+                    {!c.consentement && <span className="chip chip-minus">Accord RGPD manquant</span>}
+                  </div>
+                </article>
+              );
+            })}
+            {!C.size && <p className="card border-dashed p-6 text-sm text-muted">Aucun candidat inscrit. Envoie le lien d&apos;inscription à tes étudiants.</p>}
+          </div>
+        </div>
+      )}
+
+      {vue === "offres" && (
+        <div className="grid gap-3 md:grid-cols-2">
+          {((offres ?? []) as Offre[]).map((o) => (
+            <article key={o.id} className="card flex flex-col gap-2 p-5">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h2 className="text-lg font-semibold">{o.entreprise}</h2>
+                  <p className="text-sm text-muted">{o.intitule}</p>
+                </div>
+                <div className="flex flex-wrap justify-end gap-1">
+                  <span className={`chip ${o.source === "partenaire" ? "chip-tag" : ""}`}>{sourceLabel(o.source)}</span>
+                  {!o.ouverte && <span className="chip chip-minus">Fermée</span>}
+                </div>
+              </div>
+              <p className="text-sm">{[o.contrat_libelle || contratLabel(o.contrat), o.lieu].filter(Boolean).join(" · ")}</p>
+              <div className="flex justify-end border-t border-line pt-2">
+                <Link className="btn btn-sm btn-ghost" href={`/admin/offres/${o.id}`}>Modifier</Link>
+              </div>
+            </article>
+          ))}
+          {!offres?.length && <p className="card border-dashed p-6 text-sm text-muted">Aucune offre ajoutée par l&apos;équipe. Les offres France Travail sont cherchées automatiquement pour chaque candidat.</p>}
+        </div>
+      )}
+    </div>
+  );
+}
