@@ -9,6 +9,7 @@ import { iaConfiguree, lireAnnonce } from "@/lib/ia";
 import { noterOffrePourTous, rechercheQuotidienne } from "@/lib/matching";
 import { CONTRATS, SUIVIS, contactManquant } from "@/lib/types";
 import { localiserLieu } from "@/lib/geo";
+import { SUIVIS_PREPARATION, genererPreparation } from "@/lib/preparation";
 import { genererCode } from "@/lib/ecoles";
 import { FREQUENCES, ecrireFrequence, type Frequence } from "@/lib/reglages";
 
@@ -23,6 +24,11 @@ export async function changerSuivi(f: FormData) {
     .update({ suivi })
     .eq("candidat_id", t(f, "candidat_id"))
     .eq("offre_id", t(f, "offre_id"));
+  // Candidat positionné sur l'offre : on prépare sa fiche d'entretien
+  if (SUIVIS_PREPARATION.includes(suivi)) {
+    const [cand, offre] = [t(f, "candidat_id"), t(f, "offre_id")];
+    after(() => genererPreparation(cand, offre));
+  }
   revalidatePath("/admin");
 }
 

@@ -24,6 +24,7 @@ export type LigneOffre = {
   lien: string;
   latitude: number | null;
   longitude: number | null;
+  prepa: boolean;
 };
 
 const AVIS = [
@@ -33,7 +34,7 @@ const AVIS = [
 ];
 
 /** Carte et liste des offres côte à côte, reliées entre elles. */
-export function OffresEspace({ lignes, seuil, domicile }: { lignes: LigneOffre[]; seuil: number; domicile: Domicile | null }) {
+export function OffresEspace({ lignes, seuil, domicile, candidatId }: { lignes: LigneOffre[]; seuil: number; domicile: Domicile | null; candidatId: string }) {
   const [selection, setSelection] = useState<string | null>(null);
   const [refusOuvert, setRefusOuvert] = useState<string | null>(null);
 
@@ -114,6 +115,11 @@ export function OffresEspace({ lignes, seuil, domicile }: { lignes: LigneOffre[]
                   <span className="text-muted">Ton école fait le lien avec l&apos;entreprise</span>
                 )}
               </div>
+              {(l.prepa || l.avis_candidat === "postule" || l.avis_candidat === "interesse") && (
+                <a href={`/entretien/${candidatId}/${l.offre_id}`} className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-semibold" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
+                  <span>{l.prepa ? "Ma fiche pour préparer l'entretien" : "Préparer mon entretien avec Jobaprox"}</span><span aria-hidden>→</span>
+                </a>
+              )}
               {l.avis_candidat === "pas_interesse" && l.raison_refus && (
                 <p className="text-sm text-muted">Écartée : {l.raison_refus}</p>
               )}

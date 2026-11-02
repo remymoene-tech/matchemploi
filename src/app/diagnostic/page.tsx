@@ -26,7 +26,9 @@ alter table public.correspondances add column if not exists raison_refus text;
 grant update (avis_candidat, raison_refus) on public.correspondances to authenticated;
 alter table public.offres add column if not exists contact_tel text not null default '';
 drop policy if exists "candidat lit ses offres" on public.offres;
-create policy "candidat lit ses offres" on public.offres for select using (source in ('france_travail', 'adzuna') and exists (select 1 from public.correspondances c where c.offre_id = offres.id and c.candidat_id = auth.uid()));`;
+create policy "candidat lit ses offres" on public.offres for select using (source in ('france_travail', 'adzuna') and exists (select 1 from public.correspondances c where c.offre_id = offres.id and c.candidat_id = auth.uid()));
+alter table public.correspondances add column if not exists preparation jsonb;
+alter table public.correspondances add column if not exists preparation_le timestamptz;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -45,6 +47,7 @@ async function verifierBase() {
     db.from("offres").select("ecole_id").limit(1),
     db.from("correspondances").select("raison_refus").limit(1),
     db.from("offres").select("contact_tel").limit(1),
+    db.from("correspondances").select("preparation, preparation_le").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -61,6 +64,7 @@ async function verifierBase() {
     "Espace École : offres des écoles",
     "Raisons des refus (« Pas pour moi »)",
     "Téléphone des entreprises",
+    "Fiches de préparation d'entretien",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

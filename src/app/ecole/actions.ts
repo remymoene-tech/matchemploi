@@ -7,6 +7,7 @@ import { exigerResponsable } from "@/lib/ecoles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, lireAnnonce } from "@/lib/ia";
 import { localiserLieu } from "@/lib/geo";
+import { SUIVIS_PREPARATION, genererPreparation } from "@/lib/preparation";
 import { noterOffrePourTous, rechercherPourCandidat } from "@/lib/matching";
 import { CONTRATS, SUIVIS, contactManquant } from "@/lib/types";
 
@@ -23,7 +24,9 @@ export async function changerSuiviEcole(f: FormData) {
   const suivi = t(f, "suivi");
   const candidat = t(f, "candidat_id");
   if (!SUIVIS.some((s) => s.id === suivi) || !(await etudiantDeLEcole(candidat, ecole.id))) return;
-  await createAdminClient().from("correspondances").update({ suivi }).eq("candidat_id", candidat).eq("offre_id", t(f, "offre_id"));
+  const offre = t(f, "offre_id");
+  await createAdminClient().from("correspondances").update({ suivi }).eq("candidat_id", candidat).eq("offre_id", offre);
+  if (SUIVIS_PREPARATION.includes(suivi)) after(() => genererPreparation(candidat, offre));
   revalidatePath("/ecole");
 }
 

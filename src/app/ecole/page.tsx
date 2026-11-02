@@ -122,6 +122,7 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
                       {!c.consentement && <span className="chip chip-minus">Accord RGPD manquant</span>}
                       {o.lien && <a className="font-semibold text-accent" href={o.lien} target="_blank" rel="noopener noreferrer">Voir l&apos;annonce</a>}
                       {c.cv_chemin && <a className="font-semibold text-accent" href={`/ecole/cv/${c.user_id}`} target="_blank">CV de l&apos;étudiant</a>}
+                      <a className="font-semibold text-accent" href={`/entretien/${c.user_id}/${o.id}`}>{m.preparation_le ? "Fiche entretien ✓" : "Fiche entretien"}</a>
                     </div>
                   </div>
                   <div className="flex flex-col gap-2">

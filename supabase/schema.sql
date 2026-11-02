@@ -184,3 +184,9 @@ create policy "candidat lit ses offres" on public.offres
     source in ('france_travail', 'adzuna')
     and exists (select 1 from public.correspondances c where c.offre_id = offres.id and c.candidat_id = auth.uid())
   );
+
+-- ============================================================
+-- Fiche « Préparer mon entretien » (rédigée par Jobaprox)
+-- ============================================================
+alter table public.correspondances add column if not exists preparation jsonb;
+alter table public.correspondances add column if not exists preparation_le timestamptz;

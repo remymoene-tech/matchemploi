@@ -201,3 +201,95 @@ Donne une note pour chaque offre (${[...cle.keys()].join(", ")}).`,
       resume: n.resume.slice(0, 300),
     }));
 }
+
+// ---------- 4. Fiche de préparation d'entretien ----------
+const PreparationSchema = z.object({
+  entreprise: z.object({
+    resume: z.string().describe("2 à 3 phrases : ce que fait l'entreprise. Uniquement des faits sûrs (annonce ou entreprise très connue)."),
+    a_savoir: z.array(z.string()).describe("2 à 5 choses utiles à savoir, sûres uniquement"),
+    a_verifier: z.array(z.string()).describe("3 à 5 recherches concrètes que le candidat doit faire lui-même avant l'entretien"),
+  }),
+  poste: z.object({
+    resume: z.string().describe("1 à 2 phrases : le rôle en clair"),
+    missions: z.array(z.string()).describe("3 à 6 missions principales"),
+  }),
+  pitch: z.string().describe("Présentation orale de 30 secondes, à la 1re personne, avec des éléments vrais du CV, ton naturel"),
+  mettre_en_avant: z.array(z.string()).describe("3 à 5 atouts du candidat pour CE poste, chacun avec un exemple tiré du CV"),
+  points_a_preparer: z.array(z.object({ point: z.string(), reponse: z.string().describe("Comment en parler positivement, 1 à 2 phrases") })).describe("2 à 4 points faibles ou manques à préparer"),
+  questions_probables: z.array(z.object({ question: z.string(), piste: z.string().describe("Piste de réponse adaptée au candidat, 1 à 2 phrases") })).describe("5 à 7 questions que le recruteur posera probablement"),
+  questions_a_poser: z.array(z.string()).describe("3 à 5 questions intelligentes à poser au recruteur"),
+  pratique: z.array(z.string()).describe("3 à 5 conseils pratiques : trajet depuis chez lui, tenue adaptée au secteur, documents à apporter, ponctualité"),
+});
+export type Preparation = z.infer<typeof PreparationSchema>;
+
+export type Source = { titre: string; url: string };
+
+/**
+ * Recherche sur internet ce qu'il faut savoir sur l'entreprise (site, activité, actualités).
+ * Renvoie null si la recherche n'est pas possible : la fiche est alors faite sans.
+ */
+export async function rechercherEntreprise(o: Offre): Promise<{ notes: string; sources: Source[] } | null> {
+  if (!o.entreprise) return null;
+  const consigne = `Fais des recherches sur internet sur l'entreprise « ${o.entreprise} »${o.lieu ? ` (${o.lieu})` : ""}, pour un candidat qui passe un entretien pour le poste « ${o.intitule} ».
+Cherche : son activité et ses produits ou services, sa taille approximative, ses clients, son implantation locale, ses valeurs, et ses actualités récentes (12 derniers mois).
+Fais au maximum 4 recherches. Vérifie qu'il s'agit bien de la bonne entreprise (même nom ET même ville ou secteur) ; en cas de doute, dis-le.
+Réponds en français, en notes courtes et factuelles. Termine par la mention « Incertain : … » pour tout ce que tu n'as pas pu confirmer.`;
+  try {
+    const messages: Anthropic.MessageParam[] = [{ role: "user", content: consigne }];
+    const sources = new Map<string, string>();
+    let notes = "";
+    for (let tour = 0; tour < 3; tour++) {
+      const res = await ia().messages.create({
+        model: MODELE,
+        max_tokens: 6000,
+        output_config: { effort: "low" },
+        tools: [{
+          type: "web_search_20250305",
+          name: "web_search",
+          max_uses: 4,
+          user_location: { type: "approximate", country: "FR" },
+        }],
+        messages,
+      });
+      for (const b of res.content) {
+        if (b.type === "text") {
+          notes += b.text;
+          for (const cit of b.citations ?? []) if (cit.type === "web_search_result_location") sources.set(cit.url, cit.title ?? cit.url);
+        }
+        if (b.type === "web_search_tool_result" && Array.isArray(b.content)) {
+          for (const r of b.content) if (!sources.has(r.url)) sources.set(r.url, r.title);
+        }
+      }
+      if (res.stop_reason !== "pause_turn") break; // la recherche a demandé une pause : on la laisse continuer
+      messages.push({ role: "assistant", content: res.content });
+    }
+    if (!notes.trim()) return null;
+    return { notes: notes.slice(0, 6000), sources: [...sources].slice(0, 8).map(([url, titre]) => ({ url, titre })) };
+  } catch (e) {
+    console.error("Recherche sur l'entreprise impossible", e);
+    return null;
+  }
+}
+
+export async function preparerEntretien(c: Candidat, o: Offre, forts: string[], manques: string[], recherche?: string | null) {
+  return demander(
+    PreparationSchema,
+    `Tu es conseiller en insertion professionnelle. Prépare une fiche d'entretien d'embauche pour ce candidat, pour cette offre précise.
+Tutoie le candidat, sois concret, encourageant et réaliste.
+
+RÈGLE ABSOLUE SUR L'ENTREPRISE : n'invente rien. N'écris sur l'entreprise que ce qui figure dans l'annonce, dans la recherche internet ci-dessous (sauf les points marqués incertains), ou des faits très connus et certains si c'est une grande entreprise nationale.
+Si la recherche internet contient des actualités récentes utiles, mets-les dans "a_savoir" et propose une question à poser qui s'en inspire. Si tu ne connais pas l'entreprise, dis-le simplement dans le résumé (« L'annonce présente… ») et mets dans "a_verifier" les recherches à faire (site internet, page LinkedIn, avis Google, actualités locales, produits ou clients). Ne donne aucun chiffre (effectif, chiffre d'affaires, date de création) dont tu n'es pas certain.
+
+CANDIDAT
+${profil(c)}
+
+OFFRE
+${offreTexte(o)}
+
+Analyse déjà faite : points forts ${forts.join(", ") || "?"} ; manques ${manques.join(", ") || "aucun"}.
+${recherche ? `
+RECHERCHE INTERNET SUR L'ENTREPRISE (notes brutes)
+${recherche}` : "\n(Aucune recherche internet disponible : appuie-toi sur l'annonce et liste les vérifications à faire.)"}`,
+    "medium",
+  );
+}

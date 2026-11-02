@@ -102,6 +102,7 @@ export type Correspondance = {
   suivi: string;
   notifie_le: string | null;
   calcule_le: string;
+  preparation_le?: string | null;
 };
 
 export const SEUIL = Number(process.env.MATCH_SEUIL ?? 75);

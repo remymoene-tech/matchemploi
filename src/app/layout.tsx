@@ -33,7 +33,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr" className={`${bricolage.variable} ${figtree.variable} ${jetbrains.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col overflow-x-clip font-sans text-[15px] leading-relaxed">
-        <header className="border-b border-line bg-surface">
+        <header className="border-b border-line bg-surface print:hidden">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
             <Link href="/" className="font-display text-xl font-extrabold tracking-tight">
               Job<span className="text-accent">aprox</span>
@@ -60,7 +60,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
-        <footer className="border-t border-line py-6 text-center text-xs text-muted">
+        <footer className="border-t border-line py-6 text-center text-xs text-muted print:hidden">
           Jobaprox · Tes données ne sont partagées avec une entreprise qu&apos;avec ton accord.
         </footer>
       </body>

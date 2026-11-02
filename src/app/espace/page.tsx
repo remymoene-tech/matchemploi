@@ -17,6 +17,7 @@ type Ligne = {
   resume: string;
   avis_candidat: string;
   raison_refus?: string | null;
+  preparation_le?: string | null;
   calcule_le: string;
   offres: {
     source: string; entreprise: string; intitule: string; contrat: string; contrat_libelle: string;
@@ -35,17 +36,17 @@ export default async function Espace() {
 
   const champs = "offre_id, score, forts, manques, resume, avis_candidat, calcule_le";
   const champsOffre = "source, entreprise, intitule, contrat, contrat_libelle, lieu, salaire, lien, ouverte";
-  const lire = (raison: boolean, gps: boolean) =>
+  const lire = (raison: boolean, gps: boolean, prepa: boolean) =>
     supabase
       .from("correspondances")
-      .select(`${champs}${raison ? ", raison_refus" : ""}, offres(${champsOffre}${gps ? ", latitude, longitude" : ""})`)
+      .select(`${champs}${raison ? ", raison_refus" : ""}${prepa ? ", preparation_le" : ""}, offres(${champsOffre}${gps ? ", latitude, longitude" : ""})`)
       .eq("candidat_id", user.id)
       .order("score", { ascending: false })
       .returns<Ligne[]>();
   // Si la base n'a pas encore toutes les colonnes récentes, on lit ce qui existe
   let data: Ligne[] | null = null;
-  for (const [raison, gps] of [[true, true], [false, true], [false, false]] as const) {
-    const r = await lire(raison, gps);
+  for (const [raison, gps, prepa] of [[true, true, true], [true, true, false], [false, true, false], [false, false, false]] as const) {
+    const r = await lire(raison, gps, prepa);
     if (!r.error) { data = r.data; break; }
   }
 
@@ -72,7 +73,17 @@ export default async function Espace() {
       lien: l.offres!.lien,
       latitude: l.offres!.latitude ?? null,
       longitude: l.offres!.longitude ?? null,
+      prepa: Boolean(l.preparation_le),
     }));
+
+  // Fiches d'entretien prêtes (y compris pour les offres sur lesquelles l'équipe l'a positionné)
+  const { data: fiches } = await supabase
+    .from("correspondances")
+    .select("offre_id, preparation_le, meta:preparation->meta")
+    .eq("candidat_id", user.id)
+    .not("preparation_le", "is", null)
+    .order("preparation_le", { ascending: false });
+  const entretiens = ((fiches ?? []) as unknown as { offre_id: string; meta: { intitule?: string; entreprise?: string } | null }[]).filter((x) => x.meta);
   const auDessus = ouvertes.filter((l) => l.score >= SEUIL).length;
   const interesse = ouvertes.filter((l) => l.avis_candidat === "interesse").length;
   const postule = ouvertes.filter((l) => l.avis_candidat === "postule").length;
@@ -123,6 +134,19 @@ export default async function Espace() {
         })}
       </section>
 
+      {!!entretiens.length && (
+        <section className="card flex flex-col gap-3 p-4" style={{ borderColor: "var(--accent)" }}>
+          <h2 className="text-base font-semibold">Tes entretiens à préparer</h2>
+          <div className="flex flex-wrap gap-2">
+            {entretiens.map((e) => (
+              <Link key={e.offre_id} href={`/entretien/${user.id}/${e.offre_id}`} className="btn btn-sm">
+                {e.meta?.intitule}{e.meta?.entreprise ? ` · ${e.meta.entreprise}` : ""} →
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
       {c.recherche_en_cours && (
         <div className="card flex items-center gap-3 p-4 text-sm" role="status">
           <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-accent" />
@@ -136,7 +160,7 @@ export default async function Espace() {
       )}
 
       {lignes.length ? (
-        <OffresEspace lignes={lignes} seuil={SEUIL} domicile={domicile} />
+        <OffresEspace lignes={lignes} seuil={SEUIL} domicile={domicile} candidatId={user.id} />
       ) : (
         !c.recherche_en_cours && (
           <div className="card flex flex-col gap-2 border-dashed p-6">

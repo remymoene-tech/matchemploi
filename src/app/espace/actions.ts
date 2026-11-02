@@ -9,6 +9,7 @@ import { iaConfiguree, motsClesDepuisProfil } from "@/lib/ia";
 import { analyserCV, cheminCV, majCandidat, stockerCV, telechargerCV } from "@/lib/cv";
 import { localiserCommune } from "@/lib/geo";
 import { ecoleParCode } from "@/lib/ecoles";
+import { genererPreparation } from "@/lib/preparation";
 import { rechercherPourCandidat } from "@/lib/matching";
 import { AVIS, CONTRATS, RAISONS_REFUS, type Candidat } from "@/lib/types";
 
@@ -127,6 +128,9 @@ export async function donnerAvis(f: FormData) {
     // Base pas encore à jour : on enregistre au moins l'avis
     ({ error } = await supabase.from("correspondances").update({ avis_candidat: avis }).eq("candidat_id", user.id).eq("offre_id", offreId));
   }
+
+  // Il a postulé : on lui prépare sa fiche d'entretien
+  if (!error && avis === "postule") after(() => genererPreparation(user.id, offreId));
 
   // Un refus expliqué : on renote les autres offres en tenant compte de cette préférence
   if (!error && raison) {
