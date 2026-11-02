@@ -282,7 +282,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             <h2 className="text-lg font-semibold">Fréquence de recherche automatique</h2>
             <p className="text-sm text-muted">
               À quelle fréquence le site cherche de nouvelles offres pour tous les candidats et les note.
-              Moins souvent = moins de crédit IA consommé. Les candidats peuvent toujours lancer une recherche eux-mêmes.
+              Moins souvent = moins de crédit Anthropic consommé. Les candidats peuvent toujours lancer une recherche eux-mêmes.
             </p>
           </div>
           {!tableOk && (

@@ -109,7 +109,7 @@ export function ApercuApprend() {
         </div>
         <div className="flex items-start gap-2 rounded-lg p-3 text-[12px]" style={{ background: "var(--accent-soft)" }}>
           <span className="text-lg leading-none">↻</span>
-          <p><b>Tes offres sont renotées.</b> Les postes loin de chez toi ou le samedi baissent : l&apos;IA a compris ce que tu ne veux pas.</p>
+          <p><b>Tes offres sont renotées.</b> Les postes loin de chez toi ou le samedi baissent : Jobaprox a compris ce que tu ne veux pas.</p>
         </div>
       </div>
     </Ecran>

@@ -160,7 +160,7 @@ export function OffresEspace({ lignes, seuil, domicile }: { lignes: LigneOffre[]
                     <label className="text-sm" htmlFor={`precision-${l.offre_id}`}>Tu veux préciser ? (facultatif)</label>
                     <input className="input" id={`precision-${l.offre_id}`} name="precision" maxLength={300} placeholder="Ex. je ne veux pas travailler le week-end" />
                   </div>
-                  <p className="hint">L&apos;IA en tiendra compte pour mieux noter tes prochaines offres.</p>
+                  <p className="hint">Jobaprox en tiendra compte pour mieux noter tes prochaines offres.</p>
                   <div className="flex flex-wrap justify-end gap-2">
                     <button type="button" className="btn btn-sm btn-ghost" onClick={() => setRefusOuvert(null)}>Annuler</button>
                     <button className="btn btn-sm btn-primary">Écarter cette offre</button>

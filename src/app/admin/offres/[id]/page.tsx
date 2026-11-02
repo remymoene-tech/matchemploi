@@ -32,7 +32,7 @@ export default async function Page({ params, searchParams }: {
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <Link href="/admin?vue=offres" className="text-sm text-muted">← Retour aux offres</Link>
       <h1 className="text-3xl font-extrabold">{o.id ? "Modifier l'offre" : "Nouvelle offre"}</h1>
-      {sp.verifier && <p className="rounded-xl bg-accent-soft p-4 text-sm">Fiche remplie par l&apos;IA à partir de l&apos;annonce. Vérifie-la, coche « Offre ouverte » puis enregistre pour la proposer aux candidats.</p>}
+      {sp.verifier && <p className="rounded-xl bg-accent-soft p-4 text-sm">Fiche remplie automatiquement à partir de l&apos;annonce. Vérifie-la, coche « Offre ouverte » puis enregistre.</p>}
       <p className="rounded-xl bg-accent-soft p-4 text-sm">
         Cette offre n&apos;est <b>pas visible par les candidats</b>. Elle est comparée à leurs profils, et c&apos;est toi qui reçois les correspondances
         pour faire le lien avec l&apos;étudiant et l&apos;entreprise. Les coordonnées de l&apos;entreprise sont donc obligatoires.

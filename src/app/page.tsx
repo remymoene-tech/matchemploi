@@ -4,8 +4,8 @@ import { ApercuAlerte, ApercuApprend, ApercuCarte, ApercuCV, ApercuEcole } from 
 
 const DIAPOS = [
   { titre: "Les offres autour de chez toi, notées sur 100", contenu: <ApercuCarte /> },
-  { titre: "L'avis de l'IA sur ton CV, avec des exemples", contenu: <ApercuCV /> },
-  { titre: "« Pas pour moi » : l'IA apprend tes préférences", contenu: <ApercuApprend /> },
+  { titre: "L'avis de Jobaprox sur ton CV, avec des exemples", contenu: <ApercuCV /> },
+  { titre: "« Pas pour moi » : Jobaprox apprend tes préférences", contenu: <ApercuApprend /> },
   { titre: "L'espace École fait le lien avec les entreprises", contenu: <ApercuEcole /> },
   { titre: "Une alerte dès qu'une offre te correspond", contenu: <ApercuAlerte /> },
 ];
@@ -18,7 +18,7 @@ const METIERS = [
 
 const ETAPES = [
   { t: "Crée ton espace", d: "Un email, un mot de passe. C'est gratuit, et ton école peut te donner son code." },
-  { t: "Dépose ton CV", d: "L'IA le lit, lui donne une note et te montre en images comment l'améliorer." },
+  { t: "Dépose ton CV", d: "Jobaprox le lit, lui donne une note et te montre en images comment l'améliorer." },
   { t: "Découvre tes offres", d: "Sur une carte autour de chez toi, chacune avec son % et l'explication de la note." },
   { t: "Affine et postule", d: "Dis « ça m'intéresse » ou « pas pour moi » : les prochaines offres seront encore plus justes." },
 ];
@@ -27,7 +27,7 @@ const ATOUTS = [
   { icone: "◎", t: "Une carte, pas une liste interminable", d: "Ta ville au centre, ton rayon de recherche, et chaque offre avec sa note. Zoome, clique, postule." },
   { icone: "%", t: "Une note que tu comprends", d: "Compétences, projet, distance, contrat : la note sur 100 explique ce qui colle et ce qui manque." },
   { icone: "✎", t: "Ton CV relu, en images", d: "Mise en page, description, expériences, photo : des conseils concrets avec des exemples avant / après." },
-  { icone: "↻", t: "Une IA qui apprend de toi", d: "Trop loin ? Mauvais horaires ? Chaque « pas pour moi » rend les prochaines notes plus justes." },
+  { icone: "↻", t: "Jobaprox apprend de toi", d: "Trop loin ? Mauvais horaires ? Chaque « pas pour moi » rend les prochaines notes plus justes." },
   { icone: "⊕", t: "Toutes les offres au même endroit", d: "France Travail, Adzuna et les entreprises partenaires de ton école, dans un rayon autour de chez toi." },
   { icone: "✉", t: "Prévenu au bon moment", d: "Un email dès qu'une nouvelle offre te correspond à 75 % ou plus. Rien d'autre." },
 ];
@@ -75,7 +75,7 @@ export default function Accueil() {
       <section className="flex flex-col gap-6">
         <div className="flex flex-col gap-2">
           <span className="eyebrow">Comment ça marche</span>
-          <h2 className="text-3xl font-extrabold">Quatre étapes, et c&apos;est l&apos;IA qui cherche</h2>
+          <h2 className="text-3xl font-extrabold">Quatre étapes, et c&apos;est Jobaprox qui cherche</h2>
         </div>
         <ol className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {ETAPES.map((e, i) => (
@@ -129,7 +129,7 @@ export default function Accueil() {
       <section className="grid gap-4 sm:grid-cols-3">
         {[
           ["Tes données t'appartiennent", "Ton profil n'est transmis à une entreprise qu'avec ton accord. Tu supprimes ton compte et ton CV quand tu veux."],
-          ["Une note juste", "L'âge, le sexe, l'origine ou la photo ne comptent jamais dans la note. Seuls ton parcours et ton projet comptent."],
+          ["Une note juste et transparente", "L'âge, le sexe, l'origine ou la photo ne comptent jamais dans la note. Jobaprox s'appuie sur l'intelligence artificielle pour lire les CV et les offres, et t'explique toujours sa note."],
           ["Gratuit pour toi", "Jobaprox est gratuit pour les candidats. Les offres viennent de sources officielles et des écoles partenaires."],
         ].map(([t, d]) => (
           <div key={t} className="flex flex-col gap-2 border-t-2 pt-4" style={{ borderColor: "var(--accent)" }}>

@@ -152,7 +152,7 @@ export default async function MonCV({ searchParams }: { searchParams: Promise<{ 
         ) : null,
       )}
 
-      <p className="hint">Tu as amélioré ton CV ? Dépose la nouvelle version ci-dessus pour un nouvel avis. Conseils générés par une IA : garde ton esprit critique. En France, la photo sur un CV est facultative.</p>
+      <p className="hint">Tu as amélioré ton CV ? Dépose la nouvelle version ci-dessus pour un nouvel avis. Conseils proposés automatiquement par Jobaprox (intelligence artificielle) : garde ton esprit critique. En France, la photo sur un CV est facultative.</p>
     </div>
   );
 }

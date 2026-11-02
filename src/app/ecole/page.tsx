@@ -176,7 +176,7 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
                     <dt className="text-muted">Contrats</dt><dd>{c.contrats.map(contratLabel).join(", ") || "—"}</dd>
                     <dt className="text-muted">Secteur</dt><dd>{[c.ville, c.code_postal].filter(Boolean).join(" ") || "—"} · {c.mobilite_km} km</dd>
                     <dt className="text-muted">Contact</dt><dd className="break-all">{c.email}{c.telephone && ` · ${c.telephone}`}</dd>
-                    {c.cv_conseils && <><dt className="text-muted">CV</dt><dd>{c.cv_conseils.note}/10 selon l&apos;IA</dd></>}
+                    {c.cv_conseils && <><dt className="text-muted">CV</dt><dd>{c.cv_conseils.note}/10 selon Jobaprox</dd></>}
                   </dl>
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-sm">
                     {c.cv_chemin ? <a className="font-semibold text-accent" href={`/ecole/cv/${c.user_id}`} target="_blank">Ouvrir le CV</a> : <span className="text-muted">Pas de CV</span>}
