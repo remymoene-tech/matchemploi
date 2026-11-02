@@ -18,7 +18,7 @@ Lieu : ${o.lieu || "à préciser"}${o.contrat_libelle ? `\nContrat : ${o.contrat
 Pourquoi ça te correspond :
 ${forts || "• Ton profil est proche de ce qui est demandé"}
 ${manques ? `\nPoints à préparer pour l'entretien :\n${manques}\n` : ""}
-${o.lien ? `L'annonce : ${o.lien}\n\n` : ""}Est-ce que cette offre t'intéresse ? Réponds-moi et je fais le lien avec l'entreprise.
+${o.lien ? `L'annonce : ${o.lien}\n\n` : ""}Est-ce que cette offre t'intéresse ? Réponds-moi et je te mets en relation avec l'entreprise.
 
 À bientôt,
 ${ecole}`,
@@ -32,7 +32,7 @@ export function messageEntreprise(c: Candidat, o: Offre, m: Correspondance, ecol
     objet: `Candidature pour votre offre « ${o.intitule} »`,
     texte: `Bonjour${o.contact_nom ? ` ${o.contact_nom}` : ""},
 
-Pour votre offre « ${o.intitule} », un(e) étudiant(e) de ${ecole} correspond à ${m.score} % à votre besoin :
+Pour votre offre « ${o.intitule} », nous avons un(e) candidat(e) qui correspond à ${m.score} % à votre besoin :
 
 Formation : ${c.formation || "à préciser"}${c.contrats.includes("alternance") && c.rythme ? `\nRythme d'alternance : ${c.rythme}` : ""}${c.disponibilite ? `\nDisponible : ${c.disponibilite}` : ""}
 Secteur : ${[c.ville, c.code_postal].filter(Boolean).join(" ") || "à préciser"}

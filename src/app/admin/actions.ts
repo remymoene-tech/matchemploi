@@ -7,7 +7,7 @@ import { exigerAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, lireAnnonce } from "@/lib/ia";
 import { noterOffrePourTous, rechercheQuotidienne } from "@/lib/matching";
-import { CONTRATS, SUIVIS } from "@/lib/types";
+import { CONTRATS, SUIVIS, contactManquant } from "@/lib/types";
 import { localiserLieu } from "@/lib/geo";
 import { genererCode } from "@/lib/ecoles";
 import { FREQUENCES, ecrireFrequence, type Frequence } from "@/lib/reglages";
@@ -42,10 +42,12 @@ export async function enregistrerOffre(f: FormData) {
     lien: t(f, "lien", 500),
     contact_nom: t(f, "contact_nom", 150),
     contact_email: t(f, "contact_email", 150),
+    contact_tel: t(f, "contact_tel", 30),
     ouverte: f.get("ouverte") === "on",
     updated_at: new Date().toISOString(),
   };
   if (!donnees.entreprise || !donnees.intitule) redirect(`/admin/offres/${id || "nouvelle"}?erreur=1`);
+  if (contactManquant(donnees)) redirect(`/admin/offres/${id || "nouvelle"}?erreur=contact`);
   const db = createAdminClient();
   const position = donnees.lieu ? await localiserLieu(donnees.lieu) : null;
   const avecGPS = { ...donnees, latitude: position?.latitude ?? null, longitude: position?.longitude ?? null };
@@ -57,8 +59,13 @@ export async function enregistrerOffre(f: FormData) {
           if (data) offreId = data.id;
           return error;
         });
-  const erreur = await ecrire(avecGPS);
-  if (erreur && /latitude|longitude/.test(erreur.message)) await ecrire(donnees); // base pas encore à jour pour la carte
+  let erreur = await ecrire(avecGPS);
+  if (erreur && /latitude|longitude|contact_tel/.test(erreur.message)) {
+    // Base pas encore à jour : on enregistre sans les colonnes récentes
+    const { contact_tel: _t, ...ancien } = donnees;
+    void _t;
+    erreur = await ecrire(ancien as typeof donnees);
+  }
   if (donnees.ouverte) after(() => noterOffrePourTous(offreId));
   redirect("/admin?vue=offres&ok=1");
 }

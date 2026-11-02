@@ -23,7 +23,10 @@ alter table public.responsables enable row level security;
 alter table public.candidats add column if not exists ecole_id uuid references public.ecoles(id) on delete set null;
 alter table public.offres add column if not exists ecole_id uuid references public.ecoles(id) on delete cascade;
 alter table public.correspondances add column if not exists raison_refus text;
-grant update (avis_candidat, raison_refus) on public.correspondances to authenticated;`;
+grant update (avis_candidat, raison_refus) on public.correspondances to authenticated;
+alter table public.offres add column if not exists contact_tel text not null default '';
+drop policy if exists "candidat lit ses offres" on public.offres;
+create policy "candidat lit ses offres" on public.offres for select using (source in ('france_travail', 'adzuna') and exists (select 1 from public.correspondances c where c.offre_id = offres.id and c.candidat_id = auth.uid()));`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -41,6 +44,7 @@ async function verifierBase() {
     db.from("candidats").select("ecole_id").limit(1),
     db.from("offres").select("ecole_id").limit(1),
     db.from("correspondances").select("raison_refus").limit(1),
+    db.from("offres").select("contact_tel").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -56,6 +60,7 @@ async function verifierBase() {
     "Espace École : école des étudiants",
     "Espace École : offres des écoles",
     "Raisons des refus (« Pas pour moi »)",
+    "Téléphone des entreprises",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

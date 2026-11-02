@@ -4,7 +4,7 @@ import { exigerUtilisateur } from "@/lib/auth";
 import { Rafraichir } from "@/components/Rafraichir";
 import { OffresEspace, type LigneOffre } from "@/components/OffresEspace";
 import { relancerRecherche } from "./actions";
-import { SEUIL, contratLabel, sourceLabel, type Candidat } from "@/lib/types";
+import { SEUIL, contratLabel, estOffreEquipe, sourceLabel, type Candidat } from "@/lib/types";
 
 export const metadata = { title: "Mes offres · Jobaprox" };
 export const maxDuration = 300;
@@ -49,7 +49,8 @@ export default async function Espace() {
     if (!r.error) { data = r.data; break; }
   }
 
-  const ouvertes = (data ?? []).filter((l) => l.offres?.ouverte);
+  // Les offres saisies par l'équipe ne sont jamais montrées : c'est l'équipe qui fait le lien
+  const ouvertes = (data ?? []).filter((l) => l.offres?.ouverte && !estOffreEquipe(l.offres.source));
   // Toutes les offres notées, strictement du plus grand % au plus petit
   const lignes: LigneOffre[] = [...ouvertes]
     .sort((a, b) => Number(b.score) - Number(a.score))

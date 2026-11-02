@@ -82,6 +82,7 @@ export type Offre = {
   lien: string;
   contact_nom: string;
   contact_email: string;
+  contact_tel?: string;
   ouverte: boolean;
   publiee_le: string | null;
   updated_at: string;
@@ -110,6 +111,17 @@ export const sourceLabel = (s: string) =>
 
 /** Sources récupérées automatiquement (les autres sont saisies par l'équipe). */
 export const SOURCES_AUTO = ["france_travail", "adzuna"];
+
+/** Offres saisies par l'équipe (admin ou école) : jamais montrées aux candidats, l'équipe fait le lien. */
+export const estOffreEquipe = (source: string) => !SOURCES_AUTO.includes(source);
+
+/** Coordonnées obligatoires pour une offre de l'équipe. Renvoie un message d'erreur ou null. */
+export function contactManquant(o: { source: string; contact_nom: string; contact_email: string; contact_tel?: string; lien: string }) {
+  const joignable = Boolean(o.contact_email || o.contact_tel);
+  if (o.source === "externe" && (joignable || o.lien)) return null; // annonce collée : le lien suffit
+  if (!o.contact_nom || !joignable) return "contact";
+  return null;
+}
 
 /** Département à partir d'un code postal français (approximation suffisante pour la recherche). */
 export function departementDepuisCP(cp: string): string {

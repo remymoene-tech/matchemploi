@@ -21,10 +21,10 @@ export default async function Page({ params, searchParams }: {
     if (!data || SOURCES_AUTO.includes(data.source) || data.ecole_id !== ecole.id) notFound();
     o = data;
   }
-  const champ = (name: keyof Offre, label: string, ph = "", type = "text") => (
+  const champ = (name: keyof Offre, label: string, ph = "", type = "text", requis = false) => (
     <div className="flex min-w-0 flex-col gap-1">
-      <label className="label" htmlFor={name}>{label}</label>
-      <input className="input" id={name} name={name} type={type} defaultValue={String(o[name] ?? "")} placeholder={ph} />
+      <label className="label" htmlFor={name}>{label}{requis && <span className="text-bad"> *</span>}</label>
+      <input className="input" id={name} name={name} type={type} defaultValue={String(o[name] ?? "")} placeholder={ph} required={requis} />
     </div>
   );
 
@@ -33,13 +33,18 @@ export default async function Page({ params, searchParams }: {
       <Link href="/ecole?vue=entreprises" className="text-sm text-muted">← Retour aux offres</Link>
       <h1 className="text-3xl font-extrabold">{o.id ? "Modifier l'offre" : "Nouvelle offre"}</h1>
       {sp.verifier && <p className="rounded-xl bg-accent-soft p-4 text-sm">Fiche remplie par l&apos;IA à partir de l&apos;annonce. Vérifie-la, coche « Offre ouverte » puis enregistre pour la proposer aux candidats.</p>}
-      {sp.erreur && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Indique au moins l&apos;entreprise et l&apos;intitulé du poste.</p>}
+      <p className="rounded-xl bg-accent-soft p-4 text-sm">
+        Cette offre n&apos;est <b>pas visible par les étudiants</b>. Elle est comparée aux profils de tes étudiants uniquement, et c&apos;est toi qui reçois les correspondances
+        pour faire le lien avec l&apos;étudiant et l&apos;entreprise. Les coordonnées de l&apos;entreprise sont donc obligatoires.
+      </p>
+      {sp.erreur === "1" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Indique au moins l&apos;entreprise et l&apos;intitulé du poste.</p>}
+      {sp.erreur === "contact" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Indique les coordonnées de l&apos;entreprise : le nom du contact, et son email ou son téléphone.</p>}
 
       <form action={enregistrerOffre} className="card flex flex-col gap-4 p-5">
         <input type="hidden" name="id" value={o.id ?? ""} />
         <div className="grid gap-4 sm:grid-cols-2">
-          {champ("entreprise", "Entreprise", "Transports Delorme")}
-          {champ("intitule", "Intitulé du poste", "Assistant(e) RH en alternance")}
+          {champ("entreprise", "Entreprise", "Transports Delorme", "text", true)}
+          {champ("intitule", "Intitulé du poste", "Assistant(e) RH en alternance", "text", true)}
           <div className="flex flex-col gap-1">
             <label className="label" htmlFor="contrat">Type de contrat</label>
             <select className="input" id="contrat" name="contrat" defaultValue={o.contrat ?? ""}>
@@ -57,18 +62,25 @@ export default async function Page({ params, searchParams }: {
             </select>
           </div>
           {champ("lien", "Lien de l'annonce", "https://…", "url")}
-          {champ("contact_nom", "Contact dans l'entreprise", "Mme Durand, RH")}
-          {champ("contact_email", "Email du contact", "", "email")}
         </div>
+        <fieldset className="flex flex-col gap-3 rounded-lg border border-line p-4">
+          <legend className="px-1 text-sm font-semibold">Coordonnées de l&apos;entreprise <span className="text-bad">*</span></legend>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {champ("contact_nom", "Nom du contact", "Mme Durand, responsable RH")}
+            {champ("contact_email", "Email", "rh@entreprise.fr", "email")}
+            {champ("contact_tel", "Téléphone", "04 90 00 00 00", "tel")}
+          </div>
+          <p className="hint">Le nom du contact et au moins un email ou un téléphone. Pour une annonce collée, le lien de l&apos;annonce peut suffire.</p>
+        </fieldset>
         <div className="flex flex-col gap-1">
           <label className="label" htmlFor="description">Missions et profil recherché</label>
           <textarea className="input min-h-40" id="description" name="description" defaultValue={o.description ?? ""} />
         </div>
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="ouverte" defaultChecked={o.ouverte && !sp.verifier} className="accent-[var(--accent)]" />
-          Offre ouverte : la proposer aux candidats
+          Offre ouverte : la comparer aux profils des candidats
         </label>
-        <p className="hint">Cette offre n&apos;est proposée qu&apos;aux étudiants de ton école. Le contact de l&apos;entreprise n&apos;est jamais montré aux étudiants.</p>
+
         <div className="flex justify-end">
           <button className="btn btn-primary">Enregistrer</button>
         </div>

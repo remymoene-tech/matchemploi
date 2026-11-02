@@ -173,3 +173,14 @@ alter table public.offres add column if not exists ecole_id uuid references publ
 -- ============================================================
 alter table public.correspondances add column if not exists raison_refus text;
 grant update (avis_candidat, raison_refus) on public.correspondances to authenticated;
+
+-- ============================================================
+-- Offres de l'équipe : téléphone du contact, et invisibles pour les candidats
+-- ============================================================
+alter table public.offres add column if not exists contact_tel text not null default '';
+drop policy if exists "candidat lit ses offres" on public.offres;
+create policy "candidat lit ses offres" on public.offres
+  for select using (
+    source in ('france_travail', 'adzuna')
+    and exists (select 1 from public.correspondances c where c.offre_id = offres.id and c.candidat_id = auth.uid())
+  );

@@ -8,7 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, lireAnnonce } from "@/lib/ia";
 import { localiserLieu } from "@/lib/geo";
 import { noterOffrePourTous, rechercherPourCandidat } from "@/lib/matching";
-import { CONTRATS, SUIVIS } from "@/lib/types";
+import { CONTRATS, SUIVIS, contactManquant } from "@/lib/types";
 
 const t = (f: FormData, k: string, max = 300) => String(f.get(k) ?? "").trim().slice(0, max);
 
@@ -44,20 +44,28 @@ export async function enregistrerOffreEcole(f: FormData) {
     lien: t(f, "lien", 500),
     contact_nom: t(f, "contact_nom", 150),
     contact_email: t(f, "contact_email", 150),
+    contact_tel: t(f, "contact_tel", 30),
     ouverte: f.get("ouverte") === "on",
     updated_at: new Date().toISOString(),
   };
   if (!donnees.entreprise || !donnees.intitule) redirect(`/ecole/offres/${id || "nouvelle"}?erreur=1`);
+  if (contactManquant(donnees)) redirect(`/ecole/offres/${id || "nouvelle"}?erreur=contact`);
   const db = createAdminClient();
   const position = donnees.lieu ? await localiserLieu(donnees.lieu) : null;
   const ligne = { ...donnees, latitude: position?.latitude ?? null, longitude: position?.longitude ?? null };
   let offreId = id;
-  if (id) {
-    // Une école ne modifie que ses propres offres
-    await db.from("offres").update(ligne).eq("id", id).eq("ecole_id", ecole.id);
-  } else {
-    const { data } = await db.from("offres").insert(ligne).select("id").single();
-    offreId = data?.id ?? "";
+  const ecrire = async (l: Record<string, unknown>) =>
+    id
+      ? (await db.from("offres").update(l).eq("id", id).eq("ecole_id", ecole.id)).error // une école ne modifie que ses offres
+      : await db.from("offres").insert(l).select("id").single().then(({ data, error }) => {
+          if (data) offreId = data.id;
+          return error;
+        });
+  const erreur = await ecrire(ligne);
+  if (erreur && /contact_tel/.test(erreur.message)) {
+    const { contact_tel: _t, ...sans } = ligne;
+    void _t;
+    await ecrire(sans);
   }
   if (offreId && donnees.ouverte) after(() => noterOffrePourTous(offreId));
   redirect("/ecole?vue=entreprises&ok=1");

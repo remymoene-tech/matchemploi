@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
 import { Copier } from "@/components/Copier";
+import { BlocMessage } from "@/components/BlocMessage";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
 import { changerSuiviEcole, relancerEcole } from "./actions";
 import { AVIS, SEUIL, SUIVIS, contratLabel, sourceLabel, type Candidat, type Correspondance, type Offre } from "@/lib/types";
@@ -18,22 +19,7 @@ const VUES = [
   { id: "inviter", label: "Inviter mes étudiants" },
 ] as const;
 
-function BlocMessage({ titre, a, objet, texte }: { titre: string; a: string; objet: string; texte: string }) {
-  return (
-    <div className="flex min-w-0 flex-col gap-2">
-      <span className="eyebrow">{titre}</span>
-      <p className="text-sm">
-        <span className="text-muted">À : </span>
-        {a ? <span className="select-all break-all font-mono text-xs">{a}</span> : <span className="text-muted">pas d&apos;email sur la fiche</span>}
-      </p>
-      <p className="text-sm"><span className="text-muted">Objet : </span><span className="select-all">{objet}</span></p>
-      <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-lg border border-line bg-bg p-3 font-sans text-sm">{texte}</pre>
-      <div><Copier texte={texte} /></div>
-    </div>
-  );
-}
-
-export default async function EspaceEcole({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; tout?: string }> }) {
+export default async function EspaceEcole({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; tout?: string; source?: string }> }) {
   const { ecole } = await exigerResponsable();
   const sp = await searchParams;
   const vue = VUES.some((v) => v.id === sp.vue) ? sp.vue! : "correspondances";
@@ -56,9 +42,11 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
   const { data: offresData } = idsOffres.length ? await db.from("offres").select("*").in("id", idsOffres) : { data: [] };
   const O = new Map(((offresData ?? []) as Offre[]).map((o) => [o.id, o]));
   const interesse = (m: Correspondance) => m.avis_candidat === "interesse" || m.avis_candidat === "postule";
+  const voirToutes = sp.source === "toutes";
   const lignes = matchs
     .filter((m) => O.get(m.offre_id)?.ouverte && m.avis_candidat !== "pas_interesse")
-    .sort((a, b) => Number(interesse(b)) - Number(interesse(a)) || b.score - a.score);
+    .filter((m) => voirToutes || O.get(m.offre_id)!.ecole_id === ecole.id) // par défaut : les offres de l'école
+    .sort((a, b) => Number(b.suivi === "a_traiter") - Number(a.suivi === "a_traiter") || Number(interesse(b)) - Number(interesse(a)) || b.score - a.score);
   const aTraiter = lignes.filter((m) => m.suivi === "a_traiter" && m.score >= SEUIL).length;
   const nbInteresses = lignes.filter(interesse).length;
   const embauches = matchs.filter((m) => m.suivi === "embauche").length;
@@ -100,8 +88,14 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
       {vue === "correspondances" && (
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <p className="text-muted">Les étudiants intéressés apparaissent en premier. Ouvre « Préparer les messages » pour faire le lien.</p>
-            <Link href={sp.tout ? "/ecole" : "/ecole?tout=1"} className="btn btn-sm">{sp.tout ? `Seulement ≥ ${SEUIL} %` : "Afficher aussi sous le seuil"}</Link>
+            <p className="max-w-[60ch] text-muted">Tes étudiants ne voient pas les offres de l&apos;école : c&apos;est toi qui fais le lien. Ouvre « Préparer les messages » pour les contacter.</p>
+            <div className="flex flex-wrap gap-2">
+              <div className="flex rounded-lg border border-line p-0.5" role="group" aria-label="Offres affichées">
+                <Link href="/ecole" aria-current={!voirToutes} className={`rounded-md px-3 py-1 font-semibold ${!voirToutes ? "bg-accent text-accent-ink" : "text-muted"}`}>Offres de l&apos;école</Link>
+                <Link href="/ecole?source=toutes" aria-current={voirToutes} className={`rounded-md px-3 py-1 font-semibold ${voirToutes ? "bg-accent text-accent-ink" : "text-muted"}`}>Toutes les sources</Link>
+              </div>
+              <Link href={`/ecole?${voirToutes ? "source=toutes&" : ""}${sp.tout ? "" : "tout=1"}`} className="btn btn-sm">{sp.tout ? `Seulement ≥ ${SEUIL} %` : "Aussi sous le seuil"}</Link>
+            </div>
           </div>
           {!lignes.length && (
             <div className="card border-dashed p-6 text-sm text-muted">
@@ -144,10 +138,10 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
                 <details className="rounded-lg border border-line p-3">
                   <summary className="cursor-pointer text-sm font-semibold text-accent">Préparer les messages</summary>
                   <div className="mt-3 grid gap-4 md:grid-cols-2">
-                    <BlocMessage titre="Pour l'étudiant" a={[c.email, c.telephone].filter(Boolean).join(" · ")} objet={mEtu.objet} texte={mEtu.texte} />
+                    <BlocMessage titre="Message étudiant" a={[c.email, c.telephone].filter(Boolean).join(" · ")} objet={mEtu.objet} texte={mEtu.texte} />
                     <BlocMessage
-                      titre="Pour l'entreprise"
-                      a={o.contact_email || (o.lien ? "Postuler via le lien de l'annonce" : "")}
+                      titre="Message entreprise"
+                      a={[o.contact_nom, o.contact_email, o.contact_tel].filter(Boolean).join(" · ") || (o.lien ? "Postuler via le lien de l'annonce" : "")}
                       objet={mEnt.objet}
                       texte={mEnt.texte}
                     />
@@ -210,7 +204,7 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
                   {!o.ouverte && <span className="chip chip-minus">Fermée</span>}
                 </div>
                 <p className="text-sm">{[o.contrat_libelle || contratLabel(o.contrat), o.lieu].filter(Boolean).join(" · ")}</p>
-                <p className="text-sm text-muted">{o.contact_nom || o.contact_email ? `Contact : ${[o.contact_nom, o.contact_email].filter(Boolean).join(" · ")}` : "Pas de contact renseigné"}</p>
+                <p className="text-sm text-muted">{o.contact_nom || o.contact_email || o.contact_tel ? `Contact : ${[o.contact_nom, o.contact_email, o.contact_tel].filter(Boolean).join(" · ")}` : "Pas de contact renseigné"}</p>
                 <div className="flex items-center justify-between border-t border-line pt-2 text-sm">
                   <span className="font-mono">{nb} étudiant{nb > 1 ? "s" : ""} ≥ {SEUIL} %</span>
                   <Link className="btn btn-sm btn-ghost" href={`/ecole/offres/${o.id}`}>Modifier</Link>

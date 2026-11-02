@@ -6,9 +6,11 @@ import { iaConfiguree } from "@/lib/ia";
 import { adzunaConfigure } from "@/lib/adzuna";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
+import { BlocMessage } from "@/components/BlocMessage";
+import { messageEntreprise, messageEtudiant } from "@/lib/messages";
 import { ajouterResponsable, changerFrequence, changerSuivi, creerEcole, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
-import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
+import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
 export const metadata = { title: "Admin · Jobaprox" };
 export const maxDuration = 300;
@@ -21,7 +23,7 @@ const VUES = [
   { id: "reglages", label: "Réglages" },
 ] as const;
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string }> }) {
   await exigerAdmin();
   const sp = await searchParams;
   const vue = VUES.some((v) => v.id === sp.vue) ? sp.vue! : "correspondances";
@@ -48,8 +50,14 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     ? await db.from("offres").select("*").in("id", idsOffres)
     : { data: [] };
   const O = new Map(((offresMatch ?? []) as Offre[]).map((o) => [o.id, o]));
-  const lignes = M.filter((m) => C.has(m.candidat_id) && O.get(m.offre_id)?.ouverte);
-  const aTraiter = lignes.filter((m) => m.suivi === "a_traiter").length;
+  const toutes = M.filter((m) => C.has(m.candidat_id) && O.get(m.offre_id)?.ouverte);
+  const equipe = toutes.filter((m) => estOffreEquipe(O.get(m.offre_id)!.source));
+  const voirToutes = sp.source === "toutes";
+  // À traiter d'abord, puis les meilleures notes
+  const lignes = (voirToutes ? toutes : equipe).sort(
+    (a, b) => Number(b.suivi === "a_traiter") - Number(a.suivi === "a_traiter") || b.score - a.score,
+  );
+  const aTraiter = equipe.filter((m) => m.suivi === "a_traiter").length;
   const interesses = lignes.filter((m) => m.avis_candidat === "interesse" || m.avis_candidat === "postule").length;
 
   return (
@@ -81,7 +89,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
           ["Candidats", C.size],
-          [`Duos ≥ ${SEUIL} %`, lignes.length],
+          [`Duos ≥ ${SEUIL} % sur vos offres`, equipe.length],
           ["À traiter", aTraiter],
           ["Candidats intéressés", interesses],
         ].map(([l, v]) => (
@@ -102,40 +110,76 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       </nav>
 
       {vue === "correspondances" && (
-        <ul className="flex flex-col gap-3">
-          {!lignes.length && <li className="card border-dashed p-6 text-sm text-muted">Aucune correspondance à {SEUIL} % ou plus pour l&apos;instant.</li>}
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <p className="max-w-[70ch] text-muted">
+              Les candidats ne voient pas les offres de l&apos;équipe : c&apos;est toi qui fais le lien. Ouvre « Préparer les messages » pour contacter l&apos;étudiant et l&apos;entreprise.
+            </p>
+            <div className="flex rounded-lg border border-line p-0.5" role="group" aria-label="Offres affichées">
+              <Link href="/admin" aria-current={!voirToutes} className={`rounded-md px-3 py-1 font-semibold ${!voirToutes ? "bg-accent text-accent-ink" : "text-muted"}`}>Vos offres ({equipe.length})</Link>
+              <Link href="/admin?source=toutes" aria-current={voirToutes} className={`rounded-md px-3 py-1 font-semibold ${voirToutes ? "bg-accent text-accent-ink" : "text-muted"}`}>Toutes les sources ({toutes.length})</Link>
+            </div>
+          </div>
+          {!lignes.length && (
+            <p className="card border-dashed p-6 text-sm text-muted">
+              Aucune correspondance à {SEUIL} % ou plus {voirToutes ? "" : "sur vos offres "}pour l&apos;instant. Ajoute les offres de tes entreprises partenaires : elles sont comparées à tous les candidats.
+            </p>
+          )}
           {lignes.map((m) => {
             const c = C.get(m.candidat_id)!, o = O.get(m.offre_id)!;
+            const signature = ecoles.find((e) => e.id === c.ecole_id)?.nom ?? "L'équipe Jobaprox";
+            const mEtu = messageEtudiant(c, o, m, signature), mEnt = messageEntreprise(c, o, m, signature);
+            const aContacter = estOffreEquipe(o.source);
             return (
-              <li key={m.candidat_id + m.offre_id} className="card grid gap-4 p-5 md:grid-cols-[5rem_1fr_14rem]">
-                <Score score={m.score} seuil={SEUIL} />
-                <div className="flex min-w-0 flex-col gap-1.5">
-                  <h2 className="text-lg font-semibold">{c.nom} <span className="text-muted">→</span> {o.entreprise || "Entreprise"}</h2>
-                  <p className="text-sm text-muted">{[o.intitule, o.lieu, o.contrat_libelle || contratLabel(o.contrat)].filter(Boolean).join(" · ")}</p>
-                  <p className="text-sm">{m.resume}</p>
-                  <Chips forts={m.forts} manques={m.manques} />
-                  <p className="text-xs text-muted">
-                    {sourceLabel(o.source)} · Candidat : {c.email}{c.telephone && ` · ${c.telephone}`}
-                    {o.contact_email && ` · Entreprise : ${o.contact_nom ? o.contact_nom + ", " : ""}${o.contact_email}`}
-                    {o.lien && <> · <a className="text-accent" href={o.lien} target="_blank" rel="noopener noreferrer">annonce</a></>}
-                  </p>
+              <article key={m.candidat_id + m.offre_id} className={`card flex flex-col gap-4 p-5 ${m.suivi === "a_traiter" ? "" : "opacity-90"}`}>
+                <div className="grid gap-4 md:grid-cols-[5rem_1fr_14rem]">
+                  <Score score={m.score} seuil={SEUIL} />
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <h2 className="text-lg font-semibold">{c.nom || c.email} <span className="text-muted">→</span> {o.entreprise || "Entreprise"}</h2>
+                    <p className="text-sm text-muted">{[o.intitule, o.lieu, o.contrat_libelle || contratLabel(o.contrat)].filter(Boolean).join(" · ")}</p>
+                    <p className="text-sm">{m.resume}</p>
+                    <Chips forts={m.forts} manques={m.manques} />
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                      <span className={`chip ${aContacter ? "chip-tag" : ""}`}>{aContacter ? "Votre offre" : sourceLabel(o.source)}</span>
+                      {!c.consentement && <span className="chip chip-minus">Accord RGPD manquant</span>}
+                      {o.lien && <a className="font-semibold text-accent" href={o.lien} target="_blank" rel="noopener noreferrer">Voir l&apos;annonce</a>}
+                      {c.cv_chemin && <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">CV du candidat</a>}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {!aContacter && (
+                      <>
+                        <span className="eyebrow">Avis du candidat</span>
+                        <span className={`chip w-fit ${m.avis_candidat === "interesse" || m.avis_candidat === "postule" ? "chip-plus" : ""}`}>
+                          {AVIS.find((a) => a.id === m.avis_candidat)?.label}
+                        </span>
+                      </>
+                    )}
+                    <span className="eyebrow">Suivi</span>
+                    <form action={changerSuivi}>
+                      <input type="hidden" name="candidat_id" value={m.candidat_id} />
+                      <input type="hidden" name="offre_id" value={m.offre_id} />
+                      <SelectAuto name="suivi" label="Suivi" defaultValue={m.suivi} options={SUIVIS} />
+                    </form>
+                  </div>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <span className="eyebrow">Avis du candidat</span>
-                  <span className={`chip w-fit ${m.avis_candidat === "interesse" || m.avis_candidat === "postule" ? "chip-plus" : ""}`}>
-                    {AVIS.find((a) => a.id === m.avis_candidat)?.label}
-                  </span>
-                  <span className="eyebrow mt-1">Suivi</span>
-                  <form action={changerSuivi}>
-                    <input type="hidden" name="candidat_id" value={m.candidat_id} />
-                    <input type="hidden" name="offre_id" value={m.offre_id} />
-                    <SelectAuto name="suivi" label="Suivi" defaultValue={m.suivi} options={SUIVIS} />
-                  </form>
-                </div>
-              </li>
+                <details className="rounded-lg border border-line p-3" open={aContacter && m.suivi === "a_traiter" && lignes.indexOf(m) === 0}>
+                  <summary className="cursor-pointer text-sm font-semibold text-accent">Préparer les messages</summary>
+                  <div className="mt-3 grid gap-4 md:grid-cols-2">
+                    <BlocMessage titre="Message étudiant" a={[c.email, c.telephone].filter(Boolean).join(" · ")} objet={mEtu.objet} texte={mEtu.texte} />
+                    <BlocMessage
+                      titre="Message entreprise"
+                      a={[o.contact_nom, o.contact_email, o.contact_tel].filter(Boolean).join(" · ") || (o.lien ? "Postuler via le lien de l'annonce" : "")}
+                      objet={mEnt.objet}
+                      texte={mEnt.texte}
+                    />
+                  </div>
+                  {!c.consentement && <p className="mt-3 rounded-lg bg-warn-soft p-2 text-sm">Le candidat n&apos;a pas coché l&apos;accord RGPD : demande-lui avant de transmettre son profil.</p>}
+                </details>
+              </article>
             );
           })}
-        </ul>
+        </div>
       )}
 
       {vue === "candidats" && (

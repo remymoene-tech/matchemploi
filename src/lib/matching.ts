@@ -55,7 +55,8 @@ async function notifier(c: Candidat) {
   const db = createAdminClient();
   const { data } = await db
     .from("correspondances")
-    .select("score, offre_id, offres(intitule, entreprise, lieu, contrat_libelle)")
+    .select("score, offre_id, offres!inner(intitule, entreprise, lieu, contrat_libelle, source)")
+    .in("offres.source", SOURCES_AUTO) // les offres de l'équipe passent par l'équipe, pas par l'email
     .eq("candidat_id", c.user_id)
     .gte("score", SEUIL)
     .is("notifie_le", null)
