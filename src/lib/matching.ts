@@ -2,9 +2,10 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, noterOffres, type Note } from "@/lib/ia";
 import { franceTravailConfigure, offresPourCandidat } from "@/lib/france-travail";
+import { adzunaConfigure, offresAdzunaPourCandidat } from "@/lib/adzuna";
 import { envoyerEmail, echapper } from "@/lib/email";
 import { distanceKm, localiserLieu } from "@/lib/geo";
-import { SEUIL, type Candidat, type Offre, type Correspondance } from "@/lib/types";
+import { SEUIL, SOURCES_AUTO, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
 const PAR_APPEL = 8;      // offres notées par appel à l'IA
 const MAX_PAR_RUN = 32;   // offres notées au maximum par recherche (maîtrise des coûts)
@@ -83,6 +84,20 @@ async function notifier(c: Candidat) {
   }
 }
 
+/** Enregistre (ou met à jour) des offres importées et renvoie leurs identifiants. */
+async function importerOffres(importees: (Record<string, unknown> & { latitude?: number | null; longitude?: number | null })[]) {
+  if (!importees.length) return [];
+  const db = createAdminClient();
+  let { data: up, error } = await db.from("offres").upsert(importees, { onConflict: "source,source_id" }).select("id");
+  if (error && /latitude|longitude/.test(error.message)) {
+    // Base pas encore à jour pour la carte : on importe sans les coordonnées
+    const sansGPS = importees.map(({ latitude: _a, longitude: _b, ...o }) => (void _a, void _b, o));
+    ({ data: up, error } = await db.from("offres").upsert(sansGPS, { onConflict: "source,source_id" }).select("id"));
+  }
+  if (error) throw new Error(error.message);
+  return (up ?? []).map((o) => o.id as string);
+}
+
 /**
  * Recherche complète pour un candidat :
  * 1. récupère les offres France Travail qui collent à ses critères,
@@ -99,33 +114,26 @@ export async function rechercherPourCandidat(candidatId: string) {
   let erreur: string | null = null;
   let notees = 0;
   try {
-    // 1. France Travail
-    let idsFT: string[] = [];
-    if (franceTravailConfigure() && (c.mots_cles || c.poste_vise)) {
-      try {
-        const importees = await offresPourCandidat(c);
-        if (importees.length) {
-          let { data: up, error } = await db
-            .from("offres")
-            .upsert(importees, { onConflict: "source,source_id" })
-            .select("id");
-          if (error && /latitude|longitude/.test(error.message)) {
-            // Base pas encore à jour pour la carte : on importe sans les coordonnées
-            const sansGPS = importees.map(({ latitude: _a, longitude: _b, ...o }) => (void _a, void _b, o));
-            ({ data: up, error } = await db.from("offres").upsert(sansGPS, { onConflict: "source,source_id" }).select("id"));
-          }
-          if (error) throw error;
-          idsFT = (up ?? []).map((o) => o.id);
+    // 1. Sources automatiques : France Travail et Adzuna (une source en panne n'empêche pas l'autre)
+    const idsAuto: string[] = [];
+    const sources = [
+      { nom: "France Travail", actif: franceTravailConfigure(), chercher: () => offresPourCandidat(c) },
+      { nom: "Adzuna", actif: adzunaConfigure(), chercher: () => offresAdzunaPourCandidat(c) },
+    ];
+    if (c.mots_cles || c.poste_vise) {
+      for (const src of sources.filter((x) => x.actif)) {
+        try {
+          idsAuto.push(...(await importerOffres(await src.chercher())));
+        } catch (e) {
+          erreur = `${src.nom} : ${e instanceof Error ? e.message : "indisponible"}`;
         }
-      } catch (e) {
-        erreur = e instanceof Error ? e.message : "France Travail indisponible";
       }
     }
 
-    // 2. Offres internes + offres France Travail trouvées
-    const { data: internes } = await db.from("offres").select("*").neq("source", "france_travail").eq("ouverte", true);
-    const { data: ft } = idsFT.length
-      ? await db.from("offres").select("*").in("id", idsFT)
+    // 2. Offres de l'équipe + offres trouvées automatiquement
+    const { data: internes } = await db.from("offres").select("*").not("source", "in", `(${SOURCES_AUTO.join(",")})`).eq("ouverte", true);
+    const { data: ft } = idsAuto.length
+      ? await db.from("offres").select("*").in("id", idsAuto)
       : { data: [] as Offre[] };
     const { data: deja } = await db.from("correspondances").select("offre_id, calcule_le").eq("candidat_id", c.user_id);
     const calculees = new Map((deja ?? []).map((m) => [m.offre_id as string, m.calcule_le as string]));

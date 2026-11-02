@@ -1,6 +1,7 @@
 import { verifierConfig } from "@/lib/config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { testerFranceTravail } from "@/lib/france-travail";
+import { testerAdzuna } from "@/lib/adzuna";
 
 export const metadata = { title: "Diagnostic · Jobaprox" };
 export const dynamic = "force-dynamic";
@@ -44,7 +45,7 @@ async function verifierBase() {
 export default async function Diagnostic() {
   const { controles, supabaseOk } = verifierConfig();
   const base = supabaseOk ? await verifierBase().catch(() => null) : null;
-  const ft = await testerFranceTravail();
+  const [ft, az] = await Promise.all([testerFranceTravail(), testerAdzuna()]);
   const majManquante = base?.some((b, i) => i >= 3 && i !== 5 && !b.ok);
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
@@ -90,16 +91,20 @@ export default async function Diagnostic() {
         </div>
       )}
 
-      <h2 className="text-xl font-semibold">France Travail</h2>
-      <div className="card flex flex-col gap-1 p-4">
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-sm">Connexion à l&apos;API Offres d&apos;emploi</span>
-          <span className={`chip ${ft.etat === "ok" ? "chip-plus" : ft.etat === "erreur" ? "chip-minus" : ""}`}>
-            {ft.etat === "ok" ? "OK" : ft.etat === "erreur" ? "À corriger" : "Pas encore branchée"}
-          </span>
-        </div>
-        <p className="text-sm text-muted">{ft.detail}</p>
-      </div>
+      <h2 className="text-xl font-semibold">Sources d&apos;offres</h2>
+      <ul className="card divide-y divide-line">
+        {([["France Travail", ft], ["Adzuna", az]] as const).map(([nom, t]) => (
+          <li key={nom} className="flex flex-col gap-1 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-semibold">{nom}</span>
+              <span className={`chip ${t.etat === "ok" ? "chip-plus" : t.etat === "erreur" ? "chip-minus" : ""}`}>
+                {t.etat === "ok" ? "OK" : t.etat === "erreur" ? "À corriger" : "Pas encore branchée"}
+              </span>
+            </div>
+            <p className="text-sm text-muted">{t.detail}</p>
+          </li>
+        ))}
+      </ul>
 
       <p className="text-sm text-muted">
         Après une correction dans Vercel (Paramètres → Variables d&apos;environnement), il faut redéployer :

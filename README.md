@@ -62,6 +62,11 @@ La fréquence de recherche (tous les jours, 2 fois par semaine, 1 fois par semai
 
 Sans ces clés, le site fonctionne quand même, mais ne propose que tes offres partenaires et les annonces collées.
 
+## Étape 4 bis — Adzuna (deuxième source d'offres, accès immédiat)
+1. Crée un compte sur https://developer.adzuna.com (**Register**).
+2. **Dashboard → API Access Details** : copie l'**Application ID** → `ADZUNA_APP_ID` et l'**Application Key** → `ADZUNA_APP_KEY`.
+3. Ajoute-les dans Vercel puis redéploie. La page `/diagnostic` indique si la connexion fonctionne.
+
 ## Étape 5 — Resend (emails d'alerte, facultatif)
 1. Crée un compte sur https://resend.com → **API Keys** → copie-la dans `RESEND_API_KEY`.
 2. Pour envoyer à tout le monde, il faut vérifier un nom de domaine dans Resend.

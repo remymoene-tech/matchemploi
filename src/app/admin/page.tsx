@@ -3,11 +3,12 @@ import { exigerAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { franceTravailConfigure } from "@/lib/france-travail";
 import { iaConfiguree } from "@/lib/ia";
+import { adzunaConfigure } from "@/lib/adzuna";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
 import { changerFrequence, changerSuivi, relancerTout } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
-import { AVIS, SEUIL, SUIVIS, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
+import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
 export const metadata = { title: "Admin · Jobaprox" };
 export const maxDuration = 300;
@@ -28,7 +29,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const [{ frequence, tableOk }, { data: candidats }, { data: offres }, { data: matchs }] = await Promise.all([
     lireFrequence(),
     db.from("candidats").select("*").order("nom"),
-    db.from("offres").select("*").neq("source", "france_travail").order("created_at", { ascending: false }),
+    db.from("offres").select("*").not("source", "in", `(${SOURCES_AUTO.join(",")})`).order("created_at", { ascending: false }),
     db.from("correspondances").select("*").gte("score", SEUIL).order("score", { ascending: false }).limit(500),
   ]);
   const C = new Map(((candidats ?? []) as Candidat[]).map((c) => [c.user_id, c]));
@@ -60,9 +61,9 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           L&apos;IA n&apos;est pas encore branchée : les candidats peuvent s&apos;inscrire et déposer leur CV, mais aucune offre n&apos;est notée. Ajoute ANTHROPIC_API_KEY dans Vercel pour activer la notation, puis clique sur « Relancer la recherche pour tous » dans l&apos;onglet Candidats.
         </p>
       )}
-      {!franceTravailConfigure() && (
+      {!franceTravailConfigure() && !adzunaConfigure() && (
         <p className="rounded-xl bg-warn-soft p-4 text-sm">
-          La recherche France Travail n&apos;est pas encore branchée : ajoute FRANCE_TRAVAIL_CLIENT_ID et FRANCE_TRAVAIL_CLIENT_SECRET (voir le guide). En attendant, seules tes offres sont proposées.
+          Aucune source d&apos;offres automatique n&apos;est branchée : ajoute les identifiants France Travail et/ou Adzuna dans Vercel (voir le guide). En attendant, seules tes offres sont proposées.
         </p>
       )}
       {sp.ok && vue !== "reglages" && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Offre enregistrée. Elle est comparée aux candidats en arrière-plan.</p>}

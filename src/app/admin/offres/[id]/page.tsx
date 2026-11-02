@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { exigerAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enregistrerOffre, supprimerOffre } from "../../actions";
-import { CONTRATS, type Offre } from "@/lib/types";
+import { CONTRATS, SOURCES_AUTO, type Offre } from "@/lib/types";
 
 export const metadata = { title: "Offre · Jobaprox" };
 export const maxDuration = 300;
@@ -18,7 +18,7 @@ export default async function Page({ params, searchParams }: {
   let o: Partial<Offre> = { source: "partenaire", ouverte: true };
   if (id !== "nouvelle") {
     const { data } = await createAdminClient().from("offres").select("*").eq("id", id).maybeSingle<Offre>();
-    if (!data || data.source === "france_travail") notFound();
+    if (!data || SOURCES_AUTO.includes(data.source)) notFound();
     o = data;
   }
   const champ = (name: keyof Offre, label: string, ph = "", type = "text") => (

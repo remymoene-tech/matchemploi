@@ -57,7 +57,7 @@ export type Candidat = {
 
 export type Offre = {
   id: string;
-  source: "partenaire" | "externe" | "france_travail";
+  source: "partenaire" | "externe" | "france_travail" | "adzuna";
   source_id: string | null;
   entreprise: string;
   intitule: string;
@@ -93,7 +93,10 @@ export type Correspondance = {
 export const SEUIL = Number(process.env.MATCH_SEUIL ?? 75);
 
 export const sourceLabel = (s: string) =>
-  s === "france_travail" ? "France Travail" : s === "externe" ? "Annonce externe" : "Entreprise partenaire";
+  s === "france_travail" ? "France Travail" : s === "adzuna" ? "Adzuna" : s === "externe" ? "Annonce externe" : "Entreprise partenaire";
+
+/** Sources récupérées automatiquement (les autres sont saisies par l'équipe). */
+export const SOURCES_AUTO = ["france_travail", "adzuna"];
 
 /** Département à partir d'un code postal français (approximation suffisante pour la recherche). */
 export function departementDepuisCP(cp: string): string {
