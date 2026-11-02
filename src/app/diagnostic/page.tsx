@@ -2,6 +2,7 @@ import { verifierConfig } from "@/lib/config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { testerFranceTravail } from "@/lib/france-travail";
 import { testerAdzuna } from "@/lib/adzuna";
+import { moyenEnvoi } from "@/lib/email";
 
 export const metadata = { title: "Diagnostic · Jobaprox" };
 export const dynamic = "force-dynamic";
@@ -117,6 +118,23 @@ export default async function Diagnostic() {
           <pre className="overflow-x-auto rounded-lg bg-surface p-3 font-mono text-xs">{SQL_MAJ}</pre>
         </div>
       )}
+
+      <h2 className="text-xl font-semibold">Envoi d&apos;emails</h2>
+      <div className="card flex flex-col gap-1 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-sm font-semibold">Messages et alertes</span>
+          <span className={`chip ${moyenEnvoi() ? "chip-plus" : ""}`}>
+            {moyenEnvoi() === "smtp" ? "OK : ta boîte mail" : moyenEnvoi() === "resend" ? "OK : Resend" : "Pas encore branché"}
+          </span>
+        </div>
+        <p className="text-sm text-muted">
+          {moyenEnvoi() === "smtp"
+            ? `Les emails partent de ${process.env.SMTP_USER}.`
+            : moyenEnvoi() === "resend"
+              ? "Les emails partent via Resend."
+              : "Ajoute SMTP_HOST, SMTP_PORT, SMTP_USER et SMTP_PASS dans Vercel (voir le guide) pour envoyer les messages directement depuis le site."}
+        </p>
+      </div>
 
       <h2 className="text-xl font-semibold">Sources d&apos;offres</h2>
       <ul className="card divide-y divide-line">

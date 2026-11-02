@@ -76,6 +76,7 @@ async function notifier(c: Candidat) {
      <p>Nous avons trouvé ${data.length > 1 ? "des offres qui correspondent" : "une offre qui correspond"} à ton profil à ${SEUIL} % ou plus :</p>
      <ul>${lignes}</ul>
      <p><a href="${site}/espace">Voir le détail et donner ton avis</a></p>`,
+    { nomExpediteur: "Jobaprox" },
   );
   if (ok) {
     await db

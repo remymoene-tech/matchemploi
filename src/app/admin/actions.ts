@@ -11,6 +11,7 @@ import { CONTRATS, SUIVIS, contactManquant } from "@/lib/types";
 import { localiserLieu } from "@/lib/geo";
 import { SUIVIS_PREPARATION, genererPreparation } from "@/lib/preparation";
 import { genererCode } from "@/lib/ecoles";
+import { envoyerMessageCorrespondance, type EtatEnvoi } from "@/lib/envoi-message";
 import { FREQUENCES, ecrireFrequence, type Frequence } from "@/lib/reglages";
 
 const t = (f: FormData, k: string, max = 300) => String(f.get(k) ?? "").trim().slice(0, max);
@@ -148,4 +149,11 @@ export async function retirerResponsable(f: FormData) {
   await exigerAdmin();
   await createAdminClient().from("responsables").delete().eq("email", t(f, "email", 150));
   redirect("/admin?vue=ecoles");
+}
+
+export async function envoyerMessageAdmin(_: EtatEnvoi, f: FormData): Promise<EtatEnvoi> {
+  const { user } = await exigerAdmin();
+  const r = await envoyerMessageCorrespondance(f, { nom: process.env.NOM_EXPEDITEUR || "L'équipe Jobaprox", email: user.email! });
+  revalidatePath("/admin");
+  return r;
 }

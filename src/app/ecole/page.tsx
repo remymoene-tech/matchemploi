@@ -4,9 +4,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
 import { Copier } from "@/components/Copier";
-import { BlocMessage } from "@/components/BlocMessage";
+import { MessageEnvoyable } from "@/components/MessageEnvoyable";
+import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { changerSuiviEcole, relancerEcole } from "./actions";
+import { changerSuiviEcole, envoyerMessageEcole, relancerEcole } from "./actions";
 import { AVIS, SEUIL, SUIVIS, contratLabel, sourceLabel, type Candidat, type Correspondance, type Offre } from "@/lib/types";
 
 export const metadata = { title: "Espace École · Jobaprox" };
@@ -139,12 +140,16 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
                 <details className="rounded-lg border border-line p-3">
                   <summary className="cursor-pointer text-sm font-semibold text-accent">Préparer les messages</summary>
                   <div className="mt-3 grid gap-4 md:grid-cols-2">
-                    <BlocMessage titre="Message étudiant" a={[c.email, c.telephone].filter(Boolean).join(" · ")} objet={mEtu.objet} texte={mEtu.texte} />
-                    <BlocMessage
-                      titre="Message entreprise"
-                      a={[o.contact_nom, o.contact_email, o.contact_tel].filter(Boolean).join(" · ") || (o.lien ? "Postuler via le lien de l'annonce" : "")}
-                      objet={mEnt.objet}
-                      texte={mEnt.texte}
+                    <MessageEnvoyable
+                      titre="Message étudiant" cible="etudiant" candidatId={c.user_id} offreId={o.id}
+                      email={c.email} autresCoordonnees={c.telephone ? `Téléphone : ${c.telephone}` : ""}
+                      objet={mEtu.objet} texte={mEtu.texte} action={envoyerMessageEcole} envoiPossible={Boolean(moyenEnvoi())}
+                    />
+                    <MessageEnvoyable
+                      titre="Message entreprise" cible="entreprise" candidatId={c.user_id} offreId={o.id}
+                      email={o.contact_email}
+                      autresCoordonnees={[o.contact_nom, o.contact_tel && `Téléphone : ${o.contact_tel}`, !o.contact_email && o.lien && "Pas d'email : postuler via le lien de l'annonce"].filter(Boolean).join(" · ")}
+                      objet={mEnt.objet} texte={mEnt.texte} action={envoyerMessageEcole} envoiPossible={Boolean(moyenEnvoi())}
                     />
                   </div>
                   {!c.consentement && <p className="mt-3 rounded-lg bg-warn-soft p-2 text-sm">L&apos;étudiant n&apos;a pas coché l&apos;accord RGPD : demande-lui avant de transmettre son profil.</p>}

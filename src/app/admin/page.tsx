@@ -6,9 +6,10 @@ import { iaConfiguree } from "@/lib/ia";
 import { adzunaConfigure } from "@/lib/adzuna";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
-import { BlocMessage } from "@/components/BlocMessage";
+import { MessageEnvoyable } from "@/components/MessageEnvoyable";
+import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { ajouterResponsable, changerFrequence, changerSuivi, creerEcole, relancerTout, retirerResponsable } from "./actions";
+import { ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -113,7 +114,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <p className="max-w-[70ch] text-muted">
-              Les candidats ne voient pas les offres de l&apos;équipe : c&apos;est toi qui fais le lien. Ouvre « Préparer les messages » pour contacter l&apos;étudiant et l&apos;entreprise.
+              Les candidats ne voient pas les offres de l&apos;équipe : c&apos;est toi qui fais le lien. Ouvre « Préparer les messages » pour écrire à l&apos;étudiant et à l&apos;entreprise{moyenEnvoi() ? ", et envoie-les directement d'ici" : ""}.
             </p>
             <div className="flex rounded-lg border border-line p-0.5" role="group" aria-label="Offres affichées">
               <Link href="/admin" aria-current={!voirToutes} className={`rounded-md px-3 py-1 font-semibold ${!voirToutes ? "bg-accent text-accent-ink" : "text-muted"}`}>Vos offres ({equipe.length})</Link>
@@ -167,12 +168,16 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 <details className="rounded-lg border border-line p-3" open={aContacter && m.suivi === "a_traiter" && lignes.indexOf(m) === 0}>
                   <summary className="cursor-pointer text-sm font-semibold text-accent">Préparer les messages</summary>
                   <div className="mt-3 grid gap-4 md:grid-cols-2">
-                    <BlocMessage titre="Message étudiant" a={[c.email, c.telephone].filter(Boolean).join(" · ")} objet={mEtu.objet} texte={mEtu.texte} />
-                    <BlocMessage
-                      titre="Message entreprise"
-                      a={[o.contact_nom, o.contact_email, o.contact_tel].filter(Boolean).join(" · ") || (o.lien ? "Postuler via le lien de l'annonce" : "")}
-                      objet={mEnt.objet}
-                      texte={mEnt.texte}
+                    <MessageEnvoyable
+                      titre="Message étudiant" cible="etudiant" candidatId={c.user_id} offreId={o.id}
+                      email={c.email} autresCoordonnees={c.telephone ? `Téléphone : ${c.telephone}` : ""}
+                      objet={mEtu.objet} texte={mEtu.texte} action={envoyerMessageAdmin} envoiPossible={Boolean(moyenEnvoi())}
+                    />
+                    <MessageEnvoyable
+                      titre="Message entreprise" cible="entreprise" candidatId={c.user_id} offreId={o.id}
+                      email={o.contact_email}
+                      autresCoordonnees={[o.contact_nom, o.contact_tel && `Téléphone : ${o.contact_tel}`, !o.contact_email && o.lien && "Pas d'email : postuler via le lien de l'annonce"].filter(Boolean).join(" · ")}
+                      objet={mEnt.objet} texte={mEnt.texte} action={envoyerMessageAdmin} envoiPossible={Boolean(moyenEnvoi())}
                     />
                   </div>
                   {!c.consentement && <p className="mt-3 rounded-lg bg-warn-soft p-2 text-sm">Le candidat n&apos;a pas coché l&apos;accord RGPD : demande-lui avant de transmettre son profil.</p>}

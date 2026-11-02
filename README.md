@@ -67,7 +67,19 @@ Sans ces clés, le site fonctionne quand même, mais ne propose que tes offres p
 2. **Dashboard → API Access Details** : copie l'**Application ID** → `ADZUNA_APP_ID` et l'**Application Key** → `ADZUNA_APP_KEY`.
 3. Ajoute-les dans Vercel puis redéploie. La page `/diagnostic` indique si la connexion fonctionne.
 
-## Étape 5 — Resend (emails d'alerte, facultatif)
+## Étape 5 — Envoyer les emails depuis ta boîte Gmail (conseillé)
+1. Ton compte Google doit avoir la **validation en deux étapes** activée : https://myaccount.google.com/security
+2. Crée un **mot de passe d'application** : https://myaccount.google.com/apppasswords
+   (nom : « Jobaprox ») → Google affiche 16 lettres : copie-les.
+3. Dans Vercel, ajoute :
+   - `SMTP_HOST` = `smtp.gmail.com`
+   - `SMTP_PORT` = `465`
+   - `SMTP_USER` = ton adresse Gmail
+   - `SMTP_PASS` = les 16 lettres (sans espaces)
+   - `NOM_EXPEDITEUR` = le nom affiché, ex. `Rémy – Jobaprox`
+4. Redéploie. La page `/diagnostic` doit afficher « Envoi d'emails : OK ».
+
+## Étape 5 bis — Resend (plus tard, avec un nom de domaine)
 1. Crée un compte sur https://resend.com → **API Keys** → copie-la dans `RESEND_API_KEY`.
 2. Pour envoyer à tout le monde, il faut vérifier un nom de domaine dans Resend.
    Sans domaine, Resend n'envoie qu'à ta propre adresse : pratique pour tester.

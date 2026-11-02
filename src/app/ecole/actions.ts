@@ -10,6 +10,7 @@ import { localiserLieu } from "@/lib/geo";
 import { SUIVIS_PREPARATION, genererPreparation } from "@/lib/preparation";
 import { noterOffrePourTous, rechercherPourCandidat } from "@/lib/matching";
 import { CONTRATS, SUIVIS, contactManquant } from "@/lib/types";
+import { envoyerMessageCorrespondance, type EtatEnvoi } from "@/lib/envoi-message";
 
 const t = (f: FormData, k: string, max = 300) => String(f.get(k) ?? "").trim().slice(0, max);
 
@@ -116,4 +117,12 @@ export async function relancerEcole() {
     for (const c of data ?? []) await rechercherPourCandidat(c.user_id as string);
   });
   redirect("/ecole?vue=etudiants&relance=1");
+}
+
+export async function envoyerMessageEcole(_: EtatEnvoi, f: FormData): Promise<EtatEnvoi> {
+  const { user, ecole } = await exigerResponsable();
+  if (!(await etudiantDeLEcole(String(f.get("candidat_id")), ecole.id))) return { erreur: "Cet étudiant n'appartient pas à ton école." };
+  const r = await envoyerMessageCorrespondance(f, { nom: ecole.nom, email: user.email! });
+  revalidatePath("/ecole");
+  return r;
 }
