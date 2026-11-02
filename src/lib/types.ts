@@ -104,4 +104,6 @@ export type CvConseils = {
   resume: string;
   points_forts: string[];
   ameliorations: { categorie: string; priorite: "important" | "conseillé"; conseil: string; exemple: string }[];
+  mise_en_page?: { avis: string; explication: string };
+  description_proposee?: string;
 };

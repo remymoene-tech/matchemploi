@@ -61,7 +61,7 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
     if (error) return { erreur: "L'envoi du CV a échoué. Réessaie." };
     donnees.cv_chemin = chemin;
     if (iaConfiguree()) try {
-      const lu = await lireCV(octets.toString("base64"), donnees.poste_vise);
+      const lu = await lireCV(octets.toString("base64"), donnees.poste_vise, donnees.projet);
       Object.assign(donnees, {
         cv_texte: lu.texte.slice(0, 6000),
         competences: lu.competences.slice(0, 10),

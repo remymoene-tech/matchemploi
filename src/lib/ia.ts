@@ -45,12 +45,17 @@ const ConseilsSchema = z.object({
   points_forts: z.array(z.string()).describe("2 à 3 points forts du CV, phrases courtes"),
   ameliorations: z.array(
     z.object({
-      categorie: z.enum(["Expériences", "Compétences", "Présentation", "Photo", "Orthographe", "Formation", "Accroche", "Coordonnées"]),
+      categorie: z.enum(["Mise en page", "Personnalisation", "Description du projet", "Expériences", "Compétences", "Photo", "Orthographe", "Formation", "Coordonnées"]),
       priorite: z.enum(["important", "conseillé"]),
       conseil: z.string().describe("Conseil concret et actionnable, en tutoyant, 1 à 2 phrases"),
       exemple: z.string().describe("Exemple de réécriture tiré de SON CV (avant → après), ou chaîne vide"),
     }),
-  ).describe("3 à 7 améliorations, les plus importantes en premier"),
+  ).describe("3 à 8 améliorations, les plus importantes en premier"),
+  mise_en_page: z.object({
+    avis: z.enum(["personnalisée", "trop modèle", "trop IA", "trop modèle et trop IA"]),
+    explication: z.string().describe("1 à 2 phrases : ce qui fait cet effet (ou ce qui rend le CV personnel)"),
+  }),
+  description_proposee: z.string().describe("Description personnalisée de 2 à 3 lignes, à la 1re personne, à mettre en haut du CV"),
 });
 export type ConseilsCV = z.infer<typeof ConseilsSchema>;
 
@@ -61,7 +66,7 @@ const CvSchema = z.object({
   conseils: ConseilsSchema,
 });
 
-export async function lireCV(pdfBase64: string, posteVise: string) {
+export async function lireCV(pdfBase64: string, posteVise: string, projet = "") {
   return demander(
     CvSchema,
     [
@@ -69,12 +74,19 @@ export async function lireCV(pdfBase64: string, posteVise: string) {
       {
         type: "text",
         text: `Voici le CV d'une personne qui cherche un emploi ou une alternance en France. Poste visé : « ${posteVise || "non précisé"} ».
+Son projet, décrit avec ses mots : « ${projet || "non précisé"} ».
 
 1. Extrais son contenu utile (texte, compétences, mots-clés). N'y mets pas l'âge, la date de naissance, l'adresse, la photo, la nationalité ni la situation familiale.
 
 2. Comme un conseiller en insertion bienveillant, donne des conseils pour améliorer ce CV en vue du poste visé :
 - expériences trop vagues (missions, résultats chiffrés, verbes d'action), compétences manquantes ou mal mises en valeur, accroche, mise en page et lisibilité, fautes d'orthographe (cite-les), coordonnées manquantes (email, téléphone).
 - Photo : s'il y en a une, commente uniquement des éléments techniques et de présentation (cadrage, netteté, lumière, fond neutre, tenue adaptée au métier visé). Ne commente JAMAIS le physique, l'âge, l'apparence, la couleur de peau, la coiffure ou le style vestimentaire religieux ou culturel. S'il n'y a pas de photo, ne la réclame pas : en France elle est facultative.
+- Mise en page (regarde le rendu visuel des pages) : un recruteur doit sentir une vraie personne, pas un modèle.
+  « Trop modèle » : modèle Canva ou générateur reconnaissable (jauges ou étoiles de compétences, barres de progression, pictogrammes partout, colonne latérale très colorée, trop de couleurs ou de polices, texte difficile à lire par les logiciels de recrutement).
+  « Trop IA » : formulations génériques qu'on retrouve partout (« dynamique et motivé », « passionné », « rigoureux et autonome », « force de proposition »), phrases creuses sans exemple ni chiffre, ton impersonnel.
+  Dans ces cas, ajoute une amélioration « Mise en page » ou « Personnalisation » qui explique quoi changer concrètement (structure sobre, une couleur, des détails vrais et propres à la personne).
+- Description du projet : le CV doit commencer par 2 à 3 lignes qui disent qui est la personne et ce qu'elle cherche (poste, type de contrat, rythme, date). Si elle manque ou reste vague, ajoute une amélioration « Description du projet » (priorité important).
+  Dans tous les cas, rédige "description_proposee" : 2 à 3 lignes à la 1re personne, naturelles, avec des éléments vrais tirés de son CV et de son projet, sans aucune formule toute faite.
 - Dans "exemple", propose une réécriture tirée de SON CV quand c'est utile.
 Tutoie la personne, reste concret et encourageant.`,
       },

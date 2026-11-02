@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { exigerUtilisateur } from "@/lib/auth";
 import type { Candidat } from "@/lib/types";
+import { Copier } from "@/components/Copier";
 
 export const metadata = { title: "Mon CV · MatchEmploi" };
 
@@ -50,6 +51,30 @@ export default async function MonCV({ searchParams }: { searchParams: Promise<{ 
           {c?.poste_vise && <p className="text-sm text-muted">Analysé pour le poste visé : {c.poste_vise}</p>}
         </div>
       </section>
+
+      {(k.mise_en_page || k.description_proposee) && (
+        <section className="grid gap-3 md:grid-cols-2">
+          {k.mise_en_page && (
+            <article className="card flex flex-col gap-2 p-5">
+              <span className="eyebrow">Mise en page</span>
+              <span className={`chip w-fit ${k.mise_en_page.avis === "personnalisée" ? "chip-plus" : "chip-minus"}`}>
+                {k.mise_en_page.avis === "personnalisée" ? "CV personnel ✓" : `CV ${k.mise_en_page.avis}`}
+              </span>
+              <p className="text-sm">{k.mise_en_page.explication}</p>
+            </article>
+          )}
+          {k.description_proposee && (
+            <article className="card flex flex-col gap-2 p-5">
+              <span className="eyebrow">Ta description, à mettre en haut du CV</span>
+              <p className="rounded-lg border border-line bg-bg p-3 text-sm">{k.description_proposee}</p>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="hint">Relis-la et adapte-la avec tes mots.</span>
+                <Copier texte={k.description_proposee} />
+              </div>
+            </article>
+          )}
+        </section>
+      )}
 
       {!!k.points_forts.length && (
         <section className="flex flex-col gap-2">
