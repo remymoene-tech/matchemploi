@@ -4,6 +4,7 @@ import { Bricolage_Grotesque, Figtree, JetBrains_Mono } from "next/font/google";
 import { createClient } from "@/lib/supabase/server";
 import { estAdmin } from "@/lib/auth";
 import { verifierConfig } from "@/lib/config";
+import { ecoleDuResponsable } from "@/lib/ecoles";
 import { deconnexion } from "@/app/(auth)/actions";
 import "./globals.css";
 
@@ -18,10 +19,12 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   let user: { email?: string } | null = null;
+  let monEcole: { nom: string } | null = null;
   if (verifierConfig().supabaseOk) {
     try {
       const supabase = await createClient();
       user = (await supabase.auth.getUser()).data.user;
+      monEcole = user ? await ecoleDuResponsable(user.email) : null;
     } catch {
       user = null; // Supabase injoignable : on affiche quand même la page
     }
@@ -41,6 +44,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                   <Link className="btn btn-ghost btn-sm" href="/espace">Mes offres</Link>
                   <Link className="btn btn-ghost btn-sm" href="/espace/cv">Mon CV</Link>
                   <Link className="btn btn-ghost btn-sm" href="/espace/profil">Mon profil</Link>
+                  {monEcole && <Link className="btn btn-ghost btn-sm" href="/ecole">Mon école</Link>}
                   {estAdmin(user.email) && <Link className="btn btn-ghost btn-sm" href="/admin">Admin</Link>}
                   <form action={deconnexion}>
                     <button className="btn btn-sm">Se déconnecter</button>

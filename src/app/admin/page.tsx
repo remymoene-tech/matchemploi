@@ -6,7 +6,7 @@ import { iaConfiguree } from "@/lib/ia";
 import { adzunaConfigure } from "@/lib/adzuna";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
-import { changerFrequence, changerSuivi, relancerTout } from "./actions";
+import { ajouterResponsable, changerFrequence, changerSuivi, creerEcole, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -17,6 +17,7 @@ const VUES = [
   { id: "correspondances", label: "Correspondances" },
   { id: "candidats", label: "Candidats" },
   { id: "offres", label: "Offres" },
+  { id: "ecoles", label: "Écoles" },
   { id: "reglages", label: "Réglages" },
 ] as const;
 
@@ -25,6 +26,14 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const sp = await searchParams;
   const vue = VUES.some((v) => v.id === sp.vue) ? sp.vue! : "correspondances";
   const db = createAdminClient();
+
+  const [{ data: ecolesData, error: ecolesErreur }, { data: respData }] = await Promise.all([
+    db.from("ecoles").select("id, nom, code").order("nom"),
+    db.from("responsables").select("email, nom, ecole_id"),
+  ]);
+  const ecoles = (ecolesData ?? []) as { id: string; nom: string; code: string }[];
+  const responsables = (respData ?? []) as { email: string; nom: string; ecole_id: string }[];
+  const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
   const [{ frequence, tableOk }, { data: candidats }, { data: offres }, { data: matchs }] = await Promise.all([
     lireFrequence(),
@@ -66,7 +75,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           Aucune source d&apos;offres automatique n&apos;est branchée : ajoute les identifiants France Travail et/ou Adzuna dans Vercel (voir le guide). En attendant, seules tes offres sont proposées.
         </p>
       )}
-      {sp.ok && vue !== "reglages" && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Offre enregistrée. Elle est comparée aux candidats en arrière-plan.</p>}
+      {sp.ok && vue !== "reglages" && vue !== "ecoles" && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Offre enregistrée. Elle est comparée aux candidats en arrière-plan.</p>}
       {sp.relance && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Recherche relancée pour tous les candidats. Les résultats arrivent dans quelques minutes.</p>}
 
       <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -161,6 +170,65 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             })}
             {!C.size && <p className="card border-dashed p-6 text-sm text-muted">Aucun candidat inscrit. Envoie le lien d&apos;inscription à tes étudiants.</p>}
           </div>
+        </div>
+      )}
+
+      {vue === "ecoles" && (
+        <div className="flex flex-col gap-4">
+          {ecolesErreur && (
+            <p className="rounded-xl bg-warn-soft p-4 text-sm">
+              Les tables des écoles n&apos;existent pas encore : exécute le bloc « Espace École » de <code>supabase/schema.sql</code> (il est aussi affiché sur la page /diagnostic).
+            </p>
+          )}
+          {sp.ok && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Enregistré.</p>}
+          <form action={creerEcole} className="card grid gap-3 p-5 md:grid-cols-[1fr_1fr_1fr_auto] md:items-end">
+            <div className="flex flex-col gap-1">
+              <label className="label" htmlFor="e_nom">Nouvelle école</label>
+              <input className="input" id="e_nom" name="nom" placeholder="IFP Salon-de-Provence" required />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="label" htmlFor="e_resp">Responsable entreprises</label>
+              <input className="input" id="e_resp" name="responsable" placeholder="Nom (facultatif)" />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="label" htmlFor="e_email">Son email</label>
+              <input className="input" id="e_email" name="email" type="email" placeholder="responsable@ecole.fr" />
+            </div>
+            <button className="btn btn-primary">Créer l&apos;école</button>
+          </form>
+          {ecoles.map((e) => {
+            const resp = responsables.filter((r) => r.ecole_id === e.id);
+            const nbEtudiants = [...C.values()].filter((c) => c.ecole_id === e.id).length;
+            return (
+              <article key={e.id} className="card flex flex-col gap-3 p-5">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h2 className="text-lg font-semibold">{e.nom}</h2>
+                    <p className="text-sm text-muted">{nbEtudiants} étudiant{nbEtudiants > 1 ? "s" : ""} inscrit{nbEtudiants > 1 ? "s" : ""}</p>
+                  </div>
+                  <span className="chip chip-tag font-mono">{e.code}</span>
+                </div>
+                <p className="text-sm">Lien d&apos;inscription des étudiants : <code className="break-all font-mono text-xs">{site}/inscription?ecole={e.code}</code></p>
+                <div className="flex flex-col gap-2 border-t border-line pt-3">
+                  <span className="eyebrow">Responsables (accès à l&apos;espace École)</span>
+                  {resp.map((r) => (
+                    <form key={r.email} action={retirerResponsable} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                      <span>{r.nom ? `${r.nom} · ` : ""}{r.email}</span>
+                      <input type="hidden" name="email" value={r.email} />
+                      <button className="btn btn-sm btn-ghost">Retirer</button>
+                    </form>
+                  ))}
+                  <form action={ajouterResponsable} className="flex flex-wrap gap-2">
+                    <input type="hidden" name="ecole_id" value={e.id} />
+                    <input className="input max-w-[12rem]" name="nom" placeholder="Nom" aria-label="Nom du responsable" />
+                    <input className="input max-w-xs" name="email" type="email" placeholder="email@ecole.fr" aria-label="Email du responsable" required />
+                    <button className="btn btn-sm">Ajouter</button>
+                  </form>
+                </div>
+              </article>
+            );
+          })}
+          {!ecoles.length && !ecolesErreur && <p className="card border-dashed p-6 text-sm text-muted">Aucune école pour l&apos;instant. Crée la première ci-dessus.</p>}
         </div>
       )}
 

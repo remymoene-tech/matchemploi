@@ -14,7 +14,7 @@ function Champ({ id, label, hint, children }: { id: string; label: string; hint?
   );
 }
 
-export function FormProfil({ c }: { c: Partial<Candidat> }) {
+export function FormProfil({ c, codeEcole, nomEcole }: { c: Partial<Candidat>; codeEcole?: string; nomEcole?: string }) {
   const [etat, action, enCours] = useActionState<EtatProfil, FormData>(enregistrerProfil, {});
   const [alternance, setAlternance] = useState(c.contrats?.includes("alternance") ?? false);
 
@@ -74,6 +74,13 @@ export function FormProfil({ c }: { c: Partial<Candidat> }) {
       </section>
 
       <section className="card flex flex-col gap-3 p-5">
+        <h2 className="text-lg font-semibold">Ton école</h2>
+        <Champ id="code_ecole" label="Code de ton école (facultatif)" hint={nomEcole ? `Tu es rattaché à : ${nomEcole}` : "Donné par le responsable entreprises de ton école. Il te permet de recevoir les offres de ses entreprises partenaires."}>
+          <input className="input max-w-xs uppercase" id="code_ecole" name="code_ecole" defaultValue={codeEcole} placeholder="EX. IFP-SALON-4821" />
+        </Champ>
+      </section>
+
+      <section className="card flex flex-col gap-3 p-5">
         <h2 className="text-lg font-semibold">Ton CV</h2>
         {c.cv_chemin && <p className="text-sm text-muted">Un CV est déjà enregistré. Dépose un nouveau fichier pour le remplacer.</p>}
         <input className="input file:mr-3 file:rounded-md file:border-0 file:bg-accent-soft file:px-3 file:py-1 file:font-semibold file:text-accent" type="file" name="cv" accept="application/pdf" />
@@ -86,7 +93,7 @@ export function FormProfil({ c }: { c: Partial<Candidat> }) {
       <section className="card flex flex-col gap-3 p-5">
         <label className="flex items-start gap-3 text-sm">
           <input type="checkbox" name="consentement" defaultChecked={c.consentement} className="mt-1 accent-[var(--accent)]" />
-          <span>J&apos;accepte que mon profil et mon CV soient analysés pour me proposer des offres, et transmis aux entreprises partenaires uniquement pour les offres qui me correspondent.</span>
+          <span>J&apos;accepte que mon profil et mon CV soient analysés pour me proposer des offres, et transmis à mon école et aux entreprises partenaires uniquement pour les offres qui me correspondent.</span>
         </label>
         <label className="flex items-start gap-3 text-sm">
           <input type="checkbox" name="alertes_email" defaultChecked={c.alertes_email ?? true} className="mt-1 accent-[var(--accent)]" />

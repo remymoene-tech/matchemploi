@@ -21,13 +21,15 @@ export async function inscription(_: EtatForm, form: FormData): Promise<EtatForm
 
   const supabase = await createClient();
   const origine = process.env.NEXT_PUBLIC_SITE_URL ?? `https://${(await headers()).get("host")}`;
+  const ecole = String(form.get("ecole") ?? "").trim().replace(/[^A-Za-z0-9-]/g, "");
+  const suite = `/espace/profil${ecole ? `?ecole=${ecole}` : ""}`;
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: { emailRedirectTo: `${origine}/auth/callback?next=/espace/profil` },
+    options: { emailRedirectTo: `${origine}/auth/callback?next=${encodeURIComponent(suite)}` },
   });
   if (error) return { erreur: traduire(error.message) };
-  if (data.session) redirect("/espace/profil"); // confirmation d'email désactivée
+  if (data.session) redirect(suite); // confirmation d'email désactivée
   return { info: `C'est presque fini : clique sur le lien envoyé à ${email} pour activer ton compte.` };
 }
 

@@ -3,8 +3,8 @@
 import { useActionState } from "react";
 import { importerAnnonce, type EtatAnnonce } from "@/app/admin/actions";
 
-export function FormAnnonce() {
-  const [etat, action, enCours] = useActionState<EtatAnnonce, FormData>(importerAnnonce, {});
+export function FormAnnonce({ action: actionServeur = importerAnnonce }: { action?: (e: EtatAnnonce, f: FormData) => Promise<EtatAnnonce> }) {
+  const [etat, action, enCours] = useActionState<EtatAnnonce, FormData>(actionServeur, {});
   return (
     <form action={action} className="card flex flex-col gap-4 p-5">
       <div className="flex flex-col gap-1">

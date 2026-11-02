@@ -147,3 +147,23 @@ alter table public.candidats add column if not exists code_commune text;
 alter table public.offres add column if not exists latitude double precision;
 alter table public.offres add column if not exists longitude double precision;
 grant select (latitude, longitude) on public.offres to authenticated;
+
+-- ============================================================
+-- Espace École : chaque école gère ses étudiants et ses entreprises partenaires
+-- ============================================================
+create table if not exists public.ecoles (
+  id         uuid primary key default gen_random_uuid(),
+  nom        text not null,
+  code       text not null unique,   -- code d'inscription donné aux étudiants
+  created_at timestamptz not null default now()
+);
+create table if not exists public.responsables (
+  email      text primary key,       -- email du responsable entreprises (son compte sur le site)
+  ecole_id   uuid not null references public.ecoles(id) on delete cascade,
+  nom        text not null default '',
+  created_at timestamptz not null default now()
+);
+alter table public.ecoles enable row level security;        -- accessibles au serveur uniquement
+alter table public.responsables enable row level security;
+alter table public.candidats add column if not exists ecole_id uuid references public.ecoles(id) on delete set null;
+alter table public.offres add column if not exists ecole_id uuid references public.ecoles(id) on delete cascade;

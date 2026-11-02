@@ -52,6 +52,7 @@ export type Candidat = {
   latitude?: number | null;
   longitude?: number | null;
   code_commune?: string | null;
+  ecole_id?: string | null;
   updated_at: string;
 };
 
@@ -75,6 +76,7 @@ export type Offre = {
   updated_at: string;
   latitude?: number | null;
   longitude?: number | null;
+  ecole_id?: string | null;
 };
 
 export type Correspondance = {

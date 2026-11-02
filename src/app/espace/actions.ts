@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, motsClesDepuisProfil } from "@/lib/ia";
 import { analyserCV, cheminCV, majCandidat, stockerCV, telechargerCV } from "@/lib/cv";
 import { localiserCommune } from "@/lib/geo";
+import { ecoleParCode } from "@/lib/ecoles";
 import { rechercherPourCandidat } from "@/lib/matching";
 import { AVIS, CONTRATS, type Candidat } from "@/lib/types";
 
@@ -70,6 +71,17 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
   }
   donnees.mots_cles ||= donnees.poste_vise;
 
+  // École (code d'inscription donné par le responsable entreprises)
+  const codeEcole = texte(f, "code_ecole", 40);
+  let ecole_id: string | null = avant?.ecole_id ?? null;
+  if (codeEcole) {
+    const ecole = await ecoleParCode(codeEcole).catch(() => null);
+    if (!ecole) return { erreur: "Ce code école n'existe pas. Vérifie-le auprès de ton école, ou laisse le champ vide." };
+    ecole_id = ecole.id;
+  } else if (f.has("code_ecole")) {
+    ecole_id = null;
+  }
+
   // Position de la commune (recherche autour de chez lui + carte)
   let position: Record<string, unknown> = {};
   const lieuChange = avant?.code_postal !== donnees.code_postal || avant?.ville !== donnees.ville;
@@ -80,7 +92,7 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
       : { latitude: null, longitude: null, code_commune: null };
   }
 
-  const { ok } = await majCandidat(supabase, { ...donnees, ...position, recherche_en_cours: true });
+  const { ok } = await majCandidat(supabase, { ...donnees, ...position, ecole_id, recherche_en_cours: true });
   if (!ok) return { erreur: "L'enregistrement a échoué. Réessaie dans un instant." };
 
   after(() => rechercherPourCandidat(user.id));

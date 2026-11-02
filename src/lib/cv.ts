@@ -41,7 +41,7 @@ export async function analyserCV(octets: Buffer, posteVise: string, projet: stri
 }
 
 /** Colonnes ajoutées après la première version : si la base n'est pas à jour, on enregistre sans elles. */
-const COLONNES_OPTIONNELLES = ["cv_conseils", "latitude", "longitude", "code_commune"];
+const COLONNES_OPTIONNELLES = ["cv_conseils", "latitude", "longitude", "code_commune", "ecole_id"];
 
 /** Retire les colonnes optionnelles qui n'existent pas encore dans la base, d'après le message d'erreur. */
 export function sansColonnesManquantes<T extends Record<string, unknown>>(ligne: T, message: string): T | null {

@@ -9,6 +9,7 @@ import { iaConfiguree, lireAnnonce } from "@/lib/ia";
 import { noterOffrePourTous, rechercheQuotidienne } from "@/lib/matching";
 import { CONTRATS, SUIVIS } from "@/lib/types";
 import { localiserLieu } from "@/lib/geo";
+import { genererCode } from "@/lib/ecoles";
 import { FREQUENCES, ecrireFrequence, type Frequence } from "@/lib/reglages";
 
 const t = (f: FormData, k: string, max = 300) => String(f.get(k) ?? "").trim().slice(0, max);
@@ -108,4 +109,30 @@ export async function changerFrequence(f: FormData) {
   if (!FREQUENCES.some((x) => x.id === v)) return;
   const ok = await ecrireFrequence(v);
   redirect(`/admin?vue=reglages&${ok ? "ok=1" : "erreur=1"}`);
+}
+
+export async function creerEcole(f: FormData) {
+  await exigerAdmin();
+  const nom = t(f, "nom", 120);
+  const email = t(f, "email", 150).toLowerCase();
+  if (!nom) redirect("/admin?vue=ecoles&erreur=nom");
+  const db = createAdminClient();
+  const { data: ecole, error } = await db.from("ecoles").insert({ nom, code: genererCode(nom) }).select("id").single();
+  if (error || !ecole) redirect("/admin?vue=ecoles&erreur=table");
+  if (email.includes("@")) await db.from("responsables").upsert({ email, ecole_id: ecole.id, nom: t(f, "responsable", 120) });
+  redirect("/admin?vue=ecoles&ok=1");
+}
+
+export async function ajouterResponsable(f: FormData) {
+  await exigerAdmin();
+  const email = t(f, "email", 150).toLowerCase();
+  if (!email.includes("@")) redirect("/admin?vue=ecoles&erreur=email");
+  await createAdminClient().from("responsables").upsert({ email, ecole_id: t(f, "ecole_id"), nom: t(f, "nom", 120) });
+  redirect("/admin?vue=ecoles&ok=1");
+}
+
+export async function retirerResponsable(f: FormData) {
+  await exigerAdmin();
+  await createAdminClient().from("responsables").delete().eq("email", t(f, "email", 150));
+  redirect("/admin?vue=ecoles");
 }

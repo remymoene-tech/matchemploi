@@ -15,7 +15,13 @@ alter table public.candidats add column if not exists longitude double precision
 alter table public.candidats add column if not exists code_commune text;
 alter table public.offres add column if not exists latitude double precision;
 alter table public.offres add column if not exists longitude double precision;
-grant select (latitude, longitude) on public.offres to authenticated;`;
+grant select (latitude, longitude) on public.offres to authenticated;
+create table if not exists public.ecoles (id uuid primary key default gen_random_uuid(), nom text not null, code text not null unique, created_at timestamptz not null default now());
+create table if not exists public.responsables (email text primary key, ecole_id uuid not null references public.ecoles(id) on delete cascade, nom text not null default '', created_at timestamptz not null default now());
+alter table public.ecoles enable row level security;
+alter table public.responsables enable row level security;
+alter table public.candidats add column if not exists ecole_id uuid references public.ecoles(id) on delete set null;
+alter table public.offres add column if not exists ecole_id uuid references public.ecoles(id) on delete cascade;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -28,6 +34,10 @@ async function verifierBase() {
     db.storage.from("cv").list("", { limit: 1 }),
     db.from("candidats").select("latitude, longitude, code_commune").limit(1),
     db.from("offres").select("latitude, longitude").limit(1),
+    db.from("ecoles").select("id").limit(1),
+    db.from("responsables").select("email").limit(1),
+    db.from("candidats").select("ecole_id").limit(1),
+    db.from("offres").select("ecole_id").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -38,6 +48,10 @@ async function verifierBase() {
     "Espace de stockage des CV",
     "Carte : position des candidats",
     "Carte : position des offres",
+    "Espace École : écoles",
+    "Espace École : responsables",
+    "Espace École : école des étudiants",
+    "Espace École : offres des écoles",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

@@ -2,13 +2,18 @@ import { exigerUtilisateur } from "@/lib/auth";
 import { FormProfil } from "@/components/FormProfil";
 import { supprimerCompte } from "../actions";
 import type { Candidat } from "@/lib/types";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Mon profil · Jobaprox" };
 export const maxDuration = 300; // lecture du CV + recherche en arrière-plan
 
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ ecole?: string }> }) {
+  const { ecole: codeLien } = await searchParams;
   const { user, supabase } = await exigerUtilisateur();
   const { data } = await supabase.from("candidats").select("*").eq("user_id", user.id).maybeSingle<Candidat>();
+  const ecoleActuelle = data?.ecole_id
+    ? ((await createAdminClient().from("ecoles").select("nom, code").eq("id", data.ecole_id).maybeSingle()).data as { nom: string; code: string } | null)
+    : null;
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
@@ -16,7 +21,7 @@ export default async function Page() {
         <h1 className="text-3xl font-extrabold">{data ? "Mon profil" : "Complète ton profil"}</h1>
         <p className="text-muted">Plus ton profil est précis, plus les notes sont justes.</p>
       </div>
-      <FormProfil c={data ?? {}} />
+      <FormProfil c={data ?? {}} codeEcole={codeLien ?? ecoleActuelle?.code ?? ""} nomEcole={ecoleActuelle?.nom} />
       {data && (
         <details className="rounded-xl border border-line p-4 text-sm">
           <summary className="cursor-pointer text-muted">Supprimer mon compte, mon CV et toutes mes données</summary>

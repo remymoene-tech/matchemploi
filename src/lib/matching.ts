@@ -22,6 +22,7 @@ async function parLots<T>(items: T[], concurrence: number, fn: (t: T) => Promise
 /** Offre ouverte, du bon type de contrat, et pas trop loin de chez le candidat (si on connaît les deux positions). */
 function compatible(c: Candidat, o: Offre) {
   if (!o.ouverte) return false;
+  if (o.ecole_id && o.ecole_id !== c.ecole_id) return false; // offre partenaire réservée aux étudiants de cette école
   if (c.contrats.length && o.contrat && !c.contrats.includes(o.contrat)) return false;
   if (c.latitude != null && c.longitude != null && o.latitude != null && o.longitude != null) {
     const km = distanceKm({ latitude: c.latitude, longitude: c.longitude }, { latitude: o.latitude, longitude: o.longitude });
@@ -185,7 +186,9 @@ export async function noterOffrePourTous(offreId: string) {
   if (!iaConfiguree()) return;
   const { data: o } = await db.from("offres").select("*").eq("id", offreId).single<Offre>();
   if (!o || !o.ouverte) return;
-  const { data: candidats } = await db.from("candidats").select("*").eq("consentement", true);
+  let requete = db.from("candidats").select("*").eq("consentement", true);
+  if (o.ecole_id) requete = requete.eq("ecole_id", o.ecole_id);
+  const { data: candidats } = await requete;
   const cibles = ((candidats ?? []) as Candidat[]).filter((c) => compatible(c, o));
   await parLots(cibles, 4, async (c) => {
     try {

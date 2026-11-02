@@ -7,15 +7,18 @@ export function FormAuth({
   action,
   bouton,
   nouveauMotDePasse,
+  ecole,
 }: {
   action: (etat: EtatForm, form: FormData) => Promise<EtatForm>;
   bouton: string;
   nouveauMotDePasse?: boolean;
+  ecole?: string;
 }) {
   const [etat, formAction, enCours] = useActionState(action, {});
   if (etat.info) return <p className="rounded-lg bg-good-soft p-4 text-good">{etat.info}</p>;
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      {ecole && <input type="hidden" name="ecole" value={ecole} />}
       <div className="flex flex-col gap-1">
         <label className="label" htmlFor="email">Email</label>
         <input className="input" id="email" name="email" type="email" autoComplete="email" required />
