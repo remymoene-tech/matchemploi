@@ -107,3 +107,13 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
 .carte-popup span { color: #5a6377; font-size: 12px; }
 .carte-popup a { font-weight: 600; color: #2f7d52; }
 .leaflet-container { font-family: var(--font-figtree), system-ui, sans-serif; }
+
+/* Accueil : bandeau de métiers qui défile */
+@keyframes defile { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.bandeau { animation: defile 40s linear infinite; }
+.bandeau:hover { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .bandeau { animation: none; } }
+/* Accueil : apparition douce (visible même sans animation) */
+@keyframes monte { from { transform: translateY(10px); opacity: .6; } to { transform: none; opacity: 1; } }
+.monte { animation: monte .7s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .monte { animation: none; } }

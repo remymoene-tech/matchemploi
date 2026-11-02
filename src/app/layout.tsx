@@ -32,7 +32,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
 
   return (
     <html lang="fr" className={`${bricolage.variable} ${figtree.variable} ${jetbrains.variable} h-full antialiased`}>
-      <body className="flex min-h-full flex-col font-sans text-[15px] leading-relaxed">
+      <body className="flex min-h-full flex-col overflow-x-clip font-sans text-[15px] leading-relaxed">
         <header className="border-b border-line bg-surface">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
             <Link href="/" className="font-display text-xl font-extrabold tracking-tight">
