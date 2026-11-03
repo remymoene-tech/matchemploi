@@ -69,7 +69,7 @@ export default function CarteOffres({ offres, domicile, seuil, selection, onSele
         const centre = L.latLng(domicile.latitude, domicile.longitude);
         L.circle(centre, {
           radius: domicile.rayonKm * 1000,
-          color: "#2f7d52", weight: 2, fillColor: "#a9dfbc", fillOpacity: 0.18, dashArray: "6 6",
+          color: "#56664b", weight: 2, fillColor: "#aebaa2", fillOpacity: 0.18, dashArray: "6 6",
         }).addTo(carte);
         L.marker(centre, {
           icon: L.divIcon({ className: "", html: '<div class="carte-maison" title="Chez toi">⌂</div>', iconSize: [30, 30], iconAnchor: [15, 48] }),

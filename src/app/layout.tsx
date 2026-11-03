@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Bricolage_Grotesque, Figtree, JetBrains_Mono } from "next/font/google";
+import { Jost, JetBrains_Mono } from "next/font/google";
+import { Logo } from "@/components/Logo";
 import { createClient } from "@/lib/supabase/server";
 import { estAdmin } from "@/lib/auth";
 import { verifierConfig } from "@/lib/config";
@@ -9,8 +10,7 @@ import { Cloche } from "@/components/Cloche";
 import { deconnexion } from "@/app/(auth)/actions";
 import "./globals.css";
 
-const bricolage = Bricolage_Grotesque({ variable: "--font-bricolage", subsets: ["latin"], weight: ["600", "800"] });
-const figtree = Figtree({ variable: "--font-figtree", subsets: ["latin"] });
+const jost = Jost({ variable: "--font-jost", subsets: ["latin"], weight: ["300", "400", "500", "600", "700"] });
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], weight: ["500", "700"] });
 
 export const metadata: Metadata = {
@@ -32,12 +32,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   }
 
   return (
-    <html lang="fr" className={`${bricolage.variable} ${figtree.variable} ${jetbrains.variable} h-full antialiased`}>
+    <html lang="fr" className={`${jost.variable} ${jetbrains.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col overflow-x-clip font-sans text-[15px] leading-relaxed">
+        <div className="h-1.5 bg-[var(--sauge)] print:hidden" aria-hidden />
         <header className="border-b border-line bg-surface print:hidden">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-            <Link href="/" className="font-display text-xl font-extrabold tracking-tight">
-              Magnus<span className="text-accent">Match</span>
+            <Link href="/" aria-label="MagnusMatch, accueil">
+              <Logo />
             </Link>
             <nav className="flex flex-wrap items-center gap-1 text-sm">
               {user ? (
@@ -62,7 +63,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
-        <footer className="border-t border-line py-6 text-center text-xs text-muted print:hidden">
+        <footer className="bg-[#0d0d0d] py-6 text-center text-xs tracking-[.08em] text-[#c9ccc4] print:hidden">
           MagnusMatch · Tes données ne sont partagées avec une entreprise qu&apos;avec ton accord.
         </footer>
       </body>

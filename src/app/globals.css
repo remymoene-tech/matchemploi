@@ -1,20 +1,25 @@
 @import "tailwindcss";
 
-/* Palette MagnusMatch : vert pâle et frais, encre vert sapin. Le vert pâle remplit les boutons,
-   un vert plus soutenu sert aux liens et au texte pour rester lisible. Ambre/rouge réservés aux scores. */
+/* Charte Magnus Global Business School : vert sauge, noir, blanc, touches pastel
+   (rose, jaune, sauge, bleu) comme les traits sous le logo. Le sauge remplit les boutons,
+   un sauge foncé sert aux liens pour rester lisible. Ambre/rouge réservés aux scores. */
 :root {
-  --bg: #f2f8f3;
+  --bg: #f6f6f2;
   --surface: #ffffff;
-  --ink: #15261c;
-  --muted: #55695c;
-  --line: #d6e6da;
-  --accent: #2f7d52;
+  --ink: #111111;
+  --muted: #5e6358;
+  --line: #e1e4dc;
+  --accent: #56664b;
   --accent-ink: #ffffff;
-  --accent-soft: #e2f3e7;
-  --primary-bg: #a9dfbc;
-  --primary-ink: #0f3a22;
-  --good: #13734a;
-  --good-soft: #d8f0e2;
+  --accent-soft: #eaeee5;
+  --primary-bg: #aebaa2;
+  --primary-ink: #111111;
+  --sauge: #aebaa2;
+  --rose: #f4cfc9;
+  --jaune: #f3dfa4;
+  --bleu: #c9d5df;
+  --good: #3f6b3a;
+  --good-soft: #e3ecdc;
   --warn: #8f5b00;
   --warn-soft: #fbefd4;
   --bad: #ad2f2c;
@@ -22,18 +27,18 @@
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0e1611;
-    --surface: #15201a;
-    --ink: #e5f0e8;
-    --muted: #9ab0a1;
-    --line: #2a3b31;
-    --accent: #8fd6aa;
-    --accent-ink: #0e1611;
-    --accent-soft: #1c3326;
-    --primary-bg: #8fd6aa;
-    --primary-ink: #0d2a19;
-    --good: #5fd39b;
-    --good-soft: #173528;
+    --bg: #0d0d0d;
+    --surface: #171816;
+    --ink: #f1f2ee;
+    --muted: #a3a99c;
+    --line: #2c2f29;
+    --accent: #c3cdb8;
+    --accent-ink: #0d0d0d;
+    --accent-soft: #23271f;
+    --primary-bg: #aebaa2;
+    --primary-ink: #0d0d0d;
+    --good: #a6d49a;
+    --good-soft: #1f2e1c;
     --warn: #f0b65a;
     --warn-soft: #3a2c12;
     --bad: #ff8a85;
@@ -57,8 +62,8 @@
   --color-warn-soft: var(--warn-soft);
   --color-bad: var(--bad);
   --color-bad-soft: var(--bad-soft);
-  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jost), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-jost), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
 }
 
@@ -66,7 +71,7 @@ body {
   background: var(--bg);
   color: var(--ink);
 }
-h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
+h1, h2, h3 { font-family: var(--font-display); font-weight: 500; letter-spacing: .01em; text-wrap: balance; }
 
 @layer components {
   .btn { display:inline-flex; align-items:center; justify-content:center; gap:.5rem; border-radius:.5rem; border:1px solid var(--line); background:var(--surface); color:var(--ink); padding:.5rem 1rem; font-size:.875rem; font-weight:600; white-space:nowrap; cursor:pointer; transition:border-color .15s, filter .15s; }
