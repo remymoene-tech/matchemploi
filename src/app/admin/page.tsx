@@ -20,6 +20,7 @@ const VUES = [
   { id: "correspondances", label: "Correspondances" },
   { id: "candidats", label: "Candidats" },
   { id: "offres", label: "Offres" },
+  { id: "entretiens", label: "Entretiens" },
   { id: "ecoles", label: "Écoles" },
   { id: "reglages", label: "Réglages" },
 ] as const;
@@ -30,10 +31,15 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const vue = VUES.some((v) => v.id === sp.vue) ? sp.vue! : "correspondances";
   const db = createAdminClient();
 
-  const [{ data: ecolesData, error: ecolesErreur }, { data: respData }] = await Promise.all([
+  const [{ data: ecolesData, error: ecolesErreur }, { data: respData }, { data: entData, error: entErreur }] = await Promise.all([
     db.from("ecoles").select("id, nom, code").order("nom"),
     db.from("responsables").select("email, nom, ecole_id"),
+    db.from("entretiens_conseil").select("id, candidat_id, date_entretien, conseiller, bilan, prochaine_etape, partage").order("date_entretien", { ascending: false }),
   ]);
+  // Dernier entretien de chaque candidat
+  const entretiens = (entData ?? []) as { id: string; candidat_id: string; date_entretien: string; conseiller: string; bilan: string; prochaine_etape: string; partage: boolean }[];
+  const dernierEntretien = new Map<string, (typeof entretiens)[number]>();
+  for (const e of entretiens) if (!dernierEntretien.has(e.candidat_id)) dernierEntretien.set(e.candidat_id, e);
   const ecoles = (ecolesData ?? []) as { id: string; nom: string; code: string }[];
   const responsables = (respData ?? []) as { email: string; nom: string; ecole_id: string }[];
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
@@ -218,7 +224,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                   </dl>
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-sm">
                     {c.cv_chemin ? <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">Ouvrir le CV</a> : <span className="text-muted">Pas de CV</span>}
-                    <Link className="btn btn-sm" href={`/admin/candidats/${c.user_id}`}>Voir la fiche complète →</Link>
+                    <span className="flex flex-wrap gap-2">
+                      <Link className="btn btn-sm" href={`/admin/candidats/${c.user_id}/entretien/nouveau`}>Entretien</Link>
+                      <Link className="btn btn-sm" href={`/admin/candidats/${c.user_id}`}>Voir la fiche complète →</Link>
+                    </span>
                     {!c.consentement && <span className="chip chip-minus">Accord RGPD manquant</span>}
                   </div>
                 </article>
@@ -226,6 +235,65 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             })}
             {!C.size && <p className="card border-dashed p-6 text-sm text-muted">Aucun candidat inscrit. Envoie le lien d&apos;inscription à tes étudiants.</p>}
           </div>
+        </div>
+      )}
+
+      {vue === "entretiens" && (
+        <div className="flex flex-col gap-3">
+          {entErreur && (
+            <p className="rounded-xl bg-warn-soft p-4 text-sm">Les fiches d&apos;entretien ne sont pas encore activées : exécute la mise à jour SQL affichée sur la page /diagnostic.</p>
+          )}
+          <p className="text-sm text-muted">
+            Tous les candidats, ceux jamais reçus en premier. {[...C.values()].filter((c) => !dernierEntretien.has(c.user_id)).length} candidat(s) n&apos;ont pas encore eu d&apos;entretien.
+          </p>
+          <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
+                <tr>
+                  <th className="p-3 font-semibold">Candidat</th>
+                  <th className="p-3 font-semibold">École</th>
+                  <th className="p-3 font-semibold">Dernier entretien</th>
+                  <th className="p-3 font-semibold">Bilan</th>
+                  <th className="p-3 font-semibold">Prochaine étape</th>
+                  <th className="p-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {[...C.values()]
+                  .sort((a, b) => {
+                    const da = dernierEntretien.get(a.user_id)?.date_entretien ?? "", dbb = dernierEntretien.get(b.user_id)?.date_entretien ?? "";
+                    return da === dbb ? (a.nom || a.email).localeCompare(b.nom || b.email) : da < dbb ? -1 : 1;
+                  })
+                  .map((c) => {
+                    const e = dernierEntretien.get(c.user_id);
+                    const bilan = e?.bilan === "autonome" ? ["Autonome", "chip-plus"] : e?.bilan === "renforce" ? ["Renforcé", "chip-minus"] : e?.bilan === "accompagner" ? ["À accompagner", "chip-tag"] : null;
+                    return (
+                      <tr key={c.user_id} className="border-b border-line last:border-0 align-top">
+                        <td className="p-3">
+                          <Link href={`/admin/candidats/${c.user_id}`} className="font-semibold hover:text-accent hover:underline">{c.nom || c.email}</Link>
+                          <div className="text-xs text-muted">{c.formation || "—"}</div>
+                        </td>
+                        <td className="p-3 text-muted">{ecoles.find((x) => x.id === c.ecole_id)?.nom ?? "—"}</td>
+                        <td className="p-3">
+                          {e ? (
+                            <Link href={`/admin/candidats/${c.user_id}/entretien/${e.id}`} className="text-accent hover:underline">
+                              {new Date(e.date_entretien).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" })}
+                            </Link>
+                          ) : <span className="chip chip-minus">Jamais reçu</span>}
+                          {e?.conseiller && <div className="text-xs text-muted">{e.conseiller}</div>}
+                        </td>
+                        <td className="p-3">{bilan ? <span className={`chip ${bilan[1]}`}>{bilan[0]}</span> : "—"}</td>
+                        <td className="max-w-[260px] p-3 text-muted">{e?.prochaine_etape ? e.prochaine_etape.slice(0, 140) : "—"}</td>
+                        <td className="p-3 text-right">
+                          <Link href={`/admin/candidats/${c.user_id}/entretien/nouveau`} className="btn btn-sm btn-primary whitespace-nowrap">Nouvel entretien</Link>
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+          </div>
+          {!C.size && <p className="card border-dashed p-6 text-sm text-muted">Aucun candidat inscrit pour l&apos;instant.</p>}
         </div>
       )}
 
