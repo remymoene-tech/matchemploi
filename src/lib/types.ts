@@ -98,6 +98,7 @@ export type Offre = {
   latitude?: number | null;
   longitude?: number | null;
   ecole_id?: string | null;
+  attentes?: import("@/lib/attentes").Attentes | null;
 };
 
 export type Correspondance = {

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { QuestionnaireAttentes } from "@/components/QuestionnaireAttentes";
 import { notFound } from "next/navigation";
 import { exigerResponsable } from "@/lib/ecoles";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -76,6 +77,7 @@ export default async function Page({ params, searchParams }: {
           <label className="label" htmlFor="description">Missions et profil recherché</label>
           <textarea className="input min-h-40" id="description" name="description" defaultValue={o.description ?? ""} />
         </div>
+        <QuestionnaireAttentes a={o.attentes} />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="ouverte" defaultChecked={o.ouverte && !sp.verifier} className="accent-[var(--accent)]" />
           Offre ouverte : la comparer aux profils des candidats

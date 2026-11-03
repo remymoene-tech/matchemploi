@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { Candidat, Offre, Piste } from "@/lib/types";
+import { attentesTexte } from "@/lib/attentes";
 
 /**
  * Modèle léger et économique par défaut (≈ 40 fois moins cher que le plus puissant).
@@ -181,7 +182,7 @@ Utilise ce profil UNIQUEMENT pour ajuster de 5 points au maximum le savoir-être
 function offreTexte(o: Offre) {
   return `${o.intitule} — ${o.entreprise || "entreprise non communiquée"}
 Contrat : ${o.contrat_libelle || o.contrat || "?"} · Lieu : ${o.lieu || "?"}${o.salaire ? ` · Salaire : ${o.salaire}` : ""}
-${o.description.slice(0, 2500)}`;
+${o.description.slice(0, 2500)}${o.attentes ? `\n${attentesTexte(o.attentes)}` : ""}`;
 }
 
 /** Note jusqu'à ~8 offres pour un candidat en un seul appel. */
@@ -201,6 +202,7 @@ Barème sur 100 :
 Une information manquante compte pour la moitié des points du critère.
 N'utilise jamais l'âge, le sexe, l'origine, la nationalité, la situation familiale, l'apparence ou le handicap.
 Sois exigeant : 75 ou plus veut dire « candidature à envoyer sans hésiter ».
+Si une offre contient « ATTENTES DE L'ENTREPRISE », utilise-les en priorité dans chaque critère (diplôme, expérience, permis, rythme, date, horaires, qualités) et cite-les dans les points forts ou les manques (ex. « Rythme 2 j / 3 j compatible », « Permis obligatoire »). La personnalité recherchée se compare au profil DISC du candidat s'il existe, sans dépasser ±5 points. Un élément rédhibitoire clairement présent dans le profil fait nettement baisser la note.
 
 CANDIDAT
 ${profil(c)}

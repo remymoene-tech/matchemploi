@@ -311,3 +311,6 @@ create index if not exists echanges_relances_idx on public.echanges(auteur, acti
 alter table public.candidats add column if not exists linkedin_url text not null default '';
 alter table public.candidats add column if not exists linkedin_analyse jsonb;
 alter table public.candidats add column if not exists linkedin_le timestamptz;
+
+-- Questionnaire « Les attentes de l'entreprise » sur les offres de l'équipe
+alter table public.offres add column if not exists attentes jsonb;

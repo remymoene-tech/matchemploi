@@ -1,5 +1,7 @@
 "use server";
 
+import { lireAttentes } from "@/lib/attentes";
+
 import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -57,6 +59,7 @@ export async function enregistrerOffreEcole(f: FormData) {
     contact_nom: t(f, "contact_nom", 150),
     contact_email: t(f, "contact_email", 150),
     contact_tel: t(f, "contact_tel", 30),
+    attentes: lireAttentes(f),
     ouverte: f.get("ouverte") === "on",
     updated_at: new Date().toISOString(),
   };
@@ -74,8 +77,9 @@ export async function enregistrerOffreEcole(f: FormData) {
           return error;
         });
   const erreur = await ecrire(ligne);
-  if (erreur && /contact_tel/.test(erreur.message)) {
-    const { contact_tel: _t, ...sans } = ligne;
+  if (erreur && /contact_tel|attentes/.test(erreur.message)) {
+    const { contact_tel: _t, attentes: _a, ...sans } = ligne;
+    void _a;
     void _t;
     await ecrire(sans);
   }

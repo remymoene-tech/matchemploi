@@ -1,5 +1,7 @@
 "use server";
 
+import { lireAttentes } from "@/lib/attentes";
+
 import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -58,6 +60,7 @@ export async function enregistrerOffre(f: FormData) {
     contact_nom: t(f, "contact_nom", 150),
     contact_email: t(f, "contact_email", 150),
     contact_tel: t(f, "contact_tel", 30),
+    attentes: lireAttentes(f),
     ouverte: f.get("ouverte") === "on",
     updated_at: new Date().toISOString(),
   };
@@ -75,10 +78,10 @@ export async function enregistrerOffre(f: FormData) {
           return error;
         });
   let erreur = await ecrire(avecGPS);
-  if (erreur && /latitude|longitude|contact_tel/.test(erreur.message)) {
+  if (erreur && /latitude|longitude|contact_tel|attentes/.test(erreur.message)) {
     // Base pas encore à jour : on enregistre sans les colonnes récentes
-    const { contact_tel: _t, ...ancien } = donnees;
-    void _t;
+    const { contact_tel: _t, attentes: _a, ...ancien } = donnees;
+    void _t; void _a;
     erreur = await ecrire(ancien as typeof donnees);
   }
   if (donnees.ouverte) after(() => noterOffrePourTous(offreId));

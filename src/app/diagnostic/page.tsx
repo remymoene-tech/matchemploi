@@ -60,7 +60,8 @@ alter table public.echanges add column if not exists action_a timestamptz;
 create index if not exists echanges_relances_idx on public.echanges(auteur, action_faite, action_a);
 alter table public.candidats add column if not exists linkedin_url text not null default '';
 alter table public.candidats add column if not exists linkedin_analyse jsonb;
-alter table public.candidats add column if not exists linkedin_le timestamptz;`;
+alter table public.candidats add column if not exists linkedin_le timestamptz;
+alter table public.offres add column if not exists attentes jsonb;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -91,6 +92,7 @@ async function verifierBase() {
     db.from("echanges").select("id").limit(1),
     db.from("echanges").select("action_a").limit(1),
     db.from("candidats").select("linkedin_url, linkedin_analyse, linkedin_le").limit(1),
+    db.from("offres").select("attentes").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -119,6 +121,7 @@ async function verifierBase() {
     "Journal des échanges",
     "Relances avec date et heure",
     "Réseau : profil LinkedIn",
+    "Attentes de l'entreprise (offres)",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }
