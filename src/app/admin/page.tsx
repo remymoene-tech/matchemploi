@@ -7,6 +7,8 @@ import { adzunaConfigure } from "@/lib/adzuna";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
 import { MessageEnvoyable } from "@/components/MessageEnvoyable";
+import { ListeRelances } from "@/components/ListeRelances";
+import { relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
 import { ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
@@ -21,12 +23,13 @@ const VUES = [
   { id: "candidats", label: "Candidats" },
   { id: "offres", label: "Offres" },
   { id: "entretiens", label: "Entretiens" },
+  { id: "relances", label: "Relances" },
   { id: "ecoles", label: "Écoles" },
   { id: "reglages", label: "Réglages" },
 ] as const;
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string }> }) {
-  await exigerAdmin();
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string }> }) {
+  const moi = await exigerAdmin();
   const sp = await searchParams;
   const vue = VUES.some((v) => v.id === sp.vue) ? sp.vue! : "correspondances";
   const db = createAdminClient();
@@ -294,6 +297,17 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             </table>
           </div>
           {!C.size && <p className="card border-dashed p-6 text-sm text-muted">Aucun candidat inscrit pour l&apos;instant.</p>}
+        </div>
+      )}
+
+      {vue === "relances" && (
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <Link href="/admin?vue=relances" className={`chip ${sp.tous ? "chip-tag" : "chip-plus"}`}>Mes relances</Link>
+            <Link href="/admin?vue=relances&tous=1" className={`chip ${sp.tous ? "chip-plus" : "chip-tag"}`}>Toute l&apos;équipe</Link>
+            <span className="text-muted">La cloche 🔔 en haut à droite te prévient à l&apos;heure prévue.</span>
+          </div>
+          <ListeRelances relances={await relancesDe(sp.tous ? null : moi.user.email ?? "")} base="/admin/candidats" voirAuteur={!!sp.tous} />
         </div>
       )}
 

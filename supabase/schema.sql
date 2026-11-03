@@ -302,3 +302,7 @@ create table if not exists public.echanges (
 );
 alter table public.echanges enable row level security; -- serveur uniquement : jamais visible par le candidat
 create index if not exists echanges_candidat_idx on public.echanges(candidat_id, date_echange desc);
+
+-- Relance avec date ET heure (notification dans le site)
+alter table public.echanges add column if not exists action_a timestamptz;
+create index if not exists echanges_relances_idx on public.echanges(auteur, action_faite, action_a);

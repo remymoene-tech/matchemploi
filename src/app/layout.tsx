@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { estAdmin } from "@/lib/auth";
 import { verifierConfig } from "@/lib/config";
 import { ecoleDuResponsable } from "@/lib/ecoles";
+import { Cloche } from "@/components/Cloche";
 import { deconnexion } from "@/app/(auth)/actions";
 import "./globals.css";
 
@@ -44,6 +45,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                   <Link className="btn btn-ghost btn-sm" href="/espace">Mes offres</Link>
                   <Link className="btn btn-ghost btn-sm" href="/espace/cv">Mon CV</Link>
                   <Link className="btn btn-ghost btn-sm" href="/espace/profil">Mon profil</Link>
+                  {(monEcole || estAdmin(user.email)) && <Cloche lien={estAdmin(user.email) ? "/admin?vue=relances" : "/ecole?vue=relances"} />}
                   {monEcole && <Link className="btn btn-ghost btn-sm" href="/ecole">Mon école</Link>}
                   {estAdmin(user.email) && <Link className="btn btn-ghost btn-sm" href="/admin">Admin</Link>}
                   <form action={deconnexion}>

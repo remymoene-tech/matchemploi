@@ -9,7 +9,7 @@ import { etatSynthese } from "@/lib/synthese";
 import { BoutonSynthese } from "@/components/BoutonSynthese";
 import { CvRendu } from "@/components/CvRendu";
 import { FormEchange } from "@/components/FormEchange";
-import { TYPES_ECHANGE, echangesDuCandidat } from "@/lib/echanges";
+import { TYPES_ECHANGE, echangesDuCandidat, echeance, maintenantMs } from "@/lib/echanges";
 import { ResultatDisc, ResultatManagement } from "@/components/ResultatsTests";
 import { COULEURS } from "@/lib/tests";
 import {
@@ -67,8 +67,14 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
   ]);
   const tests = await derniersTests(candidatId);
   const echanges = await echangesDuCandidat(candidatId);
-  const aujourdHui = new Date().toISOString().slice(0, 10);
-  const relances = echanges.filter((e) => e.action && !e.action_faite).sort((a, b) => (a.action_le ?? "9999").localeCompare(b.action_le ?? "9999"));
+  const maintenant = maintenantMs();
+  const quand = (e: { action_a?: string | null; action_le?: string | null }) => echeance(e)?.getTime() ?? Infinity;
+  const relances = echanges.filter((e) => e.action && !e.action_faite).sort((a, b) => quand(a) - quand(b));
+  const dateRelance = (e: { action_a?: string | null; action_le?: string | null }, long = false) => {
+    const d = echeance(e);
+    if (!d) return "";
+    return d.toLocaleString("fr-FR", { day: "numeric", month: long ? "long" : "short", timeZone: "Europe/Paris", ...(e.action_a ? { hour: "2-digit", minute: "2-digit" } : {}) });
+  };
   const dernierEchange = echanges[0];
   // Lien temporaire (10 min) pour afficher le CV directement dans la page
   const urlCV = c.cv_chemin && onglet === "cv" ? (await db.storage.from("cv").createSignedUrl(c.cv_chemin, 600)).data?.signedUrl ?? null : null;
@@ -144,8 +150,8 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
           )}
           {relances.slice(0, 2).map((r) => (
             <Link key={r.id} href={`${baseFiche}?onglet=echanges`}
-              className={`chip ${r.action_le && r.action_le <= aujourdHui ? "chip-minus" : "chip-tag"}`}>
-              ⏰ {r.action}{r.action_le ? ` · ${new Date(r.action_le).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}` : ""}
+              className={`chip ${quand(r) <= maintenant ? "chip-minus" : "chip-tag"}`}>
+              ⏰ {r.action}{echeance(r) ? ` · ${dateRelance(r)}` : ""}
             </Link>
           ))}
         </div>
@@ -343,7 +349,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         <ol className="flex flex-col">
           {echanges.map((e) => {
             const t = TYPES_ECHANGE.find((x) => x.id === e.type) ?? TYPES_ECHANGE[4];
-            const enRetard = e.action && !e.action_faite && e.action_le && e.action_le <= aujourdHui;
+            const enRetard = e.action && !e.action_faite && quand(e) <= maintenant;
             return (
               <li key={e.id} className="relative flex gap-3 border-l-2 border-line pb-5 pl-5 last:pb-0">
                 <span className="absolute -left-[13px] top-0 grid h-6 w-6 place-items-center rounded-full border border-line bg-surface text-xs" aria-hidden>{t.icone}</span>
@@ -355,13 +361,16 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
                   <p className="whitespace-pre-line text-sm">{e.resume}</p>
                   {e.action && (
                     <div className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm ${e.action_faite ? "bg-bg text-muted line-through" : enRetard ? "bg-bad-soft" : "bg-accent-soft"}`}>
-                      <span>⏰ {e.action}{e.action_le ? ` · le ${new Date(e.action_le).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}` : ""}{enRetard ? " (en retard)" : ""}</span>
+                      <span>⏰ {e.action}{echeance(e) ? ` · le ${dateRelance(e, true)}` : ""}{enRetard ? " (en retard)" : ""}</span>
                       {!e.action_faite && (
+                        <span className="flex items-center gap-2">
+                        {echeance(e) && <a href={`/api/relances/${e.id}/ics`} className="text-xs text-accent hover:underline">📅 Ajouter à mon agenda</a>}
                         <form action={actionFaite}>
                           <input type="hidden" name="candidat_id" value={candidatId} />
                           <input type="hidden" name="id" value={e.id} />
                           <button className="btn btn-sm">Fait ✓</button>
                         </form>
+                        </span>
                       )}
                     </div>
                   )}

@@ -30,6 +30,7 @@ export function FormEchange({ candidatId, action }: {
   return (
     <form ref={form} action={envoyer} className="flex flex-col gap-3">
       <input type="hidden" name="candidat_id" value={candidatId} />
+      <input type="hidden" name="tz" value={new Date().getTimezoneOffset()} suppressHydrationWarning />
       <fieldset className="flex flex-wrap gap-2">
         <legend className="sr-only">Type d&apos;échange</legend>
         {TYPES.map((t, i) => (
@@ -49,17 +50,17 @@ export function FormEchange({ candidatId, action }: {
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={relance} onChange={(e) => setRelance(e.target.checked)} className="accent-[var(--accent)]" />
-        Prévoir une prochaine action (relance, rappel…)
+        Prévoir une relance (tu recevras une notification 🔔 à l&apos;heure prévue)
       </label>
       {relance && (
-        <div className="grid gap-3 sm:grid-cols-[1fr_12rem]">
+        <div className="grid gap-3 sm:grid-cols-[1fr_15rem]">
           <div className="flex flex-col gap-1">
             <label className="label" htmlFor="action">Prochaine action</label>
-            <input className="input" id="action" name="action" placeholder="Ex. Le rappeler pour savoir comment s'est passé l'entretien" />
+            <input className="input" id="action" name="action" required placeholder="Ex. Le rappeler pour savoir comment s'est passé l'entretien" />
           </div>
           <div className="flex flex-col gap-1">
-            <label className="label" htmlFor="action_le">À faire le</label>
-            <input className="input" id="action_le" name="action_le" type="date" />
+            <label className="label" htmlFor="action_a">Le (date et heure)</label>
+            <input className="input" id="action_a" name="action_a" type="datetime-local" required />
           </div>
         </div>
       )}

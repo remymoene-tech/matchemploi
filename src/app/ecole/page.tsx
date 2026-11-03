@@ -5,6 +5,8 @@ import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
 import { Copier } from "@/components/Copier";
 import { MessageEnvoyable } from "@/components/MessageEnvoyable";
+import { ListeRelances } from "@/components/ListeRelances";
+import { relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
 import { changerSuiviEcole, envoyerMessageEcole, relancerEcole } from "./actions";
@@ -17,11 +19,12 @@ const VUES = [
   { id: "correspondances", label: "Correspondances" },
   { id: "etudiants", label: "Étudiants" },
   { id: "entreprises", label: "Entreprises & offres" },
+  { id: "relances", label: "Mes relances" },
   { id: "inviter", label: "Inviter mes étudiants" },
 ] as const;
 
 export default async function EspaceEcole({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; tout?: string; source?: string }> }) {
-  const { ecole } = await exigerResponsable();
+  const { ecole, user } = await exigerResponsable();
   const sp = await searchParams;
   const vue = VUES.some((v) => v.id === sp.vue) ? sp.vue! : "correspondances";
   const db = createAdminClient();
@@ -224,6 +227,13 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
               Ajoute les besoins de tes entreprises partenaires : chaque offre est comparée à tes étudiants, et seuls eux la voient.
             </p>
           )}
+        </div>
+      )}
+
+      {vue === "relances" && (
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-muted">Les relances que tu as prévues sur les fiches de tes étudiants. La cloche 🔔 en haut à droite te prévient à l&apos;heure prévue.</p>
+          <ListeRelances relances={(await relancesDe(user.email ?? "")).filter((r) => C.has(r.candidat_id))} base="/ecole/etudiants" />
         </div>
       )}
 
