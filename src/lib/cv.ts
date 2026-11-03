@@ -18,6 +18,18 @@ export async function stockerCV(userId: string, fichier: File): Promise<{ erreur
   return { octets };
 }
 
+/** CV envoyé directement par le navigateur : on vérifie que c'est bien un PDF. */
+export async function cvDepose(userId: string): Promise<{ erreur: string } | { octets: Buffer }> {
+  const octets = await telechargerCV(userId);
+  if (!octets) return { erreur: "Le CV n'est pas arrivé. Réessaie de l'envoyer." };
+  if (octets.subarray(0, 5).toString() !== "%PDF-") {
+    await createAdminClient().storage.from("cv").remove([cheminCV(userId)]);
+    return { erreur: "Le fichier envoyé n'est pas un vrai PDF. Exporte ton CV en PDF et réessaie." };
+  }
+  if (octets.length > 10 * 1024 * 1024) return { erreur: "Le CV dépasse 10 Mo. Exporte-le en PDF plus léger." };
+  return { octets };
+}
+
 export async function telechargerCV(userId: string) {
   const { data } = await createAdminClient().storage.from("cv").download(cheminCV(userId));
   return data ? Buffer.from(await data.arrayBuffer()) : null;
@@ -57,15 +69,16 @@ export function sansColonnesManquantes<T extends Record<string, unknown>>(ligne:
 export async function majCandidat(
   supabase: SupabaseClient,
   ligne: Record<string, unknown> & { user_id: string },
-): Promise<{ ok: boolean; colonneConseilsManquante: boolean }> {
+): Promise<{ ok: boolean; colonneConseilsManquante: boolean; detail?: string }> {
   let { error } = await supabase.from("candidats").upsert(ligne, { onConflict: "user_id" });
   if (error) {
     const reduite = sansColonnesManquantes(ligne, error.message);
     if (reduite) {
       ({ error } = await supabase.from("candidats").upsert(reduite, { onConflict: "user_id" }));
-      return { ok: !error, colonneConseilsManquante: "cv_conseils" in ligne && !("cv_conseils" in reduite) };
+      if (error) console.error("Enregistrement du candidat impossible", error);
+      return { ok: !error, colonneConseilsManquante: "cv_conseils" in ligne && !("cv_conseils" in reduite), detail: error?.message };
     }
     console.error("Enregistrement du candidat impossible", error);
   }
-  return { ok: !error, colonneConseilsManquante: false };
+  return { ok: !error, colonneConseilsManquante: false, detail: error?.message };
 }

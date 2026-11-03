@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { startTransition, useActionState, useState } from "react";
+import { envoyerCV } from "@/lib/depot-cv-client";
 import { enregistrerProfil, type EtatProfil } from "@/app/espace/actions";
 import { CONTRATS, type Candidat } from "@/lib/types";
 
@@ -17,9 +18,29 @@ function Champ({ id, label, hint, children }: { id: string; label: string; hint?
 export function FormProfil({ c, codeEcole, nomEcole }: { c: Partial<Candidat>; codeEcole?: string; nomEcole?: string }) {
   const [etat, action, enCours] = useActionState<EtatProfil, FormData>(enregistrerProfil, {});
   const [alternance, setAlternance] = useState(c.contrats?.includes("alternance") ?? false);
+  const [envoi, setEnvoi] = useState(false);
+  const [erreurLocale, setErreurLocale] = useState("");
 
   return (
-    <form action={action} className="flex flex-col gap-6">
+    <form
+      className="flex flex-col gap-6"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setErreurLocale("");
+        const fd = new FormData(e.currentTarget);
+        const cv = fd.get("cv");
+        fd.delete("cv");
+        if (cv instanceof File && cv.size > 0) {
+          // Le CV part directement vers le stockage privé (accepte les PDF lourds, jusqu'à 10 Mo)
+          setEnvoi(true);
+          const err = await envoyerCV(cv);
+          setEnvoi(false);
+          if (err) { setErreurLocale(err); return; }
+          fd.set("cv_depose", "1");
+        }
+        startTransition(() => action(fd));
+      }}
+    >
       <section className="card flex flex-col gap-4 p-5">
         <h2 className="text-lg font-semibold">Toi</h2>
         <div className="grid gap-4 sm:grid-cols-2">
@@ -84,7 +105,7 @@ export function FormProfil({ c, codeEcole, nomEcole }: { c: Partial<Candidat>; c
         <h2 className="text-lg font-semibold">Ton CV</h2>
         {c.cv_chemin && <p className="text-sm text-muted">Un CV est déjà enregistré. Dépose un nouveau fichier pour le remplacer.</p>}
         <input className="input file:mr-3 file:rounded-md file:border-0 file:bg-accent-soft file:px-3 file:py-1 file:font-semibold file:text-accent" type="file" name="cv" accept="application/pdf" />
-        <span className="hint">PDF, 3,5 Mo maximum. Il est lu automatiquement pour repérer tes compétences.</span>
+        <span className="hint">PDF, 10 Mo maximum. Il est lu automatiquement pour repérer tes compétences.</span>
         {!!c.competences?.length && (
           <div className="flex flex-wrap gap-1.5">{c.competences.map((x) => <span key={x} className="chip chip-tag">{x}</span>)}</div>
         )}
@@ -101,10 +122,10 @@ export function FormProfil({ c, codeEcole, nomEcole }: { c: Partial<Candidat>; c
         </label>
       </section>
 
-      {etat.erreur && <p className="rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad">{etat.erreur}</p>}
+      {(erreurLocale || etat.erreur) && <p className="rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad" role="alert">{erreurLocale || etat.erreur}</p>}
       <div className="flex justify-end">
-        <button className="btn btn-primary" disabled={enCours}>
-          {enCours ? "Lecture du CV et enregistrement…" : "Enregistrer et lancer la recherche"}
+        <button className="btn btn-primary" disabled={enCours || envoi}>
+          {envoi ? "Envoi du CV…" : enCours ? "Lecture du CV et enregistrement… (jusqu'à 1 minute)" : "Enregistrer et lancer la recherche"}
         </button>
       </div>
     </form>

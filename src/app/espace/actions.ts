@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { exigerUtilisateur } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { analyserLinkedin, iaConfiguree, motsClesDepuisProfil } from "@/lib/ia";
-import { analyserCV, cheminCV, majCandidat, stockerCV, telechargerCV } from "@/lib/cv";
+import { analyserCV, cheminCV, cvDepose, majCandidat, stockerCV, telechargerCV } from "@/lib/cv";
 import { localiserCommune } from "@/lib/geo";
 import { ecoleParCode } from "@/lib/ecoles";
 import { genererPreparation } from "@/lib/preparation";
@@ -58,9 +58,10 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
 
   // CV en PDF : stocké en privé puis lu par l'IA (une analyse ratée ne bloque pas l'inscription)
   const cv = f.get("cv");
-  const nouveauCV = cv instanceof File && cv.size > 0;
+  const nouveauCV = (cv instanceof File && cv.size > 0) || f.get("cv_depose") === "1";
   if (nouveauCV) {
-    const r = await stockerCV(user.id, cv);
+    // Soit le CV arrive avec le formulaire, soit il a été envoyé directement au stockage par le navigateur
+    const r = cv instanceof File && cv.size > 0 ? await stockerCV(user.id, cv) : await cvDepose(user.id);
     if ("erreur" in r) return r;
     donnees.cv_chemin = cheminCV(user.id);
     const lu = await analyserCV(r.octets, donnees.poste_vise, donnees.projet);
@@ -98,8 +99,8 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
       : { latitude: null, longitude: null, code_commune: null };
   }
 
-  const { ok } = await majCandidat(supabase, { ...donnees, ...position, ecole_id, recherche_en_cours: true });
-  if (!ok) return { erreur: "L'enregistrement a échoué. Réessaie dans un instant." };
+  const { ok, detail } = await majCandidat(createAdminClient(), { ...donnees, ...position, ecole_id, recherche_en_cours: true });
+  if (!ok) return { erreur: `L'enregistrement a échoué. Réessaie dans un instant, et si ça continue, envoie ce message à ton conseiller : ${detail ?? "erreur inconnue"}` };
 
   after(() => rechercherPourCandidat(user.id));
   // Nouveau CV analysé : on montre d'abord les conseils
@@ -156,12 +157,21 @@ export async function supprimerCompte() {
 
 export type EtatCV = { erreur?: string; info?: string };
 
+/** Autorisation d'envoyer son CV directement au stockage privé (valable 2 heures, pour son propre dossier uniquement). */
+export async function preparerDepotCV(): Promise<{ chemin: string; jeton: string } | { erreur: string }> {
+  const { user } = await exigerUtilisateur();
+  const { data, error } = await createAdminClient().storage.from("cv").createSignedUploadUrl(cheminCV(user.id), { upsert: true });
+  if (error || !data) return { erreur: "L'envoi du CV n'est pas possible pour le moment. Réessaie dans un instant." };
+  return { chemin: data.path, jeton: data.token };
+}
+
 /** Dépôt (ou remplacement) du CV directement depuis l'onglet « Mon CV ». */
 export async function deposerCV(_: EtatCV, f: FormData): Promise<EtatCV> {
   const { user, supabase } = await exigerUtilisateur();
   const fichier = f.get("cv");
-  if (!(fichier instanceof File) || !fichier.size) return { erreur: "Choisis d'abord ton CV en PDF." };
-  const r = await stockerCV(user.id, fichier);
+  const direct = f.get("cv_depose") === "1";
+  if (!direct && (!(fichier instanceof File) || !fichier.size)) return { erreur: "Choisis d'abord ton CV en PDF." };
+  const r = direct ? await cvDepose(user.id) : await stockerCV(user.id, fichier as File);
   if ("erreur" in r) return r;
   const { data: c } = await supabase.from("candidats").select("*").eq("user_id", user.id).maybeSingle<Candidat>();
   const lu = await analyserCV(r.octets, c?.poste_vise ?? "", c?.projet ?? "");
