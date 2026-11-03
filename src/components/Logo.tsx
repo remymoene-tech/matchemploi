@@ -1,4 +1,4 @@
-/** Logo MagnusMatch, dans l'esprit de Magnus Global Business School :
+/** Logo MagnusMatch, dans l'esprit de l'École EGC – Campus Magnus :
  *  lettres fines très espacées et petits traits pastel sous le mot. */
 const TRAITS = ["var(--rose)", "var(--jaune)", "var(--sauge)", "var(--bleu)"];
 
