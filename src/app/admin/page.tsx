@@ -195,7 +195,9 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </form>
           <div className="grid gap-3 md:grid-cols-2">
             {[...C.values()].map((c) => {
-              const n = lignes.filter((m) => m.candidat_id === c.user_id).length;
+              // Toutes les sources (France Travail, Adzuna et vos offres), quel que soit le filtre des correspondances
+              const n = toutes.filter((m) => m.candidat_id === c.user_id).length;
+              const nEquipe = equipe.filter((m) => m.candidat_id === c.user_id).length;
               return (
                 <article key={c.user_id} className="card flex flex-col gap-2 p-5">
                   <div className="flex items-start justify-between gap-2">
@@ -203,7 +205,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                       <h2 className="text-lg font-semibold">{c.nom || c.email}</h2>
                       <p className="text-sm text-muted">{c.formation || "Formation non précisée"}</p>
                     </div>
-                    <span className="font-mono text-sm">{n} offre{n > 1 ? "s" : ""} ≥ {SEUIL} %</span>
+                    <span className="flex flex-col items-end text-right font-mono text-sm">
+                      <span>{n} offre{n > 1 ? "s" : ""} ≥ {SEUIL} %</span>
+                      {nEquipe > 0 && <span className="text-xs text-accent">dont {nEquipe} sur vos offres</span>}
+                    </span>
                   </div>
                   <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
                     <dt className="text-muted">Vise</dt><dd>{c.poste_vise}</dd>
