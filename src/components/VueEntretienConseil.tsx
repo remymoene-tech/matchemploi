@@ -7,7 +7,7 @@ export function VueEntretienConseil({ e, nomEtudiant }: { e: EntretienConseil; n
   return (
     <div className="flex flex-col gap-4">
       <section className="card flex flex-col gap-2 p-5">
-        <span className="eyebrow">MagnusJob — fiche d&apos;entretien alternance</span>
+        <span className="eyebrow">MagnusMatch — fiche d&apos;entretien alternance</span>
         <h1 className="text-2xl font-extrabold">{nomEtudiant}</h1>
         <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
           <dt className="text-muted">Formation</dt><dd>{e.formation || "—"}</dd>

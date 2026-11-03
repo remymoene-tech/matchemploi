@@ -5,7 +5,7 @@ import { FormNouvelleRecherche } from "@/components/FormRecherche";
 import { modifierRecherche, supprimerRecherche } from "../actions";
 import { CONTRATS, MAX_RECHERCHES, contratLabel, type Candidat, type Recherche } from "@/lib/types";
 
-export const metadata = { title: "Mes recherches · MagnusJob" };
+export const metadata = { title: "Mes recherches · MagnusMatch" };
 export const maxDuration = 300;
 
 export default async function MesRecherches() {
@@ -20,7 +20,7 @@ export default async function MesRecherches() {
       <Link href="/espace" className="text-sm text-muted">← Mes offres</Link>
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-extrabold">Mes recherches</h1>
-        <p className="text-muted">Tu peux chercher plusieurs métiers en même temps : MagnusJob cherche les offres pour chacun.</p>
+        <p className="text-muted">Tu peux chercher plusieurs métiers en même temps : MagnusMatch cherche les offres pour chacun.</p>
       </div>
 
       {error && (
@@ -80,7 +80,7 @@ export default async function MesRecherches() {
       )}
 
       <p className="hint">
-        Astuce : MagnusJob te propose aussi des métiers voisins de ton expérience, dans « Mes offres ». Un clic suffit pour les ajouter ici.
+        Astuce : MagnusMatch te propose aussi des métiers voisins de ton expérience, dans « Mes offres ». Un clic suffit pour les ajouter ici.
       </p>
     </div>
   );

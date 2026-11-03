@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { enregistrerOffre, supprimerOffre } from "../../actions";
 import { CONTRATS, SOURCES_AUTO, type Offre } from "@/lib/types";
 
-export const metadata = { title: "Offre · MagnusJob" };
+export const metadata = { title: "Offre · MagnusMatch" };
 export const maxDuration = 300;
 
 export default async function Page({ params, searchParams }: {

@@ -12,7 +12,7 @@ export function BoutonSynthese({ candidatId, action, libelle, actif }: {
   return (
     <form action={envoyer} className="flex flex-col items-end gap-2">
       <input type="hidden" name="candidat_id" value={candidatId} />
-      <button className="btn btn-primary btn-sm" disabled={enCours || !actif}>{enCours ? "MagnusJob rédige… (30 s environ)" : libelle}</button>
+      <button className="btn btn-primary btn-sm" disabled={enCours || !actif}>{enCours ? "MagnusMatch rédige… (30 s environ)" : libelle}</button>
       {etat.erreur && <p className="rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad">{etat.erreur}</p>}
     </form>
   );

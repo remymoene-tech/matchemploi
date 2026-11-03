@@ -6,7 +6,7 @@ import { avecDisc } from "@/lib/tests-serveur";
 
 export type FichePreparation = Preparation & {
   meta: { intitule: string; entreprise: string; lieu: string; contrat: string; lien: string; score: number };
-  /** Pages consultées par MagnusJob pendant sa recherche sur l'entreprise. */
+  /** Pages consultées par MagnusMatch pendant sa recherche sur l'entreprise. */
   sources?: Source[];
 };
 

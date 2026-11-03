@@ -3,7 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ameliorerCV, iaConfiguree } from "@/lib/ia";
 import type { Candidat } from "@/lib/types";
 
-/** Fait réécrire le CV par MagnusJob et l'enregistre sur la fiche du candidat. */
+/** Fait réécrire le CV par MagnusMatch et l'enregistre sur la fiche du candidat. */
 export async function genererCvAmeliore(candidatId: string): Promise<{ erreur?: string }> {
   if (!iaConfiguree()) return { erreur: "La rédaction automatique n'est pas disponible pour l'instant." };
   const db = createAdminClient();

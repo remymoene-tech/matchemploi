@@ -3,7 +3,7 @@
 import { useActionState, useRef, useState } from "react";
 import type { EtatEnvoi } from "@/lib/envoi-message";
 
-/** Message modifiable : on peut le copier, ou l'envoyer directement depuis MagnusJob. */
+/** Message modifiable : on peut le copier, ou l'envoyer directement depuis MagnusMatch. */
 export function MessageEnvoyable({
   titre, cible, candidatId, offreId, email, autresCoordonnees, objet, texte, action, envoiPossible,
 }: {

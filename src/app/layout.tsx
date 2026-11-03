@@ -14,7 +14,7 @@ const figtree = Figtree({ variable: "--font-figtree", subsets: ["latin"] });
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], weight: ["500", "700"] });
 
 export const metadata: Metadata = {
-  title: "MagnusJob",
+  title: "MagnusMatch",
   description: "Dépose ton CV, on cherche pour toi les offres qui te correspondent à 75 % ou plus.",
 };
 
@@ -37,7 +37,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <header className="border-b border-line bg-surface print:hidden">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
             <Link href="/" className="font-display text-xl font-extrabold tracking-tight">
-              Magnus<span className="text-accent">Job</span>
+              Magnus<span className="text-accent">Match</span>
             </Link>
             <nav className="flex flex-wrap items-center gap-1 text-sm">
               {user ? (
@@ -63,7 +63,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
         <footer className="border-t border-line py-6 text-center text-xs text-muted print:hidden">
-          MagnusJob · Tes données ne sont partagées avec une entreprise qu&apos;avec ton accord.
+          MagnusMatch · Tes données ne sont partagées avec une entreprise qu&apos;avec ton accord.
         </footer>
       </body>
     </html>

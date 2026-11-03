@@ -2,7 +2,7 @@ import { exigerAdmin } from "@/lib/auth";
 import { FicheCandidat } from "@/components/FicheCandidat";
 import { autoriserTestAdmin, changerSuivi, ajouterEchangeAdmin, actionFaiteAdmin, genererCvAmelioreAdmin, supprimerEchangeAdmin, genererSyntheseAdmin } from "../../actions";
 
-export const metadata = { title: "Fiche candidat · MagnusJob" };
+export const metadata = { title: "Fiche candidat · MagnusMatch" };
 
 export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string }> }) {
   const { onglet } = await searchParams;

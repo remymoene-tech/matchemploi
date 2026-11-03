@@ -206,7 +206,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         </ul>
         {!!pistes.length && (
           <div className="flex flex-col gap-2 border-t border-line pt-3">
-            <span className="eyebrow">Pistes proposées par MagnusJob</span>
+            <span className="eyebrow">Pistes proposées par MagnusMatch</span>
             <ul className="flex flex-col gap-1.5 text-sm">
               {pistes.map((p) => (
                 <li key={p.metier} className={p.ecartee ? "text-muted line-through" : ""}>
@@ -232,7 +232,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
           <iframe src={urlCV} title="CV du candidat" className="h-[75vh] min-h-[480px] w-full rounded-lg border border-line bg-white" />
         </section>
       )}
-        <Bloc titre="Analyse du CV par MagnusJob" action={c.cv_chemin ? <a className="btn btn-sm" href={cheminCV} target="_blank">Ouvrir le PDF</a> : undefined}>
+        <Bloc titre="Analyse du CV par MagnusMatch" action={c.cv_chemin ? <a className="btn btn-sm" href={cheminCV} target="_blank">Ouvrir le PDF</a> : undefined}>
           {!c.cv_chemin && <p className="text-sm text-muted">Pas encore de CV déposé.</p>}
           {k && (
             <div className="flex items-start gap-4">
@@ -246,7 +246,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
           {!!c.competences?.length && <div className="flex flex-wrap gap-1.5">{c.competences.map((x) => <span key={x} className="chip chip-tag">{x}</span>)}</div>}
           {k?.description_proposee && (
             <div className="flex flex-col gap-1 border-t border-line pt-3">
-              <span className="eyebrow">Description proposée par MagnusJob</span>
+              <span className="eyebrow">Description proposée par MagnusMatch</span>
               <p className="text-sm italic">{k.description_proposee}</p>
             </div>
           )}
@@ -261,21 +261,21 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         </Bloc>
 
       <Bloc
-        titre="CV amélioré par MagnusJob"
+        titre="CV amélioré par MagnusMatch"
         action={<BoutonSynthese candidatId={candidatId} action={genererCvAmeliore} actif={Boolean(c.cv_texte)} libelle={c.cv_ameliore ? "Le régénérer" : "Générer le CV amélioré"} />}
       >
         {!c.cv_texte && <p className="text-sm text-muted">Le CV doit d&apos;abord être déposé et analysé.</p>}
         {c.cv_ameliore ? (
           <>
             <p className="text-sm text-muted">
-              Réécrit par MagnusJob à partir de son CV et de son profil, sans rien inventer : les informations manquantes sont marquées « à compléter ».
+              Réécrit par MagnusMatch à partir de son CV et de son profil, sans rien inventer : les informations manquantes sont marquées « à compléter ».
               L&apos;étudiant le voit aussi dans « Mon CV ».
             </p>
             <div className="overflow-hidden rounded-lg border border-line"><CvRendu cv={c.cv_ameliore} compact /></div>
             <Link className="btn btn-sm w-fit" href={`/cv/${candidatId}`} target="_blank">Ouvrir pour imprimer ou enregistrer en PDF</Link>
           </>
         ) : c.cv_texte ? (
-          <p className="text-sm text-muted">MagnusJob réécrit le CV dans une mise en page sobre, avec une description du projet, des expériences détaillées et des compétences claires.</p>
+          <p className="text-sm text-muted">MagnusMatch réécrit le CV dans une mise en page sobre, avec une description du projet, des expériences détaillées et des compétences claires.</p>
         ) : null}
       </Bloc>
         </>
@@ -344,7 +344,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
       </Bloc>
 
       <Bloc titre={`Historique des échanges (${echanges.length})`}>
-        <p className="text-xs text-muted">Visible uniquement par l&apos;équipe. Les emails envoyés depuis MagnusJob s&apos;ajoutent automatiquement.</p>
+        <p className="text-xs text-muted">Visible uniquement par l&apos;équipe. Les emails envoyés depuis MagnusMatch s&apos;ajoutent automatiquement.</p>
         {!echanges.length && <p className="text-sm text-muted">Aucun échange noté pour l&apos;instant.</p>}
         <ol className="flex flex-col">
           {echanges.map((e) => {
@@ -405,7 +405,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         {!pret && <p className="text-sm text-muted">La synthèse se génère une fois l&apos;entretien et les deux tests faits.</p>}
         {syn && (
           <div className="flex flex-col gap-4">
-            <p className="text-xs text-muted">Rédigée par MagnusJob le {dateFr(etat.synthese!.created_at)}. Version équipe : confidentielle.</p>
+            <p className="text-xs text-muted">Rédigée par MagnusMatch le {dateFr(etat.synthese!.created_at)}. Version équipe : confidentielle.</p>
             <p className="text-sm">{syn.equipe.portrait}</p>
             <div className="grid gap-3 md:grid-cols-2">
               {([["Points forts", syn.equipe.points_forts], ["Points de vigilance", syn.equipe.vigilance], ["Postes adaptés", syn.equipe.postes_adaptes], ["Prochaines étapes", syn.equipe.prochaines_etapes]] as const).map(([t, items]) => (

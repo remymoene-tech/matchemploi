@@ -141,7 +141,7 @@ export function OffresEspace({ lignes: toutes, seuil, domicile, candidatId, rech
               </div>
               {(l.prepa || l.avis_candidat === "postule" || l.avis_candidat === "interesse") && (
                 <a href={`/entretien/${candidatId}/${l.offre_id}`} className="flex items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm font-semibold" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>
-                  <span>{l.prepa ? "Ma fiche pour préparer l'entretien" : "Préparer mon entretien avec MagnusJob"}</span><span aria-hidden>→</span>
+                  <span>{l.prepa ? "Ma fiche pour préparer l'entretien" : "Préparer mon entretien avec MagnusMatch"}</span><span aria-hidden>→</span>
                 </a>
               )}
               {l.avis_candidat === "pas_interesse" && l.raison_refus && (
@@ -190,7 +190,7 @@ export function OffresEspace({ lignes: toutes, seuil, domicile, candidatId, rech
                     <label className="text-sm" htmlFor={`precision-${l.offre_id}`}>Tu veux préciser ? (facultatif)</label>
                     <input className="input" id={`precision-${l.offre_id}`} name="precision" maxLength={300} placeholder="Ex. je ne veux pas travailler le week-end" />
                   </div>
-                  <p className="hint">MagnusJob en tiendra compte pour mieux noter tes prochaines offres.</p>
+                  <p className="hint">MagnusMatch en tiendra compte pour mieux noter tes prochaines offres.</p>
                   <div className="flex flex-wrap justify-end gap-2">
                     <button type="button" className="btn btn-sm btn-ghost" onClick={() => setRefusOuvert(null)}>Annuler</button>
                     <button className="btn btn-sm btn-primary">Écarter cette offre</button>

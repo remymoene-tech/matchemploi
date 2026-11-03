@@ -7,7 +7,7 @@ import { FormTestDisc, FormTestManagement } from "@/components/FormTests";
 import { passerTestDiscAdmin, passerTestManagementAdmin } from "../../../../actions";
 import type { Candidat } from "@/lib/types";
 
-export const metadata = { title: "Faire passer un test · MagnusJob" };
+export const metadata = { title: "Faire passer un test · MagnusMatch" };
 
 export default async function Page({ params }: { params: Promise<{ id: string; test: string }> }) {
   await exigerAdmin();

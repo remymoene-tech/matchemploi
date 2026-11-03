@@ -4,7 +4,7 @@ import { testerFranceTravail } from "@/lib/france-travail";
 import { testerAdzuna } from "@/lib/adzuna";
 import { moyenEnvoi } from "@/lib/email";
 
-export const metadata = { title: "Diagnostic · MagnusJob" };
+export const metadata = { title: "Diagnostic · MagnusMatch" };
 export const dynamic = "force-dynamic";
 
 const SQL_MAJ = `create table if not exists public.reglages (cle text primary key, valeur text not null);
@@ -104,12 +104,12 @@ async function verifierBase() {
     "Fiches de préparation d'entretien",
     "Plusieurs recherches par candidat",
     "Recherche et piste de chaque offre",
-    "Pistes proposées par MagnusJob",
+    "Pistes proposées par MagnusMatch",
     "Fiches d'entretien conseiller",
     "Résultats des tests (DISC, management)",
     "Autorisations pour repasser un test",
     "Synthèse globale du candidat",
-    "CV amélioré par MagnusJob",
+    "CV amélioré par MagnusMatch",
     "Journal des échanges",
     "Relances avec date et heure",
   ];

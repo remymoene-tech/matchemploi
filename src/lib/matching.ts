@@ -89,7 +89,7 @@ async function notifier(c: Candidat) {
      <p>Nous avons trouvé ${data.length > 1 ? "des offres qui correspondent" : "une offre qui correspond"} à ton profil à ${SEUIL} % ou plus :</p>
      <ul>${lignes}</ul>
      <p><a href="${site}/espace">Voir le détail et donner ton avis</a></p>`,
-    { nomExpediteur: "MagnusJob" },
+    { nomExpediteur: "MagnusMatch" },
   );
   if (ok) {
     await db
@@ -254,7 +254,7 @@ export async function rechercherPourCandidat(candidatId: string) {
       const cr = selon(c, { poste: p.metier, mots_cles: p.mots_cles, contrats: contratsTous, mobilite_km: distanceMax });
       const g: Groupe = {
         cr, recherche_id: null, piste: p.metier,
-        contexte: `PISTE PROPOSÉE PAR MAGNUSJOB : le candidat n'a PAS demandé le métier « ${p.metier} ». C'est un métier voisin de son expérience (${p.raison}).
+        contexte: `PISTE PROPOSÉE PAR MAGNUSMATCH : le candidat n'a PAS demandé le métier « ${p.metier} ». C'est un métier voisin de son expérience (${p.raison}).
 Pour ces offres, le critère « cohérence avec le poste visé et le projet » devient « cohérence avec son expérience réelle et ses compétences transférables ».
 Dans le résumé, explique en une phrase le lien avec une expérience PRÉCISE de son CV (ex. « Tes 2 ans en boulangerie… »).`,
         offres: [],

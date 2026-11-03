@@ -12,7 +12,7 @@ import { messageEntreprise, messageEtudiant } from "@/lib/messages";
 import { changerSuiviEcole, envoyerMessageEcole, relancerEcole } from "./actions";
 import { AVIS, SEUIL, SUIVIS, contratLabel, sourceLabel, type Candidat, type Correspondance, type Offre } from "@/lib/types";
 
-export const metadata = { title: "Espace École · MagnusJob" };
+export const metadata = { title: "Espace École · MagnusMatch" };
 export const maxDuration = 300;
 
 const VUES = [
@@ -185,7 +185,7 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
                     <dt className="text-muted">Contrats</dt><dd>{c.contrats.map(contratLabel).join(", ") || "—"}</dd>
                     <dt className="text-muted">Secteur</dt><dd>{[c.ville, c.code_postal].filter(Boolean).join(" ") || "—"} · {c.mobilite_km} km</dd>
                     <dt className="text-muted">Contact</dt><dd className="break-all">{c.email}{c.telephone && ` · ${c.telephone}`}</dd>
-                    {c.cv_conseils && <><dt className="text-muted">CV</dt><dd>{c.cv_conseils.note}/10 selon MagnusJob</dd></>}
+                    {c.cv_conseils && <><dt className="text-muted">CV</dt><dd>{c.cv_conseils.note}/10 selon MagnusMatch</dd></>}
                   </dl>
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-sm">
                     {c.cv_chemin ? <a className="font-semibold text-accent" href={`/ecole/cv/${c.user_id}`} target="_blank">Ouvrir le CV</a> : <span className="text-muted">Pas de CV</span>}
@@ -253,7 +253,7 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
           <div className="flex flex-col gap-2">
             <span className="eyebrow">Message à envoyer</span>
             {(() => {
-              const msg = `Bonjour à tous,\n\nPour vous aider dans votre recherche d'alternance ou d'emploi, inscrivez-vous sur MagnusJob avec ce lien :\n${lien}\n\nDéposez votre CV et décrivez votre projet : vous recevrez les offres qui vous correspondent (celles de nos entreprises partenaires et de France Travail), et des conseils pour améliorer votre CV.\n\nÀ bientôt,\n${ecole.nom}`;
+              const msg = `Bonjour à tous,\n\nPour vous aider dans votre recherche d'alternance ou d'emploi, inscrivez-vous sur MagnusMatch avec ce lien :\n${lien}\n\nDéposez votre CV et décrivez votre projet : vous recevrez les offres qui vous correspondent (celles de nos entreprises partenaires et de France Travail), et des conseils pour améliorer votre CV.\n\nÀ bientôt,\n${ecole.nom}`;
               return (
                 <>
                   <pre className="whitespace-pre-wrap rounded-lg border border-line bg-bg p-3 font-sans text-sm">{msg}</pre>

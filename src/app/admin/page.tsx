@@ -15,7 +15,7 @@ import { ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyer
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
-export const metadata = { title: "Admin · MagnusJob" };
+export const metadata = { title: "Admin · MagnusMatch" };
 export const maxDuration = 300;
 
 const VUES = [
@@ -137,7 +137,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           )}
           {lignes.map((m) => {
             const c = C.get(m.candidat_id)!, o = O.get(m.offre_id)!;
-            const signature = ecoles.find((e) => e.id === c.ecole_id)?.nom ?? "L'équipe MagnusJob";
+            const signature = ecoles.find((e) => e.id === c.ecole_id)?.nom ?? "L'équipe MagnusMatch";
             const mEtu = messageEtudiant(c, o, m, signature), mEnt = messageEntreprise(c, o, m, signature);
             const aContacter = estOffreEquipe(o.source);
             return (

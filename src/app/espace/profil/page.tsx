@@ -4,7 +4,7 @@ import { supprimerCompte } from "../actions";
 import type { Candidat } from "@/lib/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-export const metadata = { title: "Mon profil · MagnusJob" };
+export const metadata = { title: "Mon profil · MagnusMatch" };
 export const maxDuration = 300; // lecture du CV + recherche en arrière-plan
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ ecole?: string }> }) {

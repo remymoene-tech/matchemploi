@@ -247,7 +247,7 @@ export async function supprimerRecherche(f: FormData) {
   revalidatePath("/espace");
 }
 
-/* ---------- Pistes proposées par MagnusJob ---------- */
+/* ---------- Pistes proposées par MagnusMatch ---------- */
 
 export async function adopterPiste(f: FormData) {
   const { user, supabase } = await exigerUtilisateur();

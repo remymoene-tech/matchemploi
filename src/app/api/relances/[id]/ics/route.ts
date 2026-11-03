@@ -19,9 +19,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const esc = (s: string) => s.replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
   const ics = [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MagnusJob//Relances//FR", "BEGIN:VEVENT",
-    `UID:${e.id}@magnusjob`, `DTSTAMP:${f(new Date())}`, `DTSTART:${f(debut)}`, `DTEND:${f(fin)}`,
-    `SUMMARY:${esc(`MagnusJob – ${nom} : ${e.action}`)}`,
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//MagnusMatch//Relances//FR", "BEGIN:VEVENT",
+    `UID:${e.id}@magnusmatch`, `DTSTAMP:${f(new Date())}`, `DTSTART:${f(debut)}`, `DTEND:${f(fin)}`,
+    `SUMMARY:${esc(`MagnusMatch – ${nom} : ${e.action}`)}`,
     `DESCRIPTION:${esc(`${e.action}\n${site}/admin/candidats/${e.candidat_id}?onglet=echanges`)}`,
     "BEGIN:VALARM", "TRIGGER:-PT10M", "ACTION:DISPLAY", `DESCRIPTION:${esc(e.action)}`, "END:VALARM",
     "END:VEVENT", "END:VCALENDAR",

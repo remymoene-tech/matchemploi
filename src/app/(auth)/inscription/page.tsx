@@ -3,7 +3,7 @@ import { FormAuth } from "@/components/FormAuth";
 import { inscription } from "../actions";
 import { ecoleParCode } from "@/lib/ecoles";
 
-export const metadata = { title: "Créer mon espace · MagnusJob" };
+export const metadata = { title: "Créer mon espace · MagnusMatch" };
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ ecole?: string }> }) {
   const code = (await searchParams).ecole ?? "";
