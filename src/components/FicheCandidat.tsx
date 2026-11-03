@@ -51,7 +51,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
   const ids = matchs.map((m) => m.offre_id);
   const { data: oData } = ids.length ? await db.from("offres").select("*").in("id", ids) : { data: [] };
   const O = new Map(((oData ?? []) as Offre[]).map((o) => [o.id, o]));
-  const lignes = matchs.filter((m) => O.get(m.offre_id)?.ouverte && m.score >= SCORE_ORANGE);
+  const lignes = matchs.filter((m) => O.get(m.offre_id)?.ouverte && m.score >= SCORE_ORANGE).sort((a, b) => b.score - a.score);
   const pistes = (c.pistes ?? []) as Piste[];
   const k = c.cv_conseils;
 
