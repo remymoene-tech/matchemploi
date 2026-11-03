@@ -4,6 +4,9 @@ import type { Candidat } from "@/lib/types";
 import { Copier } from "@/components/Copier";
 import { BoutonAnalyser, FormCV } from "@/components/FormCV";
 import { SchemaPourCategorie } from "@/components/SchemasCV";
+import { BoutonSynthese } from "@/components/BoutonSynthese";
+import { CvRendu } from "@/components/CvRendu";
+import { genererMonCvAmeliore } from "../actions";
 
 export const metadata = { title: "Mon CV · Jobaprox" };
 export const maxDuration = 300;
@@ -86,6 +89,32 @@ export default async function MonCV({ searchParams }: { searchParams: Promise<{ 
       </section>
 
       {blocCV}
+
+      <section className="card flex flex-col gap-3 p-5" style={{ borderColor: "var(--accent)" }}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <span className="eyebrow">Une vraie aide</span>
+            <h2 className="text-lg font-semibold">Ton CV amélioré par Jobaprox</h2>
+            <p className="max-w-[60ch] text-sm text-muted">
+              Jobaprox réécrit ton CV en appliquant ses conseils : une description de ton projet en haut, tes expériences détaillées avec des verbes d&apos;action,
+              tes compétences classées. Il n&apos;invente rien : ce qui manque est marqué « à compléter ».
+            </p>
+          </div>
+          <BoutonSynthese candidatId={user.id} action={genererMonCvAmeliore} actif libelle={c?.cv_ameliore ? "Le refaire" : "Créer mon CV amélioré"} />
+        </div>
+        {c?.cv_ameliore && (
+          <>
+            {!!c.cv_ameliore.a_completer?.length && (
+              <p className="rounded-lg bg-warn-soft p-3 text-sm"><b>À compléter :</b> {c.cv_ameliore.a_completer.join(" · ")}</p>
+            )}
+            <div className="max-h-[520px] overflow-auto rounded-lg border border-line"><CvRendu cv={c.cv_ameliore} compact /></div>
+            <div className="flex flex-wrap gap-2">
+              <Link className="btn btn-primary" href={`/cv/${user.id}`}>Voir en grand et l&apos;enregistrer en PDF</Link>
+            </div>
+            <p className="hint">Relis-le, complète ce qui manque et adapte-le avec tes mots avant de l&apos;envoyer.</p>
+          </>
+        )}
+      </section>
 
       {(k.mise_en_page || k.description_proposee) && (
         <section className="grid gap-3 md:grid-cols-2">

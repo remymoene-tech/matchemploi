@@ -367,3 +367,46 @@ ${management}`,
     "medium",
   );
 }
+
+// ---------- 7. CV amélioré (réécriture fidèle, sans rien inventer) ----------
+const CvAmelioreSchema = z.object({
+  nom: z.string(),
+  titre: z.string().describe("Titre du CV : poste visé et type de contrat, ex. « Assistante commerciale en alternance »"),
+  accroche: z.string().describe("2 à 3 lignes à la 1re personne : qui je suis, ce que je cherche (poste, contrat, rythme, date, lieu)"),
+  coordonnees: z.array(z.string()).describe("Ville, email, téléphone, permis… uniquement ceux connus"),
+  experiences: z.array(z.object({
+    poste: z.string(),
+    entreprise: z.string(),
+    lieu: z.string(),
+    dates: z.string().describe("Dates telles que dans le CV, ou « [à compléter] »"),
+    missions: z.array(z.string()).describe("2 à 4 missions, chacune commence par un verbe d'action ; chiffres uniquement s'ils sont dans le CV"),
+  })),
+  formations: z.array(z.object({ diplome: z.string(), etablissement: z.string(), dates: z.string() })),
+  competences: z.array(z.object({ categorie: z.string().describe("ex. Relation client, Outils, Langues"), elements: z.array(z.string()) })),
+  centres_interet: z.array(z.string()).describe("0 à 4, seulement s'ils sont dans le CV"),
+  a_completer: z.array(z.string()).describe("Liste des informations manquantes que le candidat doit ajouter lui-même"),
+});
+export type CvAmeliore = z.infer<typeof CvAmelioreSchema>;
+
+export async function ameliorerCV(c: Candidat, conseils: string) {
+  return demander(
+    CvAmelioreSchema,
+    `Tu es conseiller en recrutement. Réécris le CV de ce candidat pour le poste qu'il vise, dans une structure sobre et efficace.
+
+RÈGLES ABSOLUES :
+- N'invente RIEN : aucune expérience, aucune entreprise, aucune date, aucun diplôme, aucun chiffre qui ne figure pas dans son CV ou son profil.
+- Si une information utile manque (dates, ville, nom d'entreprise), écris « [à compléter] » et ajoute-la dans "a_completer".
+- Reformule les missions avec des verbes d'action et des phrases concrètes, en gardant le sens exact.
+- Écris une accroche personnelle à partir de son projet, sans formules toutes faites (« dynamique et motivé », « passionné »…).
+- N'indique ni âge, ni date de naissance, ni photo, ni nationalité, ni situation familiale.
+- Expériences de la plus récente à la plus ancienne.
+
+Conseils déjà donnés sur son CV, à appliquer : ${conseils || "aucun"}
+
+CANDIDAT
+Nom : ${c.nom}
+Email : ${c.email}${c.telephone ? ` · Téléphone : ${c.telephone}` : ""}
+${profil(c)}`,
+    "medium",
+  );
+}

@@ -117,3 +117,10 @@ h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; }
 @keyframes monte { from { transform: translateY(10px); opacity: .6; } to { transform: none; opacity: 1; } }
 .monte { animation: monte .7s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .monte { animation: none; } }
+
+/* Impression du CV : page blanche, sans marges inutiles */
+@media print {
+  @page { margin: 12mm; }
+  body { background: #fff !important; }
+  main { padding: 0 !important; max-width: none !important; }
+}

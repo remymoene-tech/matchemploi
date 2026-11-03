@@ -18,6 +18,6 @@ export function BoutonFiche({ candidat, offre, forcer, libelle }: { candidat: st
   );
 }
 
-export function BoutonImprimer() {
-  return <button type="button" className="btn btn-sm print:hidden" onClick={() => window.print()}>Imprimer la fiche</button>;
+export function BoutonImprimer({ libelle = "Imprimer la fiche" }: { libelle?: string }) {
+  return <button type="button" className="btn btn-sm print:hidden" onClick={() => window.print()}>{libelle}</button>;
 }

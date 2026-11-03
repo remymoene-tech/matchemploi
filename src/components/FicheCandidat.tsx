@@ -7,6 +7,7 @@ import { BILANS } from "@/lib/entretien-conseil";
 import { derniersTests } from "@/lib/tests-serveur";
 import { etatSynthese } from "@/lib/synthese";
 import { BoutonSynthese } from "@/components/BoutonSynthese";
+import { CvRendu } from "@/components/CvRendu";
 import { ResultatDisc, ResultatManagement } from "@/components/ResultatsTests";
 import { COULEURS } from "@/lib/tests";
 import {
@@ -37,11 +38,12 @@ const Ligne = ({ l, v }: { l: string; v: React.ReactNode }) => (
  * Fiche complète d'un candidat pour l'équipe : profil, CV, recherches, offres.
  * Les droits sont vérifiés par la page qui l'affiche.
  */
-export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese }: {
+export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore }: {
   candidatId: string;
   autoriserTest: (f: FormData) => Promise<void>;
   genererSynthese: (e: { erreur?: string }, f: FormData) => Promise<{ erreur?: string }>;
-  onglet?: "profil" | "suivi";
+  onglet?: "profil" | "cv" | "offres" | "suivi";
+  genererCvAmeliore: (e: { erreur?: string }, f: FormData) => Promise<{ erreur?: string }>;
   /** Adresse de cette fiche, pour les liens vers les entretiens (ex. /admin/candidats/<id>). */
   baseFiche: string;
   cheminCV: string;
@@ -59,6 +61,8 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
     db.from("entretiens_conseil").select("id, date_entretien, conseiller, bilan, partage, prochaine_etape").eq("candidat_id", candidatId).order("date_entretien", { ascending: false }),
   ]);
   const tests = await derniersTests(candidatId);
+  // Lien temporaire (10 min) pour afficher le CV directement dans la page
+  const urlCV = c.cv_chemin && onglet === "cv" ? (await db.storage.from("cv").createSignedUrl(c.cv_chemin, 600)).data?.signedUrl ?? null : null;
   const etat = await etatSynthese(candidatId);
   const syn = etat.synthese?.contenu;
   const pret = etat.entretien && etat.disc && etat.management;
@@ -129,17 +133,16 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
       </section>
 
       <nav className="flex gap-1 overflow-x-auto border-b border-line" aria-label="Onglets de la fiche">
-        {[["profil", "Profil et offres"], ["suivi", "Entretiens et tests"]].map(([id, nom]) => (
-          <Link key={id} href={id === "profil" ? baseFiche : `${baseFiche}?onglet=suivi`} aria-current={onglet === id}
+        {([["profil", "Profil"], ["cv", "CV"], ["offres", `Offres (${lignes.length})`], ["suivi", "Tests et entretien"]] as const).map(([id, nom]) => (
+          <Link key={id} href={id === "profil" ? baseFiche : `${baseFiche}?onglet=${id}`} aria-current={onglet === id}
             className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-semibold ${onglet === id ? "border-accent text-ink" : "border-transparent text-muted"}`}>
             {nom}
           </Link>
         ))}
       </nav>
 
-      {onglet === "profil" ? (
+      {onglet === "profil" && (
         <>
-      <div className="grid gap-5 lg:grid-cols-2">
         <Bloc titre="Profil">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
             <Ligne l="Email" v={<span className="select-all">{c.email}</span>} />
@@ -161,7 +164,44 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
           )}
         </Bloc>
 
-        <Bloc titre="CV" action={c.cv_chemin ? <a className="btn btn-sm" href={cheminCV} target="_blank">Ouvrir le PDF</a> : undefined}>
+      <Bloc titre="Recherches">
+        <ul className="flex flex-col gap-2 text-sm">
+          <li className="flex flex-wrap items-center gap-2"><span className="chip chip-tag">Principale</span><b>{c.poste_vise || "—"}</b><span className="text-muted">{c.contrats.map(contratLabel).join(", ")} · {c.mobilite_km} km</span></li>
+          {recherches.map((r) => (
+            <li key={r.id} className={`flex flex-wrap items-center gap-2 ${r.active ? "" : "opacity-60"}`}>
+              <span className="chip">{r.active ? "Active" : "En pause"}</span><b>{r.poste}</b><span className="text-muted">{r.contrats.map(contratLabel).join(", ")} · {r.mobilite_km} km</span>
+            </li>
+          ))}
+        </ul>
+        {!!pistes.length && (
+          <div className="flex flex-col gap-2 border-t border-line pt-3">
+            <span className="eyebrow">Pistes proposées par Jobaprox</span>
+            <ul className="flex flex-col gap-1.5 text-sm">
+              {pistes.map((p) => (
+                <li key={p.metier} className={p.ecartee ? "text-muted line-through" : ""}>
+                  <b>{p.metier}</b> — {p.raison}{p.ecartee && " (écartée par le candidat)"}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </Bloc>
+
+        </>
+      )}
+
+      {onglet === "cv" && (
+        <>
+      {urlCV && (
+        <section className="card flex flex-col gap-2 p-3">
+          <div className="flex items-center justify-between gap-2 px-2">
+            <h2 className="text-lg font-semibold">CV d&apos;origine</h2>
+            <a className="btn btn-sm" href={cheminCV} target="_blank">Ouvrir dans un onglet</a>
+          </div>
+          <iframe src={urlCV} title="CV du candidat" className="h-[75vh] min-h-[480px] w-full rounded-lg border border-line bg-white" />
+        </section>
+      )}
+        <Bloc titre="Analyse du CV par Jobaprox" action={c.cv_chemin ? <a className="btn btn-sm" href={cheminCV} target="_blank">Ouvrir le PDF</a> : undefined}>
           {!c.cv_chemin && <p className="text-sm text-muted">Pas encore de CV déposé.</p>}
           {k && (
             <div className="flex items-start gap-4">
@@ -188,31 +228,30 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
             </div>
           )}
         </Bloc>
-      </div>
 
-      <Bloc titre="Recherches">
-        <ul className="flex flex-col gap-2 text-sm">
-          <li className="flex flex-wrap items-center gap-2"><span className="chip chip-tag">Principale</span><b>{c.poste_vise || "—"}</b><span className="text-muted">{c.contrats.map(contratLabel).join(", ")} · {c.mobilite_km} km</span></li>
-          {recherches.map((r) => (
-            <li key={r.id} className={`flex flex-wrap items-center gap-2 ${r.active ? "" : "opacity-60"}`}>
-              <span className="chip">{r.active ? "Active" : "En pause"}</span><b>{r.poste}</b><span className="text-muted">{r.contrats.map(contratLabel).join(", ")} · {r.mobilite_km} km</span>
-            </li>
-          ))}
-        </ul>
-        {!!pistes.length && (
-          <div className="flex flex-col gap-2 border-t border-line pt-3">
-            <span className="eyebrow">Pistes proposées par Jobaprox</span>
-            <ul className="flex flex-col gap-1.5 text-sm">
-              {pistes.map((p) => (
-                <li key={p.metier} className={p.ecartee ? "text-muted line-through" : ""}>
-                  <b>{p.metier}</b> — {p.raison}{p.ecartee && " (écartée par le candidat)"}
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+      <Bloc
+        titre="CV amélioré par Jobaprox"
+        action={<BoutonSynthese candidatId={candidatId} action={genererCvAmeliore} actif={Boolean(c.cv_texte)} libelle={c.cv_ameliore ? "Le régénérer" : "Générer le CV amélioré"} />}
+      >
+        {!c.cv_texte && <p className="text-sm text-muted">Le CV doit d&apos;abord être déposé et analysé.</p>}
+        {c.cv_ameliore ? (
+          <>
+            <p className="text-sm text-muted">
+              Réécrit par Jobaprox à partir de son CV et de son profil, sans rien inventer : les informations manquantes sont marquées « à compléter ».
+              L&apos;étudiant le voit aussi dans « Mon CV ».
+            </p>
+            <div className="overflow-hidden rounded-lg border border-line"><CvRendu cv={c.cv_ameliore} compact /></div>
+            <Link className="btn btn-sm w-fit" href={`/cv/${candidatId}`} target="_blank">Ouvrir pour imprimer ou enregistrer en PDF</Link>
+          </>
+        ) : c.cv_texte ? (
+          <p className="text-sm text-muted">Jobaprox réécrit le CV dans une mise en page sobre, avec une description du projet, des expériences détaillées et des compétences claires.</p>
+        ) : null}
       </Bloc>
+        </>
+      )}
 
+      {onglet === "offres" && (
+        <>
       <Bloc titre={`Ses offres (${lignes.length})`}>
         {!!points.length && (
           <Carte
@@ -265,7 +304,9 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         </ul>
       </Bloc>
         </>
-      ) : (
+      )}
+
+      {onglet === "suivi" && (
         <>
       <Bloc
         titre="Synthèse globale"

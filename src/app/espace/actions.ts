@@ -12,6 +12,7 @@ import { ecoleParCode } from "@/lib/ecoles";
 import { genererPreparation } from "@/lib/preparation";
 import { enregistrerTest } from "@/lib/tests-serveur";
 import { peutPasserTest } from "@/lib/synthese";
+import { genererCvAmeliore } from "@/lib/cv-ameliore";
 import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
 import { rechercherPourCandidat } from "@/lib/matching";
@@ -296,3 +297,11 @@ async function passerMonTest(test: TestId, f: FormData): Promise<EtatTest> {
 }
 export async function passerTestDisc(_: EtatTest, f: FormData) { return passerMonTest("disc", f); }
 export async function passerTestManagement(_: EtatTest, f: FormData) { return passerMonTest("management", f); }
+
+/* ---------- CV amélioré ---------- */
+export async function genererMonCvAmeliore(): Promise<{ erreur?: string }> {
+  const { user } = await exigerUtilisateur();
+  const r = await genererCvAmeliore(user.id);
+  if (!r.erreur) revalidatePath("/espace/cv");
+  return r;
+}

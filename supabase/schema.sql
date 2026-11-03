@@ -278,3 +278,9 @@ create table if not exists public.syntheses_candidat (
   created_at  timestamptz not null default now()
 );
 alter table public.syntheses_candidat enable row level security; -- serveur uniquement
+
+-- ============================================================
+-- CV amélioré par Jobaprox
+-- ============================================================
+alter table public.candidats add column if not exists cv_ameliore jsonb;
+alter table public.candidats add column if not exists cv_ameliore_le timestamptz;

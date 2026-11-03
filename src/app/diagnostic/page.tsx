@@ -48,7 +48,9 @@ create policy "étudiant lit ses tests" on public.tests_resultats for select usi
 create table if not exists public.tests_autorisations (candidat_id uuid not null references public.candidats(user_id) on delete cascade, test text not null, autorise_par text not null default '', created_at timestamptz not null default now(), primary key (candidat_id, test));
 alter table public.tests_autorisations enable row level security;
 create table if not exists public.syntheses_candidat (candidat_id uuid primary key references public.candidats(user_id) on delete cascade, contenu jsonb not null, genere_par text not null default '', created_at timestamptz not null default now());
-alter table public.syntheses_candidat enable row level security;`;
+alter table public.syntheses_candidat enable row level security;
+alter table public.candidats add column if not exists cv_ameliore jsonb;
+alter table public.candidats add column if not exists cv_ameliore_le timestamptz;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -75,6 +77,7 @@ async function verifierBase() {
     db.from("tests_resultats").select("id").limit(1),
     db.from("tests_autorisations").select("test").limit(1),
     db.from("syntheses_candidat").select("candidat_id").limit(1),
+    db.from("candidats").select("cv_ameliore").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -99,6 +102,7 @@ async function verifierBase() {
     "Résultats des tests (DISC, management)",
     "Autorisations pour repasser un test",
     "Synthèse globale du candidat",
+    "CV amélioré par Jobaprox",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

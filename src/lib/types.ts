@@ -55,6 +55,8 @@ export type Candidat = {
   cv_texte: string;
   competences: string[];
   cv_conseils?: CvConseils | null;
+  cv_ameliore?: import("@/lib/ia").CvAmeliore | null;
+  cv_ameliore_le?: string | null;
   mots_cles: string;
   consentement: boolean;
   alertes_email: boolean;

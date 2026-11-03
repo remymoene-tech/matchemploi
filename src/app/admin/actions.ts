@@ -15,6 +15,7 @@ import { envoyerMessageCorrespondance, type EtatEnvoi } from "@/lib/envoi-messag
 import { enregistrerEntretienConseil } from "@/lib/entretien-conseil-serveur";
 import { enregistrerTest } from "@/lib/tests-serveur";
 import { genererSynthese } from "@/lib/synthese";
+import { genererCvAmeliore } from "@/lib/cv-ameliore";
 import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
 import type { EtatEntretien } from "@/components/FormEntretienConseil";
@@ -197,6 +198,14 @@ export async function genererSyntheseAdmin(_: { erreur?: string }, f: FormData):
   const { user } = await exigerAdmin();
   const candidat = t(f, "candidat_id", 60);
   const r = await genererSynthese(candidat, user.email ?? "");
+  if (!r.erreur) revalidatePath(`/admin/candidats/${candidat}`);
+  return r;
+}
+
+export async function genererCvAmelioreAdmin(_: { erreur?: string }, f: FormData): Promise<{ erreur?: string }> {
+  await exigerAdmin();
+  const candidat = t(f, "candidat_id", 60);
+  const r = await genererCvAmeliore(candidat);
   if (!r.erreur) revalidatePath(`/admin/candidats/${candidat}`);
   return r;
 }

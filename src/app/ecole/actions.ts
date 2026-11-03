@@ -14,6 +14,7 @@ import { envoyerMessageCorrespondance, type EtatEnvoi } from "@/lib/envoi-messag
 import { enregistrerEntretienConseil } from "@/lib/entretien-conseil-serveur";
 import { enregistrerTest } from "@/lib/tests-serveur";
 import { genererSynthese } from "@/lib/synthese";
+import { genererCvAmeliore } from "@/lib/cv-ameliore";
 import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
 import type { EtatEntretien } from "@/components/FormEntretienConseil";
@@ -170,6 +171,15 @@ export async function genererSyntheseEcole(_: { erreur?: string }, f: FormData):
   const candidat = t(f, "candidat_id", 60);
   if (!(await etudiantDeLEcole(candidat, ecole.id))) return { erreur: "Cet étudiant n'appartient pas à ton école." };
   const r = await genererSynthese(candidat, user.email ?? "");
+  if (!r.erreur) revalidatePath(`/ecole/etudiants/${candidat}`);
+  return r;
+}
+
+export async function genererCvAmelioreEcole(_: { erreur?: string }, f: FormData): Promise<{ erreur?: string }> {
+  const { ecole } = await exigerResponsable();
+  const candidat = t(f, "candidat_id", 60);
+  if (!(await etudiantDeLEcole(candidat, ecole.id))) return { erreur: "Cet étudiant n'appartient pas à ton école." };
+  const r = await genererCvAmeliore(candidat);
   if (!r.erreur) revalidatePath(`/ecole/etudiants/${candidat}`);
   return r;
 }
