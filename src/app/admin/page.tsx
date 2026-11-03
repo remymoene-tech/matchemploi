@@ -136,7 +136,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 <div className="grid gap-4 md:grid-cols-[5rem_1fr_14rem]">
                   <Score score={m.score} seuil={SEUIL} />
                   <div className="flex min-w-0 flex-col gap-1.5">
-                    <h2 className="text-lg font-semibold">{c.nom || c.email} <span className="text-muted">→</span> {o.entreprise || "Entreprise"}</h2>
+                    <h2 className="text-lg font-semibold"><Link href={`/admin/candidats/${c.user_id}`} className="hover:text-accent hover:underline">{c.nom || c.email}</Link> <span className="text-muted">→</span> {o.entreprise || "Entreprise"}</h2>
                     <p className="text-sm text-muted">{[o.intitule, o.lieu, o.contrat_libelle || contratLabel(o.contrat)].filter(Boolean).join(" · ")}</p>
                     <p className="text-sm">{m.resume}</p>
                     <Chips forts={m.forts} manques={m.manques} />
@@ -202,7 +202,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 <article key={c.user_id} className="card flex flex-col gap-2 p-5">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <h2 className="text-lg font-semibold">{c.nom || c.email}</h2>
+                      <h2 className="text-lg font-semibold"><Link href={`/admin/candidats/${c.user_id}`} className="hover:text-accent hover:underline">{c.nom || c.email}</Link></h2>
                       <p className="text-sm text-muted">{c.formation || "Formation non précisée"}</p>
                     </div>
                     <span className="flex flex-col items-end text-right font-mono text-sm">
@@ -218,6 +218,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                   </dl>
                   <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-sm">
                     {c.cv_chemin ? <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">Ouvrir le CV</a> : <span className="text-muted">Pas de CV</span>}
+                    <Link className="btn btn-sm" href={`/admin/candidats/${c.user_id}`}>Voir la fiche complète →</Link>
                     {!c.consentement && <span className="chip chip-minus">Accord RGPD manquant</span>}
                   </div>
                 </article>
