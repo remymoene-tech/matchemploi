@@ -426,8 +426,76 @@ Conseils déjà donnés sur son CV, à appliquer : ${conseils || "aucun"}
 
 CANDIDAT
 Nom : ${c.nom}
-Email : ${c.email}${c.telephone ? ` · Téléphone : ${c.telephone}` : ""}
+Email : ${c.email}${c.telephone ? ` · Téléphone : ${c.telephone}` : ""}${c.linkedin_url ? ` · LinkedIn : ${c.linkedin_url.replace(/^https?:\/\/(www\.)?/, "")}` : ""}
 ${profil(c)}`,
     "medium",
   );
+}
+
+// ---------- LinkedIn : analyse d'un profil (PDF et/ou captures) ou kit de création ----------
+export const CATEGORIES_LINKEDIN = ["Photo", "Bannière", "Titre", "Infos", "Expériences", "Formation", "Compétences", "Recommandations", "Réseau", "Activité", "Paramètres", "Cohérence avec le CV"] as const;
+const LinkedinSchema = z.object({
+  note: z.number().int().min(0).max(10).describe("Note du profil sur 10 ; 0 s'il n'y a pas encore de profil"),
+  resume: z.string().describe("2 phrases maximum, en tutoyant : impression générale, ou encouragement à créer son profil"),
+  points_forts: z.array(z.string()).describe("0 à 3 points forts du profil, phrases courtes"),
+  photo_banniere: z.string().describe("Avis sur la photo et la bannière si une capture les montre, sinon chaîne vide"),
+  titre_propose: z.string().describe("Titre LinkedIn proposé (sous le nom), 220 caractères maximum, ex. « Futur conseiller de vente en alternance · BTS NDRC · Salon-de-Provence »"),
+  infos_proposee: z.string().describe("Texte « Infos » proposé, 4 à 6 phrases à la 1re personne, vrai et personnel, sans formule toute faite"),
+  competences_a_mettre: z.array(z.string()).describe("Les 5 compétences à mettre en avant, avec les mots que les recruteurs recherchent"),
+  ameliorations: z.array(z.object({
+    categorie: z.enum(CATEGORIES_LINKEDIN),
+    priorite: z.enum(["important", "conseillé"]),
+    conseil: z.string().describe("Conseil concret, en tutoyant, 1 à 2 phrases"),
+    exemple: z.string().describe("Exemple de réécriture (avant → après) ou chaîne vide"),
+  })).describe("3 à 8 améliorations, les plus importantes en premier"),
+  mots_cles_manquants: z.array(z.string()).describe("Mots-clés du métier visé absents du profil (vide s'il n'y a pas de profil)"),
+  ecarts_cv: z.array(z.string()).describe("Différences entre le profil et le CV (dates, postes, intitulés), vide si aucune ou pas de profil"),
+});
+export type AnalyseLinkedin = z.infer<typeof LinkedinSchema> & { mode: "analyse" | "creation" };
+
+export async function analyserLinkedin(
+  fichiers: { type: "pdf" | "image"; media: string; data: string }[],
+  c: Pick<Candidat, "poste_vise" | "projet" | "formation" | "cv_texte" | "competences" | "contrats" | "ville">,
+): Promise<AnalyseLinkedin> {
+  const creation = !fichiers.length;
+  const blocs: Anthropic.ContentBlockParam[] = fichiers.map((f) =>
+    f.type === "pdf"
+      ? { type: "document", source: { type: "base64", media_type: "application/pdf", data: f.data } }
+      : { type: "image", source: { type: "base64", media_type: f.media as "image/png" | "image/jpeg" | "image/webp" | "image/gif", data: f.data } },
+  );
+  const profil = `Poste visé : ${c.poste_vise || "non précisé"} · Contrats : ${c.contrats?.join(", ") || "non précisé"} · Ville : ${c.ville || "non précisée"}
+Formation : ${c.formation || "non précisée"}
+Projet (ses mots) : ${c.projet || "non précisé"}
+Compétences du CV : ${c.competences?.join(", ") || "—"}
+CV (texte) : ${(c.cv_texte || "pas de CV déposé").slice(0, 3500)}`;
+  const consigne = creation
+    ? `Cette personne n'a PAS encore de profil LinkedIn. Prépare son kit de départ à partir de son CV et de son projet :
+- note = 0, points_forts vide, photo_banniere vide, mots_cles_manquants et ecarts_cv vides ;
+- titre_propose, infos_proposee et competences_a_mettre prêts à copier ;
+- ameliorations = les étapes les plus utiles pour créer un bon profil (photo, bannière, titre, infos, expériences, formation, compétences, réseau, paramètres « Open to work » visible des recruteurs seulement), adaptées à son métier.`
+    : `Voici son profil LinkedIn (PDF et/ou captures d'écran). Comme un conseiller en insertion bienveillant, aide-la à l'améliorer pour le poste visé :
+- note honnête et encourageante, points forts ;
+- photo et bannière : seulement si une capture les montre. Commente UNIQUEMENT la technique et la présentation (cadrage, netteté, lumière, fond, tenue adaptée au métier, bannière par défaut ou personnalisée). Ne commente JAMAIS le physique, l'âge, l'apparence, la couleur de peau, la coiffure, ni un signe religieux ou culturel ;
+- titre, section Infos, expériences (trop vagues ? résultats ? verbes d'action), formation, compétences, recommandations, réseau, activité ;
+- mots-clés du métier qui manquent ; différences avec le CV ;
+- titre_propose et infos_proposee : versions améliorées prêtes à copier, avec des éléments vrais tirés de son profil et de son CV.`;
+  const r = await demander(
+    LinkedinSchema,
+    [
+      ...blocs,
+      {
+        type: "text",
+        text: `${consigne}
+
+N'invente aucun fait (diplôme, entreprise, date, chiffre) : si une information manque, écris « [à compléter] ».
+Pas de formules creuses (« dynamique et motivé », « passionné », « force de proposition »). Tutoie la personne, reste concret.
+N'utilise jamais l'âge, le sexe, l'origine, la religion, la situation familiale ni le handicap.
+
+Son profil MagnusMatch :
+${profil}`,
+      },
+    ],
+    "medium",
+  );
+  return { ...r, mode: creation ? "creation" : "analyse" };
 }

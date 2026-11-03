@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { exigerUtilisateur } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { iaConfiguree, motsClesDepuisProfil } from "@/lib/ia";
+import { analyserLinkedin, iaConfiguree, motsClesDepuisProfil } from "@/lib/ia";
 import { analyserCV, cheminCV, majCandidat, stockerCV, telechargerCV } from "@/lib/cv";
 import { localiserCommune } from "@/lib/geo";
 import { ecoleParCode } from "@/lib/ecoles";
@@ -304,4 +304,54 @@ export async function genererMonCvAmeliore(): Promise<{ erreur?: string }> {
   const r = await genererCvAmeliore(user.id);
   if (!r.erreur) revalidatePath("/espace/cv");
   return r;
+}
+
+/* ---------- Réseau : LinkedIn ---------- */
+export type EtatLinkedin = { erreur?: string; ok?: string };
+
+export async function enregistrerLinkedinUrl(_: EtatLinkedin, f: FormData): Promise<EtatLinkedin> {
+  const { user } = await exigerUtilisateur();
+  let url = String(f.get("linkedin_url") ?? "").trim();
+  if (url && !/^https?:\/\//.test(url)) url = `https://${url}`;
+  if (url && !/^https:\/\/([a-z]{2,3}\.)?linkedin\.com\/in\/[^\s/]+\/?$/i.test(url)) {
+    return { erreur: "Colle l'adresse de ton profil, du type https://www.linkedin.com/in/prenom-nom" };
+  }
+  const { error } = await createAdminClient().from("candidats").update({ linkedin_url: url }).eq("user_id", user.id);
+  if (error) return { erreur: "Enregistrement impossible : la base n'est pas encore à jour (voir /diagnostic)." };
+  revalidatePath("/espace/reseau");
+  return { ok: url ? "Adresse enregistrée ✓" : "Adresse retirée." };
+}
+
+const TYPES_OK = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
+
+/** Analyse du profil LinkedIn (PDF et/ou captures), ou kit de création si aucun fichier. */
+export async function analyserMonLinkedin(_: EtatLinkedin, f: FormData): Promise<EtatLinkedin> {
+  const { user, supabase } = await exigerUtilisateur();
+  if (!iaConfiguree()) return { erreur: "L'analyse n'est pas encore activée sur le site." };
+  const creation = f.get("mode") === "creation";
+  const fichiers: { type: "pdf" | "image"; media: string; data: string }[] = [];
+  if (!creation) {
+    const tous = f.getAll("fichiers").filter((x): x is File => x instanceof File && x.size > 0);
+    if (!tous.length) return { erreur: "Ajoute le PDF de ton profil ou au moins une capture d'écran." };
+    if (tous.length > 5) return { erreur: "5 fichiers maximum (1 PDF et 4 captures par exemple)." };
+    let total = 0;
+    for (const x of tous) {
+      if (!TYPES_OK.includes(x.type)) return { erreur: `« ${x.name} » : seuls les PDF et les images (PNG, JPG) sont acceptés.` };
+      total += x.size;
+      fichiers.push({ type: x.type === "application/pdf" ? "pdf" : "image", media: x.type, data: Buffer.from(await x.arrayBuffer()).toString("base64") });
+    }
+    if (total > 3.8 * 1024 * 1024) return { erreur: "Fichiers trop lourds : 3,8 Mo maximum au total." };
+  }
+  const { data: c } = await supabase.from("candidats").select("*").eq("user_id", user.id).maybeSingle<Candidat>();
+  if (!c) return { erreur: "Complète d'abord ton profil." };
+  try {
+    const analyse = await analyserLinkedin(fichiers, c);
+    const { error } = await createAdminClient().from("candidats")
+      .update({ linkedin_analyse: analyse, linkedin_le: new Date().toISOString() }).eq("user_id", user.id);
+    if (error) return { erreur: "Enregistrement impossible : la base n'est pas encore à jour (voir /diagnostic)." };
+  } catch (e) {
+    return { erreur: `L'analyse n'a pas pu se faire, réessaie dans un instant. ${e instanceof Error ? e.message : ""}` };
+  }
+  revalidatePath("/espace/reseau");
+  return { ok: "C'est prêt ✓" };
 }

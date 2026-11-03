@@ -306,3 +306,8 @@ create index if not exists echanges_candidat_idx on public.echanges(candidat_id,
 -- Relance avec date ET heure (notification dans le site)
 alter table public.echanges add column if not exists action_a timestamptz;
 create index if not exists echanges_relances_idx on public.echanges(auteur, action_faite, action_a);
+
+-- Réseau : adresse et analyse du profil LinkedIn
+alter table public.candidats add column if not exists linkedin_url text not null default '';
+alter table public.candidats add column if not exists linkedin_analyse jsonb;
+alter table public.candidats add column if not exists linkedin_le timestamptz;

@@ -57,6 +57,9 @@ export type Candidat = {
   cv_conseils?: CvConseils | null;
   cv_ameliore?: import("@/lib/ia").CvAmeliore | null;
   cv_ameliore_le?: string | null;
+  linkedin_url?: string | null;
+  linkedin_analyse?: import("@/lib/ia").AnalyseLinkedin | null;
+  linkedin_le?: string | null;
   mots_cles: string;
   consentement: boolean;
   alertes_email: boolean;

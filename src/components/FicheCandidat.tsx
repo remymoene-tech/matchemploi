@@ -8,6 +8,7 @@ import { derniersTests } from "@/lib/tests-serveur";
 import { etatSynthese } from "@/lib/synthese";
 import { BoutonSynthese } from "@/components/BoutonSynthese";
 import { CvRendu } from "@/components/CvRendu";
+import { ResultatLinkedin } from "@/components/ResultatLinkedin";
 import { FormEchange } from "@/components/FormEchange";
 import { TYPES_ECHANGE, echangesDuCandidat, echeance, maintenantMs } from "@/lib/echanges";
 import { ResultatDisc, ResultatManagement } from "@/components/ResultatsTests";
@@ -277,6 +278,14 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         ) : c.cv_texte ? (
           <p className="text-sm text-muted">MagnusMatch réécrit le CV dans une mise en page sobre, avec une description du projet, des expériences détaillées et des compétences claires.</p>
         ) : null}
+      </Bloc>
+      <Bloc titre="Réseau · LinkedIn">
+        {c.linkedin_url
+          ? <a href={c.linkedin_url} target="_blank" rel="noopener noreferrer" className="w-fit font-semibold text-accent hover:underline">Ouvrir son profil LinkedIn ↗</a>
+          : <p className="text-sm text-muted">Pas encore d&apos;adresse LinkedIn renseignée.</p>}
+        {c.linkedin_analyse
+          ? <ResultatLinkedin a={c.linkedin_analyse} le={c.linkedin_le} staff />
+          : <p className="text-sm text-muted">L&apos;étudiant n&apos;a pas encore fait analyser son profil (Mon profil → CV et réseau → Réseau).</p>}
       </Bloc>
         </>
       )}

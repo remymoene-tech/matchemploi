@@ -57,7 +57,10 @@ create table if not exists public.echanges (id uuid primary key default gen_rand
 alter table public.echanges enable row level security;
 create index if not exists echanges_candidat_idx on public.echanges(candidat_id, date_echange desc);
 alter table public.echanges add column if not exists action_a timestamptz;
-create index if not exists echanges_relances_idx on public.echanges(auteur, action_faite, action_a);`;
+create index if not exists echanges_relances_idx on public.echanges(auteur, action_faite, action_a);
+alter table public.candidats add column if not exists linkedin_url text not null default '';
+alter table public.candidats add column if not exists linkedin_analyse jsonb;
+alter table public.candidats add column if not exists linkedin_le timestamptz;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -87,6 +90,7 @@ async function verifierBase() {
     db.from("candidats").select("cv_ameliore").limit(1),
     db.from("echanges").select("id").limit(1),
     db.from("echanges").select("action_a").limit(1),
+    db.from("candidats").select("linkedin_url, linkedin_analyse, linkedin_le").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -114,6 +118,7 @@ async function verifierBase() {
     "CV amélioré par MagnusMatch",
     "Journal des échanges",
     "Relances avec date et heure",
+    "Réseau : profil LinkedIn",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }
@@ -201,7 +206,7 @@ export default async function Diagnostic() {
             <p className="text-sm text-muted">{t.detail}</p>
             {nom === "La bonne alternance" && (
               <details className="text-sm">
-                <summary className="cursor-pointer font-semibold text-accent">Rappel : SQL à exécuter une seule fois (ce bloc reste toujours affiché, même quand c'est fait)</summary>
+                <summary className="cursor-pointer font-semibold text-accent">Rappel : SQL à exécuter une seule fois (ce bloc reste toujours affiché, même quand c&apos;est fait)</summary>
                 <p className="mt-1 text-muted">Copie ce texte dans Supabase → Éditeur SQL → Nouvelle requête, puis Exécuter.</p>
                 <pre className="mt-1 whitespace-pre-wrap break-all rounded-lg bg-bg p-3 font-mono text-xs">{SQL_LBA}</pre>
                 <div className="mt-2"><Copier texte={SQL_LBA} /></div>

@@ -7,6 +7,7 @@ import { SchemaPourCategorie } from "@/components/SchemasCV";
 import { BoutonSynthese } from "@/components/BoutonSynthese";
 import { CvRendu } from "@/components/CvRendu";
 import { genererMonCvAmeliore } from "../actions";
+import { OngletsProfil } from "@/components/OngletsProfil";
 
 export const metadata = { title: "Mon CV · MagnusMatch" };
 export const maxDuration = 300;
@@ -38,7 +39,7 @@ export default async function MonCV({ searchParams }: { searchParams: Promise<{ 
   if (!k) {
     return (
       <div className="mx-auto flex max-w-3xl flex-col gap-6">
-        <h1 className="text-3xl font-extrabold">Mon CV</h1>
+        <OngletsProfil actif="cv" />
         {nouveau && c?.cv_chemin && (
           <p className="rounded-xl bg-good-soft p-4 text-sm text-good">
             Ton profil est enregistré et la recherche d&apos;offres a démarré. <Link className="font-semibold underline" href="/espace">Voir mes offres</Link>
@@ -69,6 +70,7 @@ export default async function MonCV({ searchParams }: { searchParams: Promise<{ 
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
+      <OngletsProfil actif="cv" />
       {nouveau && (
         <p className="rounded-xl bg-good-soft p-4 text-sm text-good">
           Ton profil est enregistré et la recherche d&apos;offres a démarré. En attendant, voici l&apos;avis sur ton CV.{" "}
@@ -82,7 +84,7 @@ export default async function MonCV({ searchParams }: { searchParams: Promise<{ 
           <span className="eyebrow mt-2">Ton CV</span>
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-2">
-          <h1 className="text-2xl font-extrabold">L&apos;avis sur ton CV</h1>
+          <h2 className="text-2xl font-extrabold">L&apos;avis sur ton CV</h2>
           <p>{k.resume}</p>
           {c?.poste_vise && <p className="text-sm text-muted">Analysé pour le poste visé : {c.poste_vise}</p>}
         </div>
