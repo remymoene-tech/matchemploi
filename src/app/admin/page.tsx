@@ -9,7 +9,8 @@ import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
 import { MessageEnvoyable } from "@/components/MessageEnvoyable";
 import { ListeRelances } from "@/components/ListeRelances";
-import { echeance, maintenantMs, relancesDe } from "@/lib/echanges";
+import { Barres, Colonnes } from "@/components/Graphiques";
+import { maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
 import { ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
@@ -20,12 +21,14 @@ export const metadata = { title: "Admin · MagnusMatch" };
 export const maxDuration = 300;
 
 const VUES = [
-  { id: "accueil", label: "Tableau de bord" },
-  { id: "correspondances", label: "Correspondances" },
-  { id: "candidats", label: "Candidats" },
-  { id: "offres", label: "Offres" },
-  { id: "entretiens", label: "Entretiens" },
+  { id: "accueil", label: "Accueil" },
+  { id: "offres", label: "Mes offres" },
+  { id: "candidats", label: "Mes candidats" },
+] as const;
+/** Pages secondaires, en petit à droite des onglets. */
+const AUTRES = [
   { id: "relances", label: "Relances" },
+  { id: "entretiens", label: "Entretiens" },
   { id: "ecoles", label: "Écoles" },
   { id: "reglages", label: "Réglages" },
 ] as const;
@@ -33,7 +36,7 @@ const VUES = [
 export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
-  const vue = VUES.some((v) => v.id === sp.vue) ? sp.vue! : "accueil";
+  const vue = sp.vue === "correspondances" ? "offres" : [...VUES, ...AUTRES].some((v) => v.id === sp.vue) ? sp.vue! : "accueil";
   const db = createAdminClient();
 
   const [{ data: ecolesData, error: ecolesErreur }, { data: respData }, { data: entData, error: entErreur }] = await Promise.all([
@@ -64,46 +67,36 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const O = new Map(((offresMatch ?? []) as Offre[]).map((o) => [o.id, o]));
   const toutes = M.filter((m) => C.has(m.candidat_id) && O.get(m.offre_id)?.ouverte);
   const equipe = toutes.filter((m) => estOffreEquipe(O.get(m.offre_id)!.source));
-  const voirToutes = sp.source === "toutes";
+  const voirToutes = false; // seules les offres de l'équipe
   // À traiter d'abord, puis les meilleures notes
   const lignes = (voirToutes ? toutes : equipe).sort(
     (a, b) => Number(b.suivi === "a_traiter") - Number(a.suivi === "a_traiter") || b.score - a.score,
   );
   const aTraiter = equipe.filter((m) => m.suivi === "a_traiter").length;
 
-  // ---- Tableau de bord ----
-  const tousCandidats = [...C.values()];
+  // ---- Accueil : chiffres et graphiques ----
+  const tousCandidats = [...C.values()] as (Candidat & { created_at?: string })[];
   const maintenant = maintenantMs();
-  const ilYa7j = new Date(maintenant - 7 * 864e5).toISOString();
-  const nouveaux = tousCandidats.filter((c) => (c as Candidat & { created_at?: string }).created_at && (c as Candidat & { created_at?: string }).created_at! >= ilYa7j).length;
-  const avecCV = tousCandidats.filter((c) => c.cv_chemin).length;
-  const sansEntretien = tousCandidats.filter((c) => !dernierEntretien.has(c.user_id));
-  const SOURCES_TB = [
-    { id: "france_travail", label: "France Travail" },
-    { id: "adzuna", label: "Adzuna" },
-    { id: "la_bonne_alternance", label: "La bonne alternance" },
-    { id: "partenaire", label: "Vos offres" },
-    { id: "externe", label: "Annonces collées" },
-  ];
-  const [comptes, { count: nbInteresses }, { count: nbPostules }, mesRelances] = await Promise.all([
-    vue === "accueil"
-      ? Promise.all(SOURCES_TB.map((x) => db.from("offres").select("id", { count: "exact", head: true }).eq("source", x.id).eq("ouverte", true)))
-      : Promise.resolve([]),
-    db.from("correspondances").select("id", { count: "exact", head: true }).eq("avis_candidat", "interesse"),
-    db.from("correspondances").select("id", { count: "exact", head: true }).eq("avis_candidat", "postule"),
-    vue === "accueil" ? relancesDe(moi.user.email ?? "") : Promise.resolve([]),
-  ]);
-  const parSource = SOURCES_TB.map((x, i) => ({ ...x, n: comptes[i]?.count ?? 0 }));
-  const totalOffres = parSource.reduce((t, x) => t + x.n, 0);
-  const maxSource = Math.max(1, ...parSource.map((x) => x.n));
-  const pipeline = SUIVIS.map((x) => ({ ...x, n: equipe.filter((m) => m.suivi === x.id).length }));
-  const finJour = new Date(); finJour.setHours(23, 59, 59, 999);
-  const relancesDuJour = mesRelances.filter((r) => { const d = echeance(r); return d && d <= finJour; });
-  const meilleure = new Map<string, number>();
-  for (const m of toutes) meilleure.set(m.candidat_id, Math.max(meilleure.get(m.candidat_id) ?? 0, m.score));
-  const recents = [...tousCandidats]
-    .sort((a, b) => ((b as Candidat & { created_at?: string }).created_at ?? "").localeCompare((a as Candidat & { created_at?: string }).created_at ?? ""))
-    .slice(0, 8);
+  const SEMAINE = 7 * 864e5;
+  const nouveaux = tousCandidats.filter((c) => c.created_at && new Date(c.created_at).getTime() >= maintenant - SEMAINE).length;
+  const mesOffresOuvertes = ((offres ?? []) as Offre[]).filter((o) => o.ouverte).length;
+  const [{ count: nbInteresses }, { count: nbPostules }, { count: nbRefus }] = await Promise.all(
+    ["interesse", "postule", "pas_interesse"].map((avis) =>
+      db.from("correspondances").select("id", { count: "exact", head: true }).eq("avis_candidat", avis),
+    ),
+  );
+  // Nouveaux candidats sur les 8 dernières semaines (de la plus ancienne à la plus récente)
+  const semaines = Array.from({ length: 8 }, (_, i) => {
+    const fin = maintenant - (7 - i) * SEMAINE, debut = fin - SEMAINE;
+    const n = tousCandidats.filter((c) => { const t = c.created_at ? new Date(c.created_at).getTime() : 0; return t > debut && t <= fin; }).length;
+    const jour = new Date(debut + 864e5).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" });
+    return { label: i === 7 ? "Cette sem." : jour, valeur: n, detail: `Semaine du ${jour} : ${n} inscrit${n > 1 ? "s" : ""}` };
+  });
+  const pipeline = SUIVIS.map((x) => ({ label: x.label, valeur: equipe.filter((m) => m.suivi === x.id).length }));
+  const parEcole = [
+    ...ecoles.map((e) => ({ label: e.nom, valeur: tousCandidats.filter((c) => c.ecole_id === e.id).length })),
+    { label: "Sans école", valeur: tousCandidats.filter((c) => !c.ecole_id).length },
+  ].filter((x) => x.valeur).sort((x, y) => y.valeur - x.valeur).slice(0, 6);
 
   return (
     <div className="flex flex-col gap-6">
@@ -131,218 +124,66 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       {sp.ok && vue !== "reglages" && vue !== "ecoles" && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Offre enregistrée. Elle est comparée aux candidats en arrière-plan.</p>}
       {sp.relance && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Recherche relancée pour tous les candidats. Les résultats arrivent dans quelques minutes.</p>}
 
-      <nav className="flex gap-1 overflow-x-auto border-b border-line">
-        {VUES.map((v) => (
-          <Link key={v.id} href={`/admin?vue=${v.id}`}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-semibold ${vue === v.id ? "border-accent text-ink" : "border-transparent text-muted"}`}>
-            {v.label}
-          </Link>
-        ))}
-      </nav>
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-line">
+        <nav className="flex gap-1 overflow-x-auto" aria-label="Espace équipe">
+          {VUES.map((v) => (
+            <Link key={v.id} href={`/admin?vue=${v.id}`} aria-current={vue === v.id ? "page" : undefined}
+              className={`-mb-px border-b-2 px-4 py-2.5 text-[15px] font-semibold ${vue === v.id ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"}`}>
+              {v.label}
+            </Link>
+          ))}
+        </nav>
+        <nav className="flex flex-wrap gap-3 pb-2.5 text-sm" aria-label="Autres pages">
+          {AUTRES.map((v) => (
+            <Link key={v.id} href={`/admin?vue=${v.id}`} className={vue === v.id ? "font-semibold text-ink underline underline-offset-4" : "text-muted hover:text-ink"}>{v.label}</Link>
+          ))}
+        </nav>
+      </div>
 
       {vue === "accueil" && (
         <div className="flex flex-col gap-6">
-          <section className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Chiffres clés">
+          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Chiffres clés">
             {([
-              ["Candidats inscrits", C.size, nouveaux ? `+${nouveaux} cette semaine` : `${avecCV} avec un CV`, "/admin?vue=candidats"],
-              ["Offres disponibles", totalOffres, `dont ${parSource[3].n + parSource[4].n} de l'équipe`, "/admin?vue=offres"],
-              ["À traiter", aTraiter, `duos ≥ ${SEUIL} % sur vos offres`, "/admin?vue=correspondances"],
-              ["Mes relances du jour", relancesDuJour.length, mesRelances.length ? `${mesRelances.length} en attente au total` : "aucune en attente", "/admin?vue=relances"],
-              ["Candidats intéressés", nbInteresses ?? 0, "« Ça m'intéresse »", "/admin?vue=correspondances&source=toutes"],
-              ["Candidatures envoyées", nbPostules ?? 0, "« J'ai postulé »", "/admin?vue=correspondances&source=toutes"],
-              ["Sans entretien", sansEntretien.length, "candidats jamais reçus", "/admin?vue=entretiens"],
-              ["CV déposés", `${avecCV}/${C.size}`, C.size ? `${Math.round((avecCV / C.size) * 100)} % des candidats` : "—", "/admin?vue=candidats"],
-            ] as const).map(([l, v, sous, href], i) => (
-              <Link key={l} href={href} className={`card flex flex-col gap-0.5 p-4 transition-colors hover:border-accent ${i === 2 && aTraiter ? "border-accent" : ""}`}>
+              ["Candidats", C.size, nouveaux ? `+${nouveaux} cette semaine` : "inscrits", "/admin?vue=candidats"],
+              ["Mes offres", mesOffresOuvertes, "offres ouvertes", "/admin?vue=offres"],
+              ["À traiter", aTraiter, `candidats à ${SEUIL} % ou plus`, "/admin?vue=offres#a-traiter"],
+              ["Candidatures", nbPostules ?? 0, "« J'ai postulé »", "/admin?vue=candidats"],
+            ] as const).map(([l, v, sous, href]) => (
+              <Link key={l} href={href} className="card flex flex-col gap-0.5 p-5 transition-colors hover:border-accent">
                 <span className="eyebrow">{l}</span>
-                <b className="text-3xl font-semibold tabular-nums">{v}</b>
-                <span className="text-xs text-muted">{sous}</span>
+                <b className="text-4xl font-semibold tabular-nums">{v}</b>
+                <span className="text-sm text-muted">{sous}</span>
               </Link>
             ))}
           </section>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <section className="card flex flex-col gap-3 p-5">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold">À traiter maintenant</h2>
-                <Link href="/admin?vue=correspondances" className="text-sm font-semibold text-accent">Tout voir →</Link>
-              </div>
-              {!aTraiter && <p className="text-sm text-muted">Rien à traiter : aucun nouveau duo à {SEUIL} % ou plus sur vos offres.</p>}
-              <ul className="flex flex-col divide-y divide-line">
-                {equipe.filter((m) => m.suivi === "a_traiter").sort((a, b) => b.score - a.score).slice(0, 5).map((m) => {
-                  const c = C.get(m.candidat_id)!, o = O.get(m.offre_id)!;
-                  return (
-                    <li key={`${m.candidat_id}-${m.offre_id}`} className="flex items-center gap-3 py-2">
-                      <Score score={m.score} seuil={SEUIL} />
-                      <div className="min-w-0 text-sm">
-                        <Link href={`/admin/candidats/${c.user_id}?onglet=offres`} className="font-semibold hover:text-accent hover:underline">{c.nom || c.email}</Link>
-                        <p className="truncate text-muted">{o.intitule} · {o.entreprise}</p>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
+            <section className="card flex flex-col gap-4 p-5">
+              <h2 className="text-lg font-semibold">Nouveaux candidats par semaine</h2>
+              <Colonnes donnees={semaines} resume={`Inscriptions des 8 dernières semaines : ${semaines.map((x) => x.valeur).join(", ")}`} />
             </section>
-
-            <section className="card flex flex-col gap-3 p-5">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold">Mes relances du jour</h2>
-                <Link href="/admin?vue=relances" className="text-sm font-semibold text-accent">Toutes mes relances →</Link>
-              </div>
-              {!relancesDuJour.length && <p className="text-sm text-muted">Aucune relance prévue aujourd&apos;hui.</p>}
-              <ul className="flex flex-col divide-y divide-line">
-                {relancesDuJour.slice(0, 5).map((r) => {
-                  const d = echeance(r)!;
-                  const retard = d.getTime() < maintenant;
-                  return (
-                    <li key={r.id} className="flex items-start justify-between gap-3 py-2 text-sm">
-                      <div className="min-w-0">
-                        <Link href={`/admin/candidats/${r.candidat_id}?onglet=echanges`} className="font-semibold hover:text-accent hover:underline">{r.nom}</Link>
-                        <p className="text-muted">{r.action}</p>
-                      </div>
-                      <span className={`chip shrink-0 ${retard ? "chip-minus" : "chip-tag"}`}>
-                        {retard ? "En retard" : d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
+            <section className="card flex flex-col gap-4 p-5">
+              <h2 className="text-lg font-semibold">Suivi de mes offres</h2>
+              <Barres donnees={pipeline} resume="Nombre de mises en relation à chaque étape" />
+            </section>
+            <section className="card flex flex-col gap-4 p-5">
+              <h2 className="text-lg font-semibold">Réaction des candidats aux offres</h2>
+              <Barres
+                donnees={[
+                  { label: "Ça m'intéresse", valeur: nbInteresses ?? 0 },
+                  { label: "J'ai postulé", valeur: nbPostules ?? 0 },
+                  { label: "Pas pour moi", valeur: nbRefus ?? 0 },
+                ]}
+                resume="Réponses des candidats aux offres proposées"
+              />
+            </section>
+            <section className="card flex flex-col gap-4 p-5">
+              <h2 className="text-lg font-semibold">Candidats par école</h2>
+              {parEcole.length
+                ? <Barres donnees={parEcole} resume="Nombre de candidats par école" />
+                : <p className="text-sm text-muted">Aucun candidat pour l&apos;instant.</p>}
             </section>
           </div>
-
-          <section className="card flex flex-col gap-3 p-5">
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-lg font-semibold">Suivi des mises en relation</h2>
-              <span className="text-sm text-muted">sur vos offres, duos à {SEUIL} % ou plus</span>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              {pipeline.map((p) => (
-                <div key={p.id} className={`rounded-lg p-3 ${p.id === "embauche" ? "bg-good-soft" : p.id === "refus" ? "bg-bg" : "bg-accent-soft"}`}>
-                  <b className="text-2xl font-semibold tabular-nums">{p.n}</b>
-                  <p className="text-xs text-muted">{p.label}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <div className="grid gap-4 lg:grid-cols-3">
-            <section className="card flex flex-col gap-3 p-5 lg:col-span-2">
-              <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold">Derniers candidats inscrits</h2>
-                <Link href="/admin?vue=candidats" className="text-sm font-semibold text-accent">Tous les candidats →</Link>
-              </div>
-              {!recents.length && <p className="text-sm text-muted">Aucun candidat inscrit pour l&apos;instant.</p>}
-              <ul className="flex flex-col divide-y divide-line">
-                {recents.map((c) => {
-                  const best = meilleure.get(c.user_id);
-                  return (
-                    <li key={c.user_id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-                      <div className="min-w-0">
-                        <Link href={`/admin/candidats/${c.user_id}`} className="font-semibold hover:text-accent hover:underline">{c.nom || c.email}</Link>
-                        <p className="text-muted">{[c.poste_vise, c.ville, ecoles.find((x) => x.id === c.ecole_id)?.nom].filter(Boolean).join(" · ") || "Profil à compléter"}</p>
-                      </div>
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className={`chip ${c.cv_chemin ? "chip-plus" : "chip-minus"}`}>{c.cv_chemin ? "CV ✓" : "Sans CV"}</span>
-                        {!dernierEntretien.has(c.user_id) && <span className="chip">Pas d&apos;entretien</span>}
-                        {best != null && <span className="chip chip-tag">Meilleure offre {best} %</span>}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </section>
-
-            <section className="card flex flex-col gap-3 p-5">
-              <h2 className="text-lg font-semibold">Offres par source</h2>
-              <ul className="flex flex-col gap-2.5">
-                {parSource.map((x) => (
-                  <li key={x.id} className="flex flex-col gap-1 text-sm">
-                    <div className="flex justify-between"><span>{x.label}</span><b className="tabular-nums">{x.n}</b></div>
-                    <div className="h-2 overflow-hidden rounded-full bg-bg"><div className="h-full rounded-full bg-[var(--sauge)]" style={{ width: `${(x.n / maxSource) * 100}%` }} /></div>
-                  </li>
-                ))}
-              </ul>
-              <p className="text-xs text-muted">Offres ouvertes récupérées pour vos candidats, plus celles de l&apos;équipe.</p>
-            </section>
-          </div>
-        </div>
-      )}
-
-      {vue === "correspondances" && (
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <p className="max-w-[70ch] text-muted">
-              Les candidats ne voient pas les offres de l&apos;équipe : c&apos;est toi qui fais le lien. Ouvre « Préparer les messages » pour écrire à l&apos;étudiant et à l&apos;entreprise{moyenEnvoi() ? ", et envoie-les directement d'ici" : ""}.
-            </p>
-            <div className="flex rounded-lg border border-line p-0.5" role="group" aria-label="Offres affichées">
-              <Link href="/admin" aria-current={!voirToutes} className={`rounded-md px-3 py-1 font-semibold ${!voirToutes ? "bg-accent text-accent-ink" : "text-muted"}`}>Vos offres ({equipe.length})</Link>
-              <Link href="/admin?source=toutes" aria-current={voirToutes} className={`rounded-md px-3 py-1 font-semibold ${voirToutes ? "bg-accent text-accent-ink" : "text-muted"}`}>Toutes les sources ({toutes.length})</Link>
-            </div>
-          </div>
-          {!lignes.length && (
-            <p className="card border-dashed p-6 text-sm text-muted">
-              Aucune correspondance à {SEUIL} % ou plus {voirToutes ? "" : "sur vos offres "}pour l&apos;instant. Ajoute les offres de tes entreprises partenaires : elles sont comparées à tous les candidats.
-            </p>
-          )}
-          {lignes.map((m) => {
-            const c = C.get(m.candidat_id)!, o = O.get(m.offre_id)!;
-            const signature = ecoles.find((e) => e.id === c.ecole_id)?.nom ?? "L'équipe MagnusMatch";
-            const mEtu = messageEtudiant(c, o, m, signature), mEnt = messageEntreprise(c, o, m, signature);
-            const aContacter = estOffreEquipe(o.source);
-            return (
-              <article key={m.candidat_id + m.offre_id} className={`card flex flex-col gap-4 p-5 ${m.suivi === "a_traiter" ? "" : "opacity-90"}`}>
-                <div className="grid gap-4 md:grid-cols-[5rem_1fr_14rem]">
-                  <Score score={m.score} seuil={SEUIL} />
-                  <div className="flex min-w-0 flex-col gap-1.5">
-                    <h2 className="text-lg font-semibold"><Link href={`/admin/candidats/${c.user_id}`} className="hover:text-accent hover:underline">{c.nom || c.email}</Link> <span className="text-muted">→</span> {o.entreprise || "Entreprise"}</h2>
-                    <p className="text-sm text-muted">{[o.intitule, o.lieu, o.contrat_libelle || contratLabel(o.contrat)].filter(Boolean).join(" · ")}</p>
-                    <p className="text-sm">{m.resume}</p>
-                    <Chips forts={m.forts} manques={m.manques} />
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
-                      <span className={`chip ${aContacter ? "chip-tag" : ""}`}>{aContacter ? "Votre offre" : sourceLabel(o.source)}</span>
-                      {!c.consentement && <span className="chip chip-minus">Accord RGPD manquant</span>}
-                      {o.lien && <a className="font-semibold text-accent" href={o.lien} target="_blank" rel="noopener noreferrer">Voir l&apos;annonce</a>}
-                      {c.cv_chemin && <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">CV du candidat</a>}
-                      <a className="font-semibold text-accent" href={`/entretien/${c.user_id}/${o.id}`}>{m.preparation_le ? "Fiche entretien ✓" : "Fiche entretien"}</a>
-                    </div>
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    {!aContacter && (
-                      <>
-                        <span className="eyebrow">Avis du candidat</span>
-                        <span className={`chip w-fit ${m.avis_candidat === "interesse" || m.avis_candidat === "postule" ? "chip-plus" : ""}`}>
-                          {AVIS.find((a) => a.id === m.avis_candidat)?.label}
-                        </span>
-                      </>
-                    )}
-                    <span className="eyebrow">Suivi</span>
-                    <form action={changerSuivi}>
-                      <input type="hidden" name="candidat_id" value={m.candidat_id} />
-                      <input type="hidden" name="offre_id" value={m.offre_id} />
-                      <SelectAuto name="suivi" label="Suivi" defaultValue={m.suivi} options={SUIVIS} />
-                    </form>
-                  </div>
-                </div>
-                <details className="rounded-lg border border-line p-3" open={aContacter && m.suivi === "a_traiter" && lignes.indexOf(m) === 0}>
-                  <summary className="cursor-pointer text-sm font-semibold text-accent">Préparer les messages</summary>
-                  <div className="mt-3 grid gap-4 md:grid-cols-2">
-                    <MessageEnvoyable
-                      titre="Message étudiant" cible="etudiant" candidatId={c.user_id} offreId={o.id}
-                      email={c.email} autresCoordonnees={c.telephone ? `Téléphone : ${c.telephone}` : ""}
-                      objet={mEtu.objet} texte={mEtu.texte} action={envoyerMessageAdmin} envoiPossible={Boolean(moyenEnvoi())}
-                    />
-                    <MessageEnvoyable
-                      titre="Message entreprise" cible="entreprise" candidatId={c.user_id} offreId={o.id}
-                      email={o.contact_email}
-                      autresCoordonnees={[o.contact_nom, o.contact_tel && `Téléphone : ${o.contact_tel}`, !o.contact_email && o.lien && "Pas d'email : postuler via le lien de l'annonce"].filter(Boolean).join(" · ")}
-                      objet={mEnt.objet} texte={mEnt.texte} action={envoyerMessageAdmin} envoiPossible={Boolean(moyenEnvoi())}
-                    />
-                  </div>
-                  {!c.consentement && <p className="mt-3 rounded-lg bg-warn-soft p-2 text-sm">Le candidat n&apos;a pas coché l&apos;accord RGPD : demande-lui avant de transmettre son profil.</p>}
-                </details>
-              </article>
-            );
-          })}
         </div>
       )}
 
@@ -574,6 +415,81 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             </article>
           ))}
           {!offres?.length && <p className="card border-dashed p-6 text-sm text-muted">Aucune offre ajoutée par l&apos;équipe. Les offres France Travail sont cherchées automatiquement pour chaque candidat.</p>}
+        </div>
+      )}
+
+      {vue === "offres" && (
+        <div id="a-traiter" className="flex flex-col gap-3">
+          <h2 className="mt-4 text-xl font-semibold">Candidats qui correspondent à mes offres</h2>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+            <p className="max-w-[70ch] text-muted">
+              Les candidats ne voient pas les offres de l&apos;équipe : c&apos;est toi qui fais le lien. Ouvre « Préparer les messages » pour écrire à l&apos;étudiant et à l&apos;entreprise{moyenEnvoi() ? ", et envoie-les directement d'ici" : ""}.
+            </p>
+          </div>
+          {!lignes.length && (
+            <p className="card border-dashed p-6 text-sm text-muted">
+              Aucune correspondance à {SEUIL} % ou plus {voirToutes ? "" : "sur vos offres "}pour l&apos;instant. Ajoute les offres de tes entreprises partenaires : elles sont comparées à tous les candidats.
+            </p>
+          )}
+          {lignes.map((m) => {
+            const c = C.get(m.candidat_id)!, o = O.get(m.offre_id)!;
+            const signature = ecoles.find((e) => e.id === c.ecole_id)?.nom ?? "L'équipe MagnusMatch";
+            const mEtu = messageEtudiant(c, o, m, signature), mEnt = messageEntreprise(c, o, m, signature);
+            const aContacter = estOffreEquipe(o.source);
+            return (
+              <article key={m.candidat_id + m.offre_id} className={`card flex flex-col gap-4 p-5 ${m.suivi === "a_traiter" ? "" : "opacity-90"}`}>
+                <div className="grid gap-4 md:grid-cols-[5rem_1fr_14rem]">
+                  <Score score={m.score} seuil={SEUIL} />
+                  <div className="flex min-w-0 flex-col gap-1.5">
+                    <h2 className="text-lg font-semibold"><Link href={`/admin/candidats/${c.user_id}`} className="hover:text-accent hover:underline">{c.nom || c.email}</Link> <span className="text-muted">→</span> {o.entreprise || "Entreprise"}</h2>
+                    <p className="text-sm text-muted">{[o.intitule, o.lieu, o.contrat_libelle || contratLabel(o.contrat)].filter(Boolean).join(" · ")}</p>
+                    <p className="text-sm">{m.resume}</p>
+                    <Chips forts={m.forts} manques={m.manques} />
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                      <span className={`chip ${aContacter ? "chip-tag" : ""}`}>{aContacter ? "Votre offre" : sourceLabel(o.source)}</span>
+                      {!c.consentement && <span className="chip chip-minus">Accord RGPD manquant</span>}
+                      {o.lien && <a className="font-semibold text-accent" href={o.lien} target="_blank" rel="noopener noreferrer">Voir l&apos;annonce</a>}
+                      {c.cv_chemin && <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">CV du candidat</a>}
+                      <a className="font-semibold text-accent" href={`/entretien/${c.user_id}/${o.id}`}>{m.preparation_le ? "Fiche entretien ✓" : "Fiche entretien"}</a>
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {!aContacter && (
+                      <>
+                        <span className="eyebrow">Avis du candidat</span>
+                        <span className={`chip w-fit ${m.avis_candidat === "interesse" || m.avis_candidat === "postule" ? "chip-plus" : ""}`}>
+                          {AVIS.find((a) => a.id === m.avis_candidat)?.label}
+                        </span>
+                      </>
+                    )}
+                    <span className="eyebrow">Suivi</span>
+                    <form action={changerSuivi}>
+                      <input type="hidden" name="candidat_id" value={m.candidat_id} />
+                      <input type="hidden" name="offre_id" value={m.offre_id} />
+                      <SelectAuto name="suivi" label="Suivi" defaultValue={m.suivi} options={SUIVIS} />
+                    </form>
+                  </div>
+                </div>
+                <details className="rounded-lg border border-line p-3" open={aContacter && m.suivi === "a_traiter" && lignes.indexOf(m) === 0}>
+                  <summary className="cursor-pointer text-sm font-semibold text-accent">Préparer les messages</summary>
+                  <div className="mt-3 grid gap-4 md:grid-cols-2">
+                    <MessageEnvoyable
+                      titre="Message étudiant" cible="etudiant" candidatId={c.user_id} offreId={o.id}
+                      email={c.email} autresCoordonnees={c.telephone ? `Téléphone : ${c.telephone}` : ""}
+                      objet={mEtu.objet} texte={mEtu.texte} action={envoyerMessageAdmin} envoiPossible={Boolean(moyenEnvoi())}
+                    />
+                    <MessageEnvoyable
+                      titre="Message entreprise" cible="entreprise" candidatId={c.user_id} offreId={o.id}
+                      email={o.contact_email}
+                      autresCoordonnees={[o.contact_nom, o.contact_tel && `Téléphone : ${o.contact_tel}`, !o.contact_email && o.lien && "Pas d'email : postuler via le lien de l'annonce"].filter(Boolean).join(" · ")}
+                      objet={mEnt.objet} texte={mEnt.texte} action={envoyerMessageAdmin} envoiPossible={Boolean(moyenEnvoi())}
+                    />
+                  </div>
+                  {!c.consentement && <p className="mt-3 rounded-lg bg-warn-soft p-2 text-sm">Le candidat n&apos;a pas coché l&apos;accord RGPD : demande-lui avant de transmettre son profil.</p>}
+                </details>
+              </article>
+            );
+          })}
         </div>
       )}
     </div>
