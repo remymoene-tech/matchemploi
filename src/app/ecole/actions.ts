@@ -11,6 +11,8 @@ import { SUIVIS_PREPARATION, genererPreparation } from "@/lib/preparation";
 import { noterOffrePourTous, rechercherPourCandidat } from "@/lib/matching";
 import { CONTRATS, SUIVIS, contactManquant } from "@/lib/types";
 import { envoyerMessageCorrespondance, type EtatEnvoi } from "@/lib/envoi-message";
+import { enregistrerEntretienConseil } from "@/lib/entretien-conseil-serveur";
+import type { EtatEntretien } from "@/components/FormEntretienConseil";
 
 const t = (f: FormData, k: string, max = 300) => String(f.get(k) ?? "").trim().slice(0, max);
 
@@ -125,4 +127,15 @@ export async function envoyerMessageEcole(_: EtatEnvoi, f: FormData): Promise<Et
   const r = await envoyerMessageCorrespondance(f, { nom: ecole.nom, email: user.email! });
   revalidatePath("/ecole");
   return r;
+}
+
+export async function enregistrerEntretienEcole(_: EtatEntretien, f: FormData): Promise<EtatEntretien> {
+  const { user, ecole } = await exigerResponsable();
+  const candidat = t(f, "candidat_id", 60);
+  if (!(await etudiantDeLEcole(candidat, ecole.id))) return { erreur: "Cet étudiant n'appartient pas à ton école." };
+  const r = await enregistrerEntretienConseil(f, candidat, { email: user.email! });
+  if (r.erreur) return { erreur: r.erreur };
+  revalidatePath(`/ecole/etudiants/${candidat}`);
+  if (!f.get("id")) redirect(`/ecole/etudiants/${candidat}/entretien/${r.id}?ok=1`);
+  return { ok: "Fiche enregistrée." };
 }

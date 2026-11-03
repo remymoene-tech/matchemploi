@@ -12,6 +12,8 @@ import { localiserLieu } from "@/lib/geo";
 import { SUIVIS_PREPARATION, genererPreparation } from "@/lib/preparation";
 import { genererCode } from "@/lib/ecoles";
 import { envoyerMessageCorrespondance, type EtatEnvoi } from "@/lib/envoi-message";
+import { enregistrerEntretienConseil } from "@/lib/entretien-conseil-serveur";
+import type { EtatEntretien } from "@/components/FormEntretienConseil";
 import { FREQUENCES, ecrireFrequence, type Frequence } from "@/lib/reglages";
 
 const t = (f: FormData, k: string, max = 300) => String(f.get(k) ?? "").trim().slice(0, max);
@@ -156,4 +158,14 @@ export async function envoyerMessageAdmin(_: EtatEnvoi, f: FormData): Promise<Et
   const r = await envoyerMessageCorrespondance(f, { nom: process.env.NOM_EXPEDITEUR || "L'équipe Jobaprox", email: user.email! });
   revalidatePath("/admin");
   return r;
+}
+
+export async function enregistrerEntretienAdmin(_: EtatEntretien, f: FormData): Promise<EtatEntretien> {
+  const { user } = await exigerAdmin();
+  const candidat = t(f, "candidat_id", 60);
+  const r = await enregistrerEntretienConseil(f, candidat, { email: user.email! });
+  if (r.erreur) return { erreur: r.erreur };
+  revalidatePath(`/admin/candidats/${candidat}`);
+  if (!f.get("id")) redirect(`/admin/candidats/${candidat}/entretien/${r.id}?ok=1`);
+  return { ok: "Fiche enregistrée." };
 }

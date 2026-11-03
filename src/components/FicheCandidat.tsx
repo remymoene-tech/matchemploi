@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
 import { Carte, type PointOffre } from "@/components/Carte";
+import { BILANS } from "@/lib/entretien-conseil";
 import {
   AVIS, SCORE_ORANGE, SEUIL, SUIVIS, contratLabel, estOffreEquipe, sourceLabel,
   type Candidat, type Correspondance, type Offre, type Piste, type Recherche,
@@ -31,8 +32,10 @@ const Ligne = ({ l, v }: { l: string; v: React.ReactNode }) => (
  * Fiche complète d'un candidat pour l'équipe : profil, CV, recherches, offres.
  * Les droits sont vérifiés par la page qui l'affiche.
  */
-export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi }: {
+export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche }: {
   candidatId: string;
+  /** Adresse de cette fiche, pour les liens vers les entretiens (ex. /admin/candidats/<id>). */
+  baseFiche: string;
   cheminCV: string;
   retour: { href: string; libelle: string };
   changerSuivi: (f: FormData) => Promise<void>;
@@ -41,11 +44,13 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
   const { data: c } = await db.from("candidats").select("*").eq("user_id", candidatId).single<Candidat>();
   if (!c) return <p className="card p-6">Candidat introuvable.</p>;
 
-  const [{ data: rData }, { data: mData }, { data: eData }] = await Promise.all([
+  const [{ data: rData }, { data: mData }, { data: eData }, { data: entData }] = await Promise.all([
     db.from("recherches").select("*").eq("candidat_id", candidatId).order("created_at"),
     db.from("correspondances").select("*").eq("candidat_id", candidatId).order("score", { ascending: false }).limit(300),
     c.ecole_id ? db.from("ecoles").select("nom").eq("id", c.ecole_id).maybeSingle() : Promise.resolve({ data: null }),
+    db.from("entretiens_conseil").select("id, date_entretien, conseiller, bilan, partage, prochaine_etape").eq("candidat_id", candidatId).order("date_entretien", { ascending: false }),
   ]);
+  const entretiens = (entData ?? []) as { id: string; date_entretien: string; conseiller: string; bilan: string; partage: boolean; prochaine_etape: string }[];
   const recherches = (rData ?? []) as Recherche[];
   const matchs = (mData ?? []) as Correspondance[];
   const ids = matchs.map((m) => m.offre_id);
@@ -145,6 +150,26 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
           )}
         </Bloc>
       </div>
+
+      <Bloc titre="Entretiens avec l'école" action={<Link className="btn btn-primary btn-sm" href={`${baseFiche}/entretien/nouveau`}>Nouvel entretien</Link>}>
+        {!entretiens.length && <p className="text-sm text-muted">Aucun entretien enregistré. Clique sur « Nouvel entretien » pendant ou après ton rendez-vous avec l&apos;étudiant.</p>}
+        <ul className="flex flex-col gap-2">
+          {entretiens.map((e) => (
+            <li key={e.id}>
+              <Link href={`${baseFiche}/entretien/${e.id}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line p-3 text-sm hover:border-accent">
+                <span className="flex flex-col">
+                  <b>{dateFr(e.date_entretien)}{e.conseiller ? ` · ${e.conseiller}` : ""}</b>
+                  {e.prochaine_etape && <span className="text-muted">Prochaine étape : {e.prochaine_etape.slice(0, 120)}</span>}
+                </span>
+                <span className="flex flex-wrap gap-1.5">
+                  {e.bilan && <span className={`chip ${e.bilan === "autonome" ? "chip-plus" : e.bilan === "renforce" ? "chip-minus" : "chip-tag"}`}>{BILANS.find((b) => b.id === e.bilan)?.label.split(" :")[0]}</span>}
+                  <span className="chip">{e.partage ? "Partagé avec l'étudiant" : "Privé"}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Bloc>
 
       <Bloc titre="Recherches">
         <ul className="flex flex-col gap-2 text-sm">

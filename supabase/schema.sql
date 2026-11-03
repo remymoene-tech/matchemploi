@@ -212,3 +212,29 @@ alter table public.correspondances add column if not exists recherche_id uuid re
 alter table public.correspondances add column if not exists piste text;   -- métier voisin proposé par Jobaprox
 alter table public.candidats add column if not exists pistes jsonb;
 alter table public.candidats add column if not exists pistes_le timestamptz;
+
+-- ============================================================
+-- Entretiens conseiller ↔ étudiant (fiche d'entretien de l'école)
+-- ============================================================
+create table if not exists public.entretiens_conseil (
+  id              uuid primary key default gen_random_uuid(),
+  candidat_id     uuid not null references public.candidats(user_id) on delete cascade,
+  conseiller      text not null default '',
+  conseiller_email text not null default '',
+  date_entretien  date not null default current_date,
+  formation       text not null default '',
+  zone            text not null default '',
+  reponses        jsonb not null default '{}',   -- cases cochées, réponses et précisions
+  qualites        text not null default '',
+  points_faibles  text not null default '',
+  bilan           text not null default '',
+  observations    text not null default '',
+  prochaine_etape text not null default '',
+  partage         boolean not null default false, -- visible par l'étudiant dans son espace
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now()
+);
+alter table public.entretiens_conseil enable row level security;
+drop policy if exists "étudiant lit ses bilans partagés" on public.entretiens_conseil;
+create policy "étudiant lit ses bilans partagés" on public.entretiens_conseil
+  for select using (auth.uid() = candidat_id and partage);

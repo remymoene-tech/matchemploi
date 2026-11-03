@@ -10,6 +10,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   return (
     <FicheCandidat
       candidatId={id}
+      baseFiche={`/admin/candidats/${id}`}
       cheminCV={`/admin/cv/${id}`}
       retour={{ href: "/admin?vue=candidats", libelle: "Tous les candidats" }}
       changerSuivi={changerSuivi}

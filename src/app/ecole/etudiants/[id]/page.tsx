@@ -15,6 +15,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   return (
     <FicheCandidat
       candidatId={id}
+      baseFiche={`/ecole/etudiants/${id}`}
       cheminCV={`/ecole/cv/${id}`}
       retour={{ href: "/ecole?vue=etudiants", libelle: "Tous mes étudiants" }}
       changerSuivi={changerSuiviEcole}
