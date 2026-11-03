@@ -11,6 +11,7 @@ import { localiserCommune } from "@/lib/geo";
 import { ecoleParCode } from "@/lib/ecoles";
 import { genererPreparation } from "@/lib/preparation";
 import { enregistrerTest } from "@/lib/tests-serveur";
+import { peutPasserTest } from "@/lib/synthese";
 import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
 import { rechercherPourCandidat } from "@/lib/matching";
@@ -280,8 +281,12 @@ export async function ecarterPiste(f: FormData) {
 
 async function passerMonTest(test: TestId, f: FormData): Promise<EtatTest> {
   const { user, supabase } = await exigerUtilisateur();
+  // Un test ne se passe qu'une fois, sauf si l'équipe autorise à le repasser
+  const droit = await peutPasserTest(user.id, test);
+  if (!droit.peut) return { erreur: "Tu as déjà passé ce test. Pour le repasser, demande à ton conseiller." };
   const r = await enregistrerTest(user.id, test, f, "candidat");
   if (r.erreur) return r;
+  if (droit.autorise) await createAdminClient().from("tests_autorisations").delete().eq("candidat_id", user.id).eq("test", test);
   // Sa couleur DISC affine les notes : on relance la notation
   if (test === "disc") {
     await supabase.from("candidats").update({ updated_at: new Date().toISOString(), recherche_en_cours: true }).eq("user_id", user.id);

@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { exigerResponsable } from "@/lib/ecoles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { FicheCandidat } from "@/components/FicheCandidat";
-import { changerSuiviEcole } from "../../actions";
+import { autoriserTestEcole, changerSuiviEcole, genererSyntheseEcole } from "../../actions";
 
 export const metadata = { title: "Fiche étudiant · Jobaprox" };
 
@@ -16,6 +16,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   return (
     <FicheCandidat
       candidatId={id}
+      autoriserTest={autoriserTestEcole}
+      genererSynthese={genererSyntheseEcole}
       onglet={onglet === "suivi" ? "suivi" : "profil"}
       baseFiche={`/ecole/etudiants/${id}`}
       cheminCV={`/ecole/cv/${id}`}

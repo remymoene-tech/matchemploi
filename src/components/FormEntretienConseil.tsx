@@ -119,10 +119,7 @@ export function FormEntretienConseil({ initial, action, nomEtudiant, candidatId 
       </section>
 
       <section className="card flex flex-col gap-3 p-5">
-        <label className="flex items-start gap-3 text-sm">
-          <input type="checkbox" name="partage" defaultChecked={initial.partage} className="mt-0.5 h-4 w-4 accent-[var(--accent)]" />
-          <span><b>Partager le bilan avec l&apos;étudiant</b> : il pourra lire cette fiche dans son espace (sans pouvoir la modifier).</span>
-        </label>
+        <p className="text-sm text-muted">Cette fiche reste confidentielle : seuls l&apos;admin et le responsable de l&apos;école la voient.</p>
         {etat.erreur && <p className="rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad">{etat.erreur}</p>}
         {etat.ok && <p className="rounded-lg bg-good-soft px-3 py-2 text-sm text-good">{etat.ok}</p>}
         <div className="flex flex-wrap justify-end gap-2">

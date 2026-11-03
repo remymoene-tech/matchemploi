@@ -38,7 +38,7 @@ export async function enregistrerEntretienConseil(
     bilan: BILANS.some((b) => b.id === bilan) ? bilan : "",
     observations: txt(f, "observations", 4000),
     prochaine_etape: txt(f, "prochaine_etape", 2000),
-    partage: f.get("partage") === "on",
+    partage: false, // l'entretien n'est jamais montré à l'étudiant
     updated_at: new Date().toISOString(),
   };
   const db = createAdminClient();

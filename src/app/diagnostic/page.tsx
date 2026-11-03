@@ -41,11 +41,14 @@ alter table public.candidats add column if not exists pistes_le timestamptz;
 create table if not exists public.entretiens_conseil (id uuid primary key default gen_random_uuid(), candidat_id uuid not null references public.candidats(user_id) on delete cascade, conseiller text not null default '', conseiller_email text not null default '', date_entretien date not null default current_date, formation text not null default '', zone text not null default '', reponses jsonb not null default '{}', qualites text not null default '', points_faibles text not null default '', bilan text not null default '', observations text not null default '', prochaine_etape text not null default '', partage boolean not null default false, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
 alter table public.entretiens_conseil enable row level security;
 drop policy if exists "étudiant lit ses bilans partagés" on public.entretiens_conseil;
-create policy "étudiant lit ses bilans partagés" on public.entretiens_conseil for select using (auth.uid() = candidat_id and partage);
 create table if not exists public.tests_resultats (id uuid primary key default gen_random_uuid(), candidat_id uuid not null references public.candidats(user_id) on delete cascade, test text not null, reponses jsonb not null default '[]', scores jsonb not null default '{}', dominante text not null default '', passe_par text not null default 'candidat', created_at timestamptz not null default now());
 alter table public.tests_resultats enable row level security;
 drop policy if exists "étudiant lit ses tests" on public.tests_resultats;
-create policy "étudiant lit ses tests" on public.tests_resultats for select using (auth.uid() = candidat_id);`;
+create policy "étudiant lit ses tests" on public.tests_resultats for select using (auth.uid() = candidat_id);
+create table if not exists public.tests_autorisations (candidat_id uuid not null references public.candidats(user_id) on delete cascade, test text not null, autorise_par text not null default '', created_at timestamptz not null default now(), primary key (candidat_id, test));
+alter table public.tests_autorisations enable row level security;
+create table if not exists public.syntheses_candidat (candidat_id uuid primary key references public.candidats(user_id) on delete cascade, contenu jsonb not null, genere_par text not null default '', created_at timestamptz not null default now());
+alter table public.syntheses_candidat enable row level security;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -70,6 +73,8 @@ async function verifierBase() {
     db.from("candidats").select("pistes, pistes_le").limit(1),
     db.from("entretiens_conseil").select("id").limit(1),
     db.from("tests_resultats").select("id").limit(1),
+    db.from("tests_autorisations").select("test").limit(1),
+    db.from("syntheses_candidat").select("candidat_id").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -92,6 +97,8 @@ async function verifierBase() {
     "Pistes proposées par Jobaprox",
     "Fiches d'entretien conseiller",
     "Résultats des tests (DISC, management)",
+    "Autorisations pour repasser un test",
+    "Synthèse globale du candidat",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

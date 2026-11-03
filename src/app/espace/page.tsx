@@ -63,8 +63,6 @@ export default async function Espace() {
   const { data: rechData } = await supabase.from("recherches").select("id, poste, active").eq("candidat_id", user.id).order("created_at");
   const autresRecherches = (rechData ?? []) as { id: string; poste: string; active: boolean }[];
   const pistes = ((c.pistes ?? []) as Piste[]).filter((p) => !p.ecartee);
-  // Bilans d'entretien que l'école a choisi de partager (la base ne renvoie que ceux-là)
-  const { data: bilans } = await supabase.from("entretiens_conseil").select("id, date_entretien, conseiller").eq("candidat_id", user.id).order("date_entretien", { ascending: false });
 
   // Les offres saisies par l'équipe ne sont jamais montrées : c'est l'équipe qui fait le lien
   const visibles = (data ?? []).filter((l) => l.offres?.ouverte && !estOffreEquipe(l.offres.source));
@@ -159,22 +157,6 @@ export default async function Espace() {
           );
         })}
       </section>
-
-      {!!bilans?.length && (
-        <section className="card flex flex-wrap items-center justify-between gap-3 p-4">
-          <div className="flex flex-col">
-            <h2 className="text-base font-semibold">Mon bilan avec mon école</h2>
-            <p className="text-sm text-muted">Le compte rendu de ton entretien avec ton conseiller.</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {bilans.map((b) => (
-              <Link key={b.id} href={`/espace/bilan/${b.id}`} className="btn btn-sm">
-                {new Date(b.date_entretien).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" })}{b.conseiller ? ` · ${b.conseiller}` : ""} →
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
 
       {!!entretiens.length && (
         <section className="card flex flex-col gap-3 p-4" style={{ borderColor: "var(--accent)" }}>

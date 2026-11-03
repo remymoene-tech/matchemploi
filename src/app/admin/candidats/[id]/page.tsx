@@ -1,6 +1,6 @@
 import { exigerAdmin } from "@/lib/auth";
 import { FicheCandidat } from "@/components/FicheCandidat";
-import { changerSuivi } from "../../actions";
+import { autoriserTestAdmin, changerSuivi, genererSyntheseAdmin } from "../../actions";
 
 export const metadata = { title: "Fiche candidat · Jobaprox" };
 
@@ -11,6 +11,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   return (
     <FicheCandidat
       candidatId={id}
+      autoriserTest={autoriserTestAdmin}
+      genererSynthese={genererSyntheseAdmin}
       onglet={onglet === "suivi" ? "suivi" : "profil"}
       baseFiche={`/admin/candidats/${id}`}
       cheminCV={`/admin/cv/${id}`}

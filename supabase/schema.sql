@@ -256,3 +256,25 @@ alter table public.tests_resultats enable row level security;
 drop policy if exists "étudiant lit ses tests" on public.tests_resultats;
 create policy "étudiant lit ses tests" on public.tests_resultats
   for select using (auth.uid() = candidat_id);
+
+-- ============================================================
+-- L'entretien n'est jamais visible par l'étudiant ;
+-- un test ne se repasse que sur autorisation de l'équipe ;
+-- synthèse globale réservée à l'équipe
+-- ============================================================
+drop policy if exists "étudiant lit ses bilans partagés" on public.entretiens_conseil;
+create table if not exists public.tests_autorisations (
+  candidat_id uuid not null references public.candidats(user_id) on delete cascade,
+  test        text not null,
+  autorise_par text not null default '',
+  created_at  timestamptz not null default now(),
+  primary key (candidat_id, test)
+);
+alter table public.tests_autorisations enable row level security; -- serveur uniquement
+create table if not exists public.syntheses_candidat (
+  candidat_id uuid primary key references public.candidats(user_id) on delete cascade,
+  contenu     jsonb not null,
+  genere_par  text not null default '',
+  created_at  timestamptz not null default now()
+);
+alter table public.syntheses_candidat enable row level security; -- serveur uniquement

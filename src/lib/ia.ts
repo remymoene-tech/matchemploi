@@ -321,3 +321,49 @@ ${profil(c)}`,
   );
   return r.pistes.slice(0, 3).map((p) => ({ metier: p.metier, mots_cles: p.mots_cles, raison: p.raison }));
 }
+
+// ---------- 6. Synthèse globale (entretien + tests + profil) ----------
+const SyntheseSchema = z.object({
+  equipe: z.object({
+    portrait: z.string().describe("3 à 4 phrases : qui est ce candidat, sa posture, sa maturité de projet"),
+    points_forts: z.array(z.string()).describe("3 à 5 points forts, concrets"),
+    vigilance: z.array(z.string()).describe("2 à 4 points de vigilance, francs mais respectueux"),
+    accompagnement: z.string().describe("Recommandation d'accompagnement : niveau (autonome / à accompagner / renforcé) et actions concrètes"),
+    postes_adaptes: z.array(z.string()).describe("3 à 5 postes ou types de missions adaptés"),
+    entreprises_adaptees: z.string().describe("Type d'entreprise et de tuteur qui lui conviendrait (taille, ambiance, style de management)"),
+    prochaines_etapes: z.array(z.string()).describe("3 à 5 prochaines étapes concrètes pour l'équipe"),
+  }),
+  etudiant: z.object({
+    message: z.string().describe("3 à 4 phrases en tutoyant, bienveillantes et motivantes, sur ce qui ressort de son profil"),
+    points_forts: z.array(z.string()).describe("3 à 5 atouts, formulés pour lui"),
+    axes_progres: z.array(z.string()).describe("2 à 3 axes de progrès formulés positivement, sans jugement"),
+    postes_adaptes: z.array(z.string()).describe("3 à 5 postes ou missions qui lui correspondent"),
+    conseils: z.array(z.string()).describe("3 à 5 conseils concrets pour sa recherche et ses entretiens"),
+  }),
+});
+export type Synthese = z.infer<typeof SyntheseSchema>;
+
+export async function redigerSynthese(c: Candidat, entretien: string, disc: string, management: string) {
+  return demander(
+    SyntheseSchema,
+    `Tu es conseiller en insertion dans une école en alternance. Rédige la synthèse globale d'un candidat à partir de son profil, de l'entretien mené par son conseiller et de ses deux tests.
+
+Deux versions :
+- "equipe" : pour l'équipe pédagogique uniquement. Franche, précise, utile pour décider de l'accompagnement et des entreprises à lui proposer.
+- "etudiant" : pour le candidat lui-même. Tutoiement, bienveillante, tournée vers la progression. RÈGLE ABSOLUE : ne cite et ne paraphrase JAMAIS les remarques, jugements ou réponses de l'entretien (il ne doit pas savoir ce que le conseiller a noté). Appuie-toi sur ses tests, son CV et son projet, et transforme les difficultés en conseils positifs.
+N'utilise jamais l'âge, le sexe, l'origine, la santé ou la situation familiale. Le DISC et le style de management décrivent des préférences, pas des capacités : présente-les avec nuance.
+
+PROFIL ET CV
+${profil(c)}
+
+ENTRETIEN AVEC LE CONSEILLER (confidentiel)
+${entretien}
+
+TEST DISC
+${disc}
+
+TEST STYLE DE MANAGEMENT
+${management}`,
+    "medium",
+  );
+}

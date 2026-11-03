@@ -14,6 +14,7 @@ import { genererCode } from "@/lib/ecoles";
 import { envoyerMessageCorrespondance, type EtatEnvoi } from "@/lib/envoi-message";
 import { enregistrerEntretienConseil } from "@/lib/entretien-conseil-serveur";
 import { enregistrerTest } from "@/lib/tests-serveur";
+import { genererSynthese } from "@/lib/synthese";
 import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
 import type { EtatEntretien } from "@/components/FormEntretienConseil";
@@ -182,3 +183,20 @@ async function passerTestPour(test: TestId, f: FormData): Promise<EtatTest> {
 }
 export async function passerTestDiscAdmin(_: EtatTest, f: FormData) { return passerTestPour("disc", f); }
 export async function passerTestManagementAdmin(_: EtatTest, f: FormData) { return passerTestPour("management", f); }
+
+export async function autoriserTestAdmin(f: FormData) {
+  const { user } = await exigerAdmin();
+  const candidat = t(f, "candidat_id", 60);
+  const test = t(f, "test", 20);
+  if (!["disc", "management"].includes(test)) return;
+  await createAdminClient().from("tests_autorisations").upsert({ candidat_id: candidat, test, autorise_par: user.email ?? "" });
+  revalidatePath(`/admin/candidats/${candidat}`);
+}
+
+export async function genererSyntheseAdmin(_: { erreur?: string }, f: FormData): Promise<{ erreur?: string }> {
+  const { user } = await exigerAdmin();
+  const candidat = t(f, "candidat_id", 60);
+  const r = await genererSynthese(candidat, user.email ?? "");
+  if (!r.erreur) revalidatePath(`/admin/candidats/${candidat}`);
+  return r;
+}

@@ -38,7 +38,6 @@ export async function PageEntretienConseil({ candidatId, eid, conseillerParDefau
       conseiller: conseillerParDefaut,
       zone: [c.ville, c.code_postal].filter(Boolean).join(" ") + (c.mobilite_km ? ` · ${c.mobilite_km} km` : ""),
       reponses,
-      partage: false,
     };
   }
 
