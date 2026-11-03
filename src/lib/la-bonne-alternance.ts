@@ -76,14 +76,19 @@ function convertir(o: OffreLBA): OffreLBAImportee | null {
   };
 }
 
-async function chercher(params: Record<string, string>): Promise<OffreLBA[]> {
+type ReponseLBA = { jobs?: OffreLBA[]; recruiters?: unknown[]; warnings?: { message: string; code: string }[] };
+
+async function appeler(params: Record<string, string>): Promise<ReponseLBA> {
   const res = await fetch(`${URL_API}?${new URLSearchParams(params)}`, {
     cache: "no-store",
     headers: { Accept: "application/json", Authorization: `Bearer ${process.env.LBA_API_TOKEN}` },
   });
-  if (!res.ok) throw new Error(`recherche impossible (${res.status})`);
-  const data = (await res.json()) as { jobs?: OffreLBA[] };
-  return data.jobs ?? [];
+  if (!res.ok) throw new Error(`recherche impossible (${res.status}) ${(await res.text().catch(() => "")).slice(0, 200)}`);
+  return (await res.json()) as ReponseLBA;
+}
+
+async function chercher(params: Record<string, string>): Promise<OffreLBA[]> {
+  return (await appeler(params)).jobs ?? [];
 }
 
 /**
@@ -115,9 +120,18 @@ export async function offresLBAPourCandidat(c: Candidat, sansFranceTravail: bool
 export async function testerLBA(): Promise<{ etat: "non_configure" | "ok" | "erreur"; detail: string }> {
   if (!lbaConfigure()) return { etat: "non_configure", detail: "Jeton absent dans Vercel (LBA_API_TOKEN)." };
   try {
-    // Vendeur (D1214) autour de Salon-de-Provence
-    const r = await chercher({ romes: "D1214,D1106", latitude: "43.64", longitude: "5.10", radius: "30" });
-    return { etat: "ok", detail: `Connexion réussie : recherche test « vente » autour de Salon-de-Provence → ${r.length} offre(s) d'alternance reçue(s).` };
+    // Vente (D1211, D1214, D1106) autour de Salon-de-Provence, puis sans limite de lieu
+    const romes = "D1211,D1214,D1106";
+    const [local, france] = await Promise.all([
+      appeler({ romes, latitude: "43.64", longitude: "5.10", radius: "60" }),
+      appeler({ romes }),
+    ]);
+    const n = (r: ReponseLBA) => `${r.jobs?.length ?? 0} offre(s), ${r.recruiters?.length ?? 0} entreprise(s) qui recrutent`;
+    const alertes = [...(local.warnings ?? []), ...(france.warnings ?? [])].map((w) => `${w.code} : ${w.message}`);
+    return {
+      etat: "ok",
+      detail: `Connexion réussie. Test « vente » à 60 km de Salon-de-Provence : ${n(local)}. Toute la France : ${n(france)}.${alertes.length ? ` Avertissements : ${[...new Set(alertes)].join(" ; ")}` : ""}`,
+    };
   } catch (e) {
     return { etat: "erreur", detail: `Connexion refusée : vérifie le jeton (copié en entier, sans espace). ${e instanceof Error ? e.message : ""}` };
   }
