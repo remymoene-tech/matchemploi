@@ -10,7 +10,7 @@ import { SelectAuto } from "@/components/SelectAuto";
 import { MessageEnvoyable } from "@/components/MessageEnvoyable";
 import { ListeRelances } from "@/components/ListeRelances";
 import { Barres, Colonnes } from "@/components/Graphiques";
-import { maintenantMs, relancesDe } from "@/lib/echanges";
+import { echeance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
 import { ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
@@ -33,7 +33,7 @@ const AUTRES = [
   { id: "reglages", label: "Réglages" },
 ] as const;
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   const vue = sp.vue === "correspondances" ? "offres" : [...VUES, ...AUTRES].some((v) => v.id === sp.vue) ? sp.vue! : "accueil";
@@ -69,7 +69,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const equipe = toutes.filter((m) => estOffreEquipe(O.get(m.offre_id)!.source));
   const voirToutes = false; // seules les offres de l'équipe
   // À traiter d'abord, puis les meilleures notes
-  const lignes = (voirToutes ? toutes : equipe).sort(
+  const filtreSuivi = SUIVIS.find((x) => x.id === sp.suivi) ?? null;
+  const lignes = (voirToutes ? toutes : equipe).filter((m) => !filtreSuivi || m.suivi === filtreSuivi.id).sort(
     (a, b) => Number(b.suivi === "a_traiter") - Number(a.suivi === "a_traiter") || b.score - a.score,
   );
   const aTraiter = equipe.filter((m) => m.suivi === "a_traiter").length;
@@ -80,23 +81,34 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const SEMAINE = 7 * 864e5;
   const nouveaux = tousCandidats.filter((c) => c.created_at && new Date(c.created_at).getTime() >= maintenant - SEMAINE).length;
   const mesOffresOuvertes = ((offres ?? []) as Offre[]).filter((o) => o.ouverte).length;
-  const [{ count: nbInteresses }, { count: nbPostules }, { count: nbRefus }] = await Promise.all(
-    ["interesse", "postule", "pas_interesse"].map((avis) =>
-      db.from("correspondances").select("id", { count: "exact", head: true }).eq("avis_candidat", avis),
-    ),
-  );
   // Nouveaux candidats sur les 8 dernières semaines (de la plus ancienne à la plus récente)
   const semaines = Array.from({ length: 8 }, (_, i) => {
     const fin = maintenant - (7 - i) * SEMAINE, debut = fin - SEMAINE;
     const n = tousCandidats.filter((c) => { const t = c.created_at ? new Date(c.created_at).getTime() : 0; return t > debut && t <= fin; }).length;
     const jour = new Date(debut + 864e5).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" });
-    return { label: i === 7 ? "Cette sem." : jour, valeur: n, detail: `Semaine du ${jour} : ${n} inscrit${n > 1 ? "s" : ""}` };
+    return {
+      label: i === 7 ? "Cette sem." : jour, valeur: n,
+      detail: `Semaine du ${jour} : ${n} inscrit${n > 1 ? "s" : ""}`,
+      href: `/admin?vue=candidats&du=${new Date(debut).toISOString()}&au=${new Date(fin).toISOString()}`,
+    };
   });
-  const pipeline = SUIVIS.map((x) => ({ label: x.label, valeur: equipe.filter((m) => m.suivi === x.id).length }));
-  const parEcole = [
-    ...ecoles.map((e) => ({ label: e.nom, valeur: tousCandidats.filter((c) => c.ecole_id === e.id).length })),
-    { label: "Sans école", valeur: tousCandidats.filter((c) => !c.ecole_id).length },
-  ].filter((x) => x.valeur).sort((x, y) => y.valeur - x.valeur).slice(0, 6);
+  const pipeline = SUIVIS.map((x) => ({ label: x.label, valeur: equipe.filter((m) => m.suivi === x.id).length, href: `/admin?vue=offres&suivi=${x.id}#a-traiter` }));
+  const [mesRelances, { data: placesData }] = vue === "accueil"
+    ? await Promise.all([
+        relancesDe(moi.user.email ?? ""),
+        db.from("correspondances").select("candidat_id, offre_id, score, offres(intitule, entreprise)").eq("suivi", "embauche").limit(50),
+      ])
+    : [[], { data: [] }];
+  const places = ((placesData ?? []) as unknown as { candidat_id: string; offre_id: string; score: number; offres: { intitule: string; entreprise: string } | null }[])
+    .filter((p) => C.has(p.candidat_id));
+  const finJour = new Date(maintenant); finJour.setHours(23, 59, 59, 999);
+  const rappels = mesRelances.filter((r) => { const d = echeance(r); return d && d <= finJour; });
+  // Filtre « Mes candidats » par semaine d'inscription (depuis le graphique)
+  const du = sp.du ? new Date(sp.du) : null, au = sp.au ? new Date(sp.au) : null;
+  const filtreDates = du && au && !isNaN(+du) && !isNaN(+au);
+  const candidatsAffiches = filtreDates
+    ? tousCandidats.filter((c) => { const t = c.created_at ? new Date(c.created_at).getTime() : 0; return t > +du! && t <= +au!; })
+    : tousCandidats;
 
   return (
     <div className="flex flex-col gap-6">
@@ -146,11 +158,11 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             {([
               ["Candidats", C.size, nouveaux ? `+${nouveaux} cette semaine` : "inscrits", "/admin?vue=candidats"],
               ["Mes offres", mesOffresOuvertes, "offres ouvertes", "/admin?vue=offres"],
-              ["À traiter", aTraiter, `candidats à ${SEUIL} % ou plus`, "/admin?vue=offres#a-traiter"],
-              ["Candidatures", nbPostules ?? 0, "« J'ai postulé »", "/admin?vue=candidats"],
+              ["À traiter", aTraiter, `candidats à ${SEUIL} % ou plus`, "/admin?vue=offres&suivi=a_traiter#a-traiter"],
+              ["Candidats placés", places.length, "candidats embauchés", "/admin?vue=offres&suivi=embauche#a-traiter"],
             ] as const).map(([l, v, sous, href]) => (
-              <Link key={l} href={href} className="card flex flex-col gap-0.5 p-5 transition-colors hover:border-accent">
-                <span className="eyebrow">{l}</span>
+              <Link key={l} href={href} className="card group flex flex-col gap-0.5 p-5 transition-colors hover:border-accent">
+                <span className="eyebrow flex justify-between">{l}<span className="opacity-0 transition-opacity group-hover:opacity-100">→</span></span>
                 <b className="text-4xl font-semibold tabular-nums">{v}</b>
                 <span className="text-sm text-muted">{sous}</span>
               </Link>
@@ -159,29 +171,67 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
           <div className="grid gap-4 lg:grid-cols-2">
             <section className="card flex flex-col gap-4 p-5">
-              <h2 className="text-lg font-semibold">Nouveaux candidats par semaine</h2>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">Nouveaux candidats par semaine</h2>
+                <Link href="/admin?vue=candidats" className="text-sm font-semibold text-accent">Détail →</Link>
+              </div>
               <Colonnes donnees={semaines} resume={`Inscriptions des 8 dernières semaines : ${semaines.map((x) => x.valeur).join(", ")}`} />
+              <p className="text-xs text-muted">Clique sur une semaine pour voir les inscrits.</p>
             </section>
+
             <section className="card flex flex-col gap-4 p-5">
-              <h2 className="text-lg font-semibold">Suivi de mes offres</h2>
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">Suivi de mes offres</h2>
+                <Link href="/admin?vue=offres#a-traiter" className="text-sm font-semibold text-accent">Détail →</Link>
+              </div>
               <Barres donnees={pipeline} resume="Nombre de mises en relation à chaque étape" />
             </section>
-            <section className="card flex flex-col gap-4 p-5">
-              <h2 className="text-lg font-semibold">Réaction des candidats aux offres</h2>
-              <Barres
-                donnees={[
-                  { label: "Ça m'intéresse", valeur: nbInteresses ?? 0 },
-                  { label: "J'ai postulé", valeur: nbPostules ?? 0 },
-                  { label: "Pas pour moi", valeur: nbRefus ?? 0 },
-                ]}
-                resume="Réponses des candidats aux offres proposées"
-              />
+
+            <section className="card flex flex-col gap-3 p-5">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">Mes rappels</h2>
+                <Link href="/admin?vue=relances" className="text-sm font-semibold text-accent">Tous mes rappels →</Link>
+              </div>
+              {!rappels.length && (
+                <p className="text-sm text-muted">Rien à faire aujourd&apos;hui. {mesRelances.length ? `${mesRelances.length} rappel(s) à venir.` : "Ajoute un rappel depuis l'onglet « Échanges » d'une fiche candidat."}</p>
+              )}
+              <ul className="flex flex-col gap-1">
+                {rappels.slice(0, 6).map((r) => {
+                  const d = echeance(r)!;
+                  const retard = d.getTime() < maintenant;
+                  return (
+                    <li key={r.id}>
+                      <Link href={`/admin/candidats/${r.candidat_id}?onglet=echanges`} className="-mx-2 flex items-start justify-between gap-3 rounded-lg px-2 py-2 text-sm hover:bg-bg">
+                        <span className="min-w-0"><b>{r.nom}</b><span className="block text-muted">{r.action}</span></span>
+                        <span className={`chip shrink-0 ${retard ? "chip-minus" : "chip-tag"}`}>
+                          {retard ? "En retard" : d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}
+                        </span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
             </section>
-            <section className="card flex flex-col gap-4 p-5">
-              <h2 className="text-lg font-semibold">Candidats par école</h2>
-              {parEcole.length
-                ? <Barres donnees={parEcole} resume="Nombre de candidats par école" />
-                : <p className="text-sm text-muted">Aucun candidat pour l&apos;instant.</p>}
+
+            <section className="card flex flex-col gap-3 p-5">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">Candidats placés</h2>
+                <Link href="/admin?vue=offres&suivi=embauche#a-traiter" className="text-sm font-semibold text-accent">Détail →</Link>
+              </div>
+              {!places.length && <p className="text-sm text-muted">Pas encore de candidat placé. Passe une mise en relation en « Embauché » dans Mes offres quand c&apos;est signé 🎉</p>}
+              <ul className="flex flex-col gap-1">
+                {places.slice(0, 6).map((p) => {
+                  const c = C.get(p.candidat_id)!;
+                  return (
+                    <li key={`${p.candidat_id}-${p.offre_id}`}>
+                      <Link href={`/admin/candidats/${c.user_id}`} className="-mx-2 flex items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm hover:bg-bg">
+                        <span className="min-w-0"><b>{c.nom || c.email}</b><span className="block truncate text-muted">{p.offres ? `${p.offres.intitule} · ${p.offres.entreprise}` : "Offre supprimée"}</span></span>
+                        <span className="chip chip-plus shrink-0">Placé ✓</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
             </section>
           </div>
         </div>
@@ -189,11 +239,19 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
       {vue === "candidats" && (
         <div className="flex flex-col gap-3">
-          <form action={relancerTout} className="flex justify-end">
-            <button className="btn btn-sm">Relancer la recherche pour tous</button>
-          </form>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {filtreDates ? (
+              <p className="text-sm">
+                <b>{candidatsAffiches.length}</b> candidat(s) inscrit(s) la semaine du {du!.toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" })} ·{" "}
+                <Link href="/admin?vue=candidats" className="font-semibold text-accent">Voir tous les candidats</Link>
+              </p>
+            ) : <p className="text-sm text-muted">{C.size} candidat(s), les plus récents en premier.</p>}
+            <form action={relancerTout}>
+              <button className="btn btn-sm">Relancer la recherche pour tous</button>
+            </form>
+          </div>
           <div className="grid gap-3 md:grid-cols-2">
-            {[...C.values()].map((c) => {
+            {[...candidatsAffiches].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")).map((c) => {
               // Toutes les sources (France Travail, Adzuna et vos offres), quel que soit le filtre des correspondances
               const n = toutes.filter((m) => m.candidat_id === c.user_id).length;
               const nEquipe = equipe.filter((m) => m.candidat_id === c.user_id).length;
@@ -421,6 +479,14 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       {vue === "offres" && (
         <div id="a-traiter" className="flex flex-col gap-3">
           <h2 className="mt-4 text-xl font-semibold">Candidats qui correspondent à mes offres</h2>
+          <nav className="flex flex-wrap gap-2 text-sm" aria-label="Filtrer par étape">
+            <Link href="/admin?vue=offres#a-traiter" className={`chip ${!filtreSuivi ? "chip-plus" : ""}`}>Toutes ({equipe.length})</Link>
+            {SUIVIS.map((x) => (
+              <Link key={x.id} href={`/admin?vue=offres&suivi=${x.id}#a-traiter`} className={`chip ${filtreSuivi?.id === x.id ? "chip-plus" : ""}`}>
+                {x.label} ({equipe.filter((m) => m.suivi === x.id).length})
+              </Link>
+            ))}
+          </nav>
           <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <p className="max-w-[70ch] text-muted">
               Les candidats ne voient pas les offres de l&apos;équipe : c&apos;est toi qui fais le lien. Ouvre « Préparer les messages » pour écrire à l&apos;étudiant et à l&apos;entreprise{moyenEnvoi() ? ", et envoie-les directement d'ici" : ""}.
@@ -428,7 +494,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
           {!lignes.length && (
             <p className="card border-dashed p-6 text-sm text-muted">
-              Aucune correspondance à {SEUIL} % ou plus {voirToutes ? "" : "sur vos offres "}pour l&apos;instant. Ajoute les offres de tes entreprises partenaires : elles sont comparées à tous les candidats.
+              {filtreSuivi ? `Aucune mise en relation à l'étape « ${filtreSuivi.label} ».` : `Aucune correspondance à ${SEUIL} % ou plus sur vos offres pour l'instant.`} Ajoute les offres de tes entreprises partenaires : elles sont comparées à tous les candidats.
             </p>
           )}
           {lignes.map((m) => {
