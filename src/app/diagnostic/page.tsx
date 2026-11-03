@@ -201,7 +201,7 @@ export default async function Diagnostic() {
             <p className="text-sm text-muted">{t.detail}</p>
             {nom === "La bonne alternance" && (
               <details className="text-sm">
-                <summary className="cursor-pointer font-semibold text-accent">À faire une seule fois : autoriser les étudiants à voir ces offres</summary>
+                <summary className="cursor-pointer font-semibold text-accent">Rappel : SQL à exécuter une seule fois (ce bloc reste toujours affiché, même quand c'est fait)</summary>
                 <p className="mt-1 text-muted">Copie ce texte dans Supabase → Éditeur SQL → Nouvelle requête, puis Exécuter.</p>
                 <pre className="mt-1 whitespace-pre-wrap break-all rounded-lg bg-bg p-3 font-mono text-xs">{SQL_LBA}</pre>
                 <div className="mt-2"><Copier texte={SQL_LBA} /></div>
