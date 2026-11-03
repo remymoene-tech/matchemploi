@@ -16,6 +16,7 @@ import { enregistrerEntretienConseil } from "@/lib/entretien-conseil-serveur";
 import { enregistrerTest } from "@/lib/tests-serveur";
 import { genererSynthese } from "@/lib/synthese";
 import { genererCvAmeliore } from "@/lib/cv-ameliore";
+import { ajouterEchange } from "@/lib/echanges";
 import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
 import type { EtatEntretien } from "@/components/FormEntretienConseil";
@@ -208,4 +209,27 @@ export async function genererCvAmelioreAdmin(_: { erreur?: string }, f: FormData
   const r = await genererCvAmeliore(candidat);
   if (!r.erreur) revalidatePath(`/admin/candidats/${candidat}`);
   return r;
+}
+
+export async function ajouterEchangeAdmin(_: { erreur?: string; ok?: boolean }, f: FormData): Promise<{ erreur?: string; ok?: boolean }> {
+  const { user } = await exigerAdmin();
+  const candidat = t(f, "candidat_id", 60);
+  const r = await ajouterEchange(candidat, f, user.email ?? "");
+  if (r.erreur) return r;
+  revalidatePath(`/admin/candidats/${candidat}`);
+  return { ok: true };
+}
+
+export async function supprimerEchangeAdmin(f: FormData) {
+  await exigerAdmin();
+  const candidat = t(f, "candidat_id", 60);
+  await createAdminClient().from("echanges").delete().eq("id", t(f, "id", 60)).eq("candidat_id", candidat);
+  revalidatePath(`/admin/candidats/${candidat}`);
+}
+
+export async function actionFaiteAdmin(f: FormData) {
+  await exigerAdmin();
+  const candidat = t(f, "candidat_id", 60);
+  await createAdminClient().from("echanges").update({ action_faite: true }).eq("id", t(f, "id", 60)).eq("candidat_id", candidat);
+  revalidatePath(`/admin/candidats/${candidat}`);
 }

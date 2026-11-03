@@ -1,6 +1,6 @@
 import { exigerAdmin } from "@/lib/auth";
 import { FicheCandidat } from "@/components/FicheCandidat";
-import { autoriserTestAdmin, changerSuivi, genererCvAmelioreAdmin, genererSyntheseAdmin } from "../../actions";
+import { autoriserTestAdmin, changerSuivi, ajouterEchangeAdmin, actionFaiteAdmin, genererCvAmelioreAdmin, supprimerEchangeAdmin, genererSyntheseAdmin } from "../../actions";
 
 export const metadata = { title: "Fiche candidat · Jobaprox" };
 
@@ -14,7 +14,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       autoriserTest={autoriserTestAdmin}
       genererSynthese={genererSyntheseAdmin}
       genererCvAmeliore={genererCvAmelioreAdmin}
-      onglet={onglet === "suivi" || onglet === "cv" || onglet === "offres" ? onglet : "profil"}
+      ajouterEchange={ajouterEchangeAdmin}
+      supprimerEchange={supprimerEchangeAdmin}
+      actionFaite={actionFaiteAdmin}
+      onglet={onglet === "suivi" || onglet === "cv" || onglet === "offres" || onglet === "echanges" ? onglet : "profil"}
       baseFiche={`/admin/candidats/${id}`}
       cheminCV={`/admin/cv/${id}`}
       retour={{ href: "/admin?vue=candidats", libelle: "Tous les candidats" }}

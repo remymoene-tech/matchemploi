@@ -8,6 +8,8 @@ import { derniersTests } from "@/lib/tests-serveur";
 import { etatSynthese } from "@/lib/synthese";
 import { BoutonSynthese } from "@/components/BoutonSynthese";
 import { CvRendu } from "@/components/CvRendu";
+import { FormEchange } from "@/components/FormEchange";
+import { TYPES_ECHANGE, echangesDuCandidat } from "@/lib/echanges";
 import { ResultatDisc, ResultatManagement } from "@/components/ResultatsTests";
 import { COULEURS } from "@/lib/tests";
 import {
@@ -38,11 +40,14 @@ const Ligne = ({ l, v }: { l: string; v: React.ReactNode }) => (
  * Fiche complète d'un candidat pour l'équipe : profil, CV, recherches, offres.
  * Les droits sont vérifiés par la page qui l'affiche.
  */
-export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore }: {
+export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite }: {
   candidatId: string;
   autoriserTest: (f: FormData) => Promise<void>;
   genererSynthese: (e: { erreur?: string }, f: FormData) => Promise<{ erreur?: string }>;
-  onglet?: "profil" | "cv" | "offres" | "suivi";
+  onglet?: "profil" | "cv" | "offres" | "echanges" | "suivi";
+  ajouterEchange: (e: { erreur?: string; ok?: boolean }, f: FormData) => Promise<{ erreur?: string; ok?: boolean }>;
+  supprimerEchange: (f: FormData) => Promise<void>;
+  actionFaite: (f: FormData) => Promise<void>;
   genererCvAmeliore: (e: { erreur?: string }, f: FormData) => Promise<{ erreur?: string }>;
   /** Adresse de cette fiche, pour les liens vers les entretiens (ex. /admin/candidats/<id>). */
   baseFiche: string;
@@ -61,6 +66,10 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
     db.from("entretiens_conseil").select("id, date_entretien, conseiller, bilan, partage, prochaine_etape").eq("candidat_id", candidatId).order("date_entretien", { ascending: false }),
   ]);
   const tests = await derniersTests(candidatId);
+  const echanges = await echangesDuCandidat(candidatId);
+  const aujourdHui = new Date().toISOString().slice(0, 10);
+  const relances = echanges.filter((e) => e.action && !e.action_faite).sort((a, b) => (a.action_le ?? "9999").localeCompare(b.action_le ?? "9999"));
+  const dernierEchange = echanges[0];
   // Lien temporaire (10 min) pour afficher le CV directement dans la page
   const urlCV = c.cv_chemin && onglet === "cv" ? (await db.storage.from("cv").createSignedUrl(c.cv_chemin, 600)).data?.signedUrl ?? null : null;
   const etat = await etatSynthese(candidatId);
@@ -126,6 +135,22 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         </div>
       </header>
 
+      {(relances.length > 0 || dernierEchange) && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          {dernierEchange && (
+            <span className="text-muted">
+              Dernier échange : {TYPES_ECHANGE.find((t) => t.id === dernierEchange.type)?.icone} {new Date(dernierEchange.date_echange).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" })}
+            </span>
+          )}
+          {relances.slice(0, 2).map((r) => (
+            <Link key={r.id} href={`${baseFiche}?onglet=echanges`}
+              className={`chip ${r.action_le && r.action_le <= aujourdHui ? "chip-minus" : "chip-tag"}`}>
+              ⏰ {r.action}{r.action_le ? ` · ${new Date(r.action_le).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}` : ""}
+            </Link>
+          ))}
+        </div>
+      )}
+
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {stats.map(([l, v]) => (
           <div key={l} className="card flex flex-col p-4"><span className="eyebrow">{l}</span><b className="font-mono text-2xl tabular-nums">{v}</b></div>
@@ -133,7 +158,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
       </section>
 
       <nav className="flex gap-1 overflow-x-auto border-b border-line" aria-label="Onglets de la fiche">
-        {([["profil", "Profil"], ["cv", "CV"], ["offres", `Offres (${lignes.length})`], ["suivi", "Tests et entretien"]] as const).map(([id, nom]) => (
+        {([["profil", "Profil"], ["cv", "CV"], ["offres", `Offres (${lignes.length})`], ["echanges", `Échanges (${echanges.length})`], ["suivi", "Tests et entretien"]] as const).map(([id, nom]) => (
           <Link key={id} href={id === "profil" ? baseFiche : `${baseFiche}?onglet=${id}`} aria-current={onglet === id}
             className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-semibold ${onglet === id ? "border-accent text-ink" : "border-transparent text-muted"}`}>
             {nom}
@@ -302,6 +327,57 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
             );
           })}
         </ul>
+      </Bloc>
+        </>
+      )}
+
+      {onglet === "echanges" && (
+        <>
+      <Bloc titre="Noter un échange">
+        <FormEchange candidatId={candidatId} action={ajouterEchange} />
+      </Bloc>
+
+      <Bloc titre={`Historique des échanges (${echanges.length})`}>
+        <p className="text-xs text-muted">Visible uniquement par l&apos;équipe. Les emails envoyés depuis Jobaprox s&apos;ajoutent automatiquement.</p>
+        {!echanges.length && <p className="text-sm text-muted">Aucun échange noté pour l&apos;instant.</p>}
+        <ol className="flex flex-col">
+          {echanges.map((e) => {
+            const t = TYPES_ECHANGE.find((x) => x.id === e.type) ?? TYPES_ECHANGE[4];
+            const enRetard = e.action && !e.action_faite && e.action_le && e.action_le <= aujourdHui;
+            return (
+              <li key={e.id} className="relative flex gap-3 border-l-2 border-line pb-5 pl-5 last:pb-0">
+                <span className="absolute -left-[13px] top-0 grid h-6 w-6 place-items-center rounded-full border border-line bg-surface text-xs" aria-hidden>{t.icone}</span>
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <p className="text-sm">
+                    <b>{t.label}</b>
+                    <span className="text-muted"> · {new Date(e.date_echange).toLocaleString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}{e.auteur ? ` · ${e.auteur}` : ""}</span>
+                  </p>
+                  <p className="whitespace-pre-line text-sm">{e.resume}</p>
+                  {e.action && (
+                    <div className={`flex flex-wrap items-center justify-between gap-2 rounded-lg px-3 py-2 text-sm ${e.action_faite ? "bg-bg text-muted line-through" : enRetard ? "bg-bad-soft" : "bg-accent-soft"}`}>
+                      <span>⏰ {e.action}{e.action_le ? ` · le ${new Date(e.action_le).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}` : ""}{enRetard ? " (en retard)" : ""}</span>
+                      {!e.action_faite && (
+                        <form action={actionFaite}>
+                          <input type="hidden" name="candidat_id" value={candidatId} />
+                          <input type="hidden" name="id" value={e.id} />
+                          <button className="btn btn-sm">Fait ✓</button>
+                        </form>
+                      )}
+                    </div>
+                  )}
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-muted">Supprimer</summary>
+                    <form action={supprimerEchange} className="mt-1">
+                      <input type="hidden" name="candidat_id" value={candidatId} />
+                      <input type="hidden" name="id" value={e.id} />
+                      <button className="btn btn-sm text-bad">Confirmer la suppression</button>
+                    </form>
+                  </details>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
       </Bloc>
         </>
       )}

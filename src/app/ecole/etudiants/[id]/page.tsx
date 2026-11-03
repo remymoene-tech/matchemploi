@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { exigerResponsable } from "@/lib/ecoles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { FicheCandidat } from "@/components/FicheCandidat";
-import { autoriserTestEcole, changerSuiviEcole, genererCvAmelioreEcole, genererSyntheseEcole } from "../../actions";
+import { autoriserTestEcole, changerSuiviEcole, ajouterEchangeEcole, actionFaiteEcole, genererCvAmelioreEcole, supprimerEchangeEcole, genererSyntheseEcole } from "../../actions";
 
 export const metadata = { title: "Fiche étudiant · Jobaprox" };
 
@@ -19,7 +19,10 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       autoriserTest={autoriserTestEcole}
       genererSynthese={genererSyntheseEcole}
       genererCvAmeliore={genererCvAmelioreEcole}
-      onglet={onglet === "suivi" || onglet === "cv" || onglet === "offres" ? onglet : "profil"}
+      ajouterEchange={ajouterEchangeEcole}
+      supprimerEchange={supprimerEchangeEcole}
+      actionFaite={actionFaiteEcole}
+      onglet={onglet === "suivi" || onglet === "cv" || onglet === "offres" || onglet === "echanges" ? onglet : "profil"}
       baseFiche={`/ecole/etudiants/${id}`}
       cheminCV={`/ecole/cv/${id}`}
       retour={{ href: "/ecole?vue=etudiants", libelle: "Tous mes étudiants" }}

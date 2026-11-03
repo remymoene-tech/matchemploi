@@ -3,6 +3,7 @@ import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerEmail, moyenEnvoi, texteEnHtml } from "@/lib/email";
 import { SUIVIS_PREPARATION, genererPreparation } from "@/lib/preparation";
+import { noterEmailEnvoye } from "@/lib/echanges";
 
 export type EtatEnvoi = { erreur?: string; envoye?: string };
 
@@ -33,6 +34,7 @@ export async function envoyerMessageCorrespondance(
     texte,
   });
   if (!ok) return { erreur: "L'envoi a échoué. Vérifie l'adresse, puis réessaie. Si ça continue, regarde la page /diagnostic." };
+  await noterEmailEnvoye(candidat, expediteur.email, a, objet, cible); // trace dans le journal des échanges
 
   // Le suivi avance tout seul (sans jamais reculer)
   const db = createAdminClient();

@@ -50,7 +50,10 @@ alter table public.tests_autorisations enable row level security;
 create table if not exists public.syntheses_candidat (candidat_id uuid primary key references public.candidats(user_id) on delete cascade, contenu jsonb not null, genere_par text not null default '', created_at timestamptz not null default now());
 alter table public.syntheses_candidat enable row level security;
 alter table public.candidats add column if not exists cv_ameliore jsonb;
-alter table public.candidats add column if not exists cv_ameliore_le timestamptz;`;
+alter table public.candidats add column if not exists cv_ameliore_le timestamptz;
+create table if not exists public.echanges (id uuid primary key default gen_random_uuid(), candidat_id uuid not null references public.candidats(user_id) on delete cascade, type text not null default 'telephone', date_echange timestamptz not null default now(), resume text not null default '', action text not null default '', action_le date, action_faite boolean not null default false, auteur text not null default '', created_at timestamptz not null default now());
+alter table public.echanges enable row level security;
+create index if not exists echanges_candidat_idx on public.echanges(candidat_id, date_echange desc);`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -78,6 +81,7 @@ async function verifierBase() {
     db.from("tests_autorisations").select("test").limit(1),
     db.from("syntheses_candidat").select("candidat_id").limit(1),
     db.from("candidats").select("cv_ameliore").limit(1),
+    db.from("echanges").select("id").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -103,6 +107,7 @@ async function verifierBase() {
     "Autorisations pour repasser un test",
     "Synthèse globale du candidat",
     "CV amélioré par Jobaprox",
+    "Journal des échanges",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

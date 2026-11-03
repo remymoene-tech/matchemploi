@@ -15,6 +15,7 @@ import { enregistrerEntretienConseil } from "@/lib/entretien-conseil-serveur";
 import { enregistrerTest } from "@/lib/tests-serveur";
 import { genererSynthese } from "@/lib/synthese";
 import { genererCvAmeliore } from "@/lib/cv-ameliore";
+import { ajouterEchange } from "@/lib/echanges";
 import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
 import type { EtatEntretien } from "@/components/FormEntretienConseil";
@@ -182,4 +183,30 @@ export async function genererCvAmelioreEcole(_: { erreur?: string }, f: FormData
   const r = await genererCvAmeliore(candidat);
   if (!r.erreur) revalidatePath(`/ecole/etudiants/${candidat}`);
   return r;
+}
+
+export async function ajouterEchangeEcole(_: { erreur?: string; ok?: boolean }, f: FormData): Promise<{ erreur?: string; ok?: boolean }> {
+  const { user, ecole } = await exigerResponsable();
+  const candidat = t(f, "candidat_id", 60);
+  if (!(await etudiantDeLEcole(candidat, ecole.id))) return { erreur: "Cet étudiant n'appartient pas à ton école." };
+  const r = await ajouterEchange(candidat, f, user.email ?? "");
+  if (r.erreur) return r;
+  revalidatePath(`/ecole/etudiants/${candidat}`);
+  return { ok: true };
+}
+
+export async function supprimerEchangeEcole(f: FormData) {
+  const { ecole } = await exigerResponsable();
+  const candidat = t(f, "candidat_id", 60);
+  if (!(await etudiantDeLEcole(candidat, ecole.id))) return;
+  await createAdminClient().from("echanges").delete().eq("id", t(f, "id", 60)).eq("candidat_id", candidat);
+  revalidatePath(`/ecole/etudiants/${candidat}`);
+}
+
+export async function actionFaiteEcole(f: FormData) {
+  const { ecole } = await exigerResponsable();
+  const candidat = t(f, "candidat_id", 60);
+  if (!(await etudiantDeLEcole(candidat, ecole.id))) return;
+  await createAdminClient().from("echanges").update({ action_faite: true }).eq("id", t(f, "id", 60)).eq("candidat_id", candidat);
+  revalidatePath(`/ecole/etudiants/${candidat}`);
 }

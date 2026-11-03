@@ -284,3 +284,21 @@ alter table public.syntheses_candidat enable row level security; -- serveur uniq
 -- ============================================================
 alter table public.candidats add column if not exists cv_ameliore jsonb;
 alter table public.candidats add column if not exists cv_ameliore_le timestamptz;
+
+-- ============================================================
+-- Journal des échanges avec le candidat (téléphone, email, SMS…) — équipe uniquement
+-- ============================================================
+create table if not exists public.echanges (
+  id           uuid primary key default gen_random_uuid(),
+  candidat_id  uuid not null references public.candidats(user_id) on delete cascade,
+  type         text not null default 'telephone',   -- telephone | email | sms | rdv | autre
+  date_echange timestamptz not null default now(),
+  resume       text not null default '',
+  action       text not null default '',             -- prochaine action à faire
+  action_le    date,                                  -- date de relance
+  action_faite boolean not null default false,
+  auteur       text not null default '',
+  created_at   timestamptz not null default now()
+);
+alter table public.echanges enable row level security; -- serveur uniquement : jamais visible par le candidat
+create index if not exists echanges_candidat_idx on public.echanges(candidat_id, date_echange desc);
