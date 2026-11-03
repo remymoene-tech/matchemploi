@@ -14,7 +14,8 @@ export function FormEntretienConseil({ initial, action, nomEtudiant, candidatId 
 }) {
   const [etat, envoyer, enCours] = useActionState<EtatEntretien, FormData>(action, {});
   const [coches, setCoches] = useState<Record<string, boolean>>(
-    () => Object.fromEntries(Object.entries(initial.reponses).map(([k, v]) => [k, Boolean(v.coche)])),
+    // Anciennes fiches : un « Oui » à une question vaut une case cochée
+    () => Object.fromEntries(Object.entries(initial.reponses).map(([k, v]) => [k, Boolean(v.coche) || v.reponse === "Oui"])),
   );
 
   return (
@@ -61,7 +62,7 @@ export function FormEntretienConseil({ initial, action, nomEtudiant, candidatId 
                   {coches[it.id] && (
                     <textarea
                       name={`p_${it.id}`} defaultValue={initial.reponses[it.id]?.precision ?? ""} rows={2}
-                      placeholder="Préciser…" aria-label={`Préciser : ${it.label}`}
+                      placeholder="Préciser (facultatif)…" aria-label={`Préciser : ${it.label}`}
                       className="input ml-7 min-h-0 text-sm" style={{ width: "calc(100% - 1.75rem)" }}
                     />
                   )}
@@ -87,15 +88,18 @@ export function FormEntretienConseil({ initial, action, nomEtudiant, candidatId 
         </section>
       ))}
 
-      {[
-        ["qualites", "6. Qualités", initial.qualites, "Ce qui ressort de l'entretien : savoir-être, motivation, atouts…"],
-        ["points_faibles", "7. Points faibles / axes d'amélioration", initial.points_faibles, "Ce qu'il doit travailler, et comment l'aider."],
-      ].map(([n, t, v, ph]) => (
-        <section key={n} className="card flex flex-col gap-2 p-5">
-          <label className="text-lg font-semibold" htmlFor={n!}>{t}</label>
-          <textarea className="input min-h-28 text-sm" id={n!} name={n!} defaultValue={v ?? ""} placeholder={ph} />
-        </section>
-      ))}
+      <section className="card flex flex-col gap-3 p-5">
+        <h3 className="text-lg font-semibold">Autres remarques (facultatif)</h3>
+        {[
+          ["qualites", "Autres qualités", initial.qualites, "Une qualité qui n'est pas dans la liste…"],
+          ["points_faibles", "Autres points à travailler", initial.points_faibles, "Un point qui n'est pas dans la liste, et comment l'aider…"],
+        ].map(([n, t, v, ph]) => (
+          <div key={n} className="flex flex-col gap-1">
+            <label className="label" htmlFor={n!}>{t}</label>
+            <textarea className="input min-h-20 text-sm" id={n!} name={n!} defaultValue={v ?? ""} placeholder={ph} />
+          </div>
+        ))}
+      </section>
 
       <section className="card flex flex-col gap-3 p-5">
         <h3 className="text-lg font-semibold">8. Bilan</h3>

@@ -30,11 +30,11 @@ function entretienEnTexte(e: EntretienConseil) {
     lignes.push(`\n${s.titre}`);
     for (const it of s.items) {
       const r = e.reponses[it.id];
-      if (s.type === "cases") lignes.push(`- [${r?.coche ? "x" : " "}] ${it.label}${r?.precision ? ` (${r.precision})` : ""}`);
+      if (s.type === "cases") lignes.push(`- [${r?.coche || r?.reponse === "Oui" ? "x" : " "}] ${it.label}${r?.precision ? ` (${r.precision})` : ""}`);
       else lignes.push(`- ${it.label} ${r?.reponse ?? "Non renseigné"}${r?.precision ? ` (${r.precision})` : ""}`);
     }
   }
-  lignes.push(`\nQualités : ${e.qualites || "—"}`, `Points faibles : ${e.points_faibles || "—"}`);
+  lignes.push(`\nAutres qualités : ${e.qualites || "—"}`, `Autres points à travailler : ${e.points_faibles || "—"}`);
   lignes.push(`Bilan : ${BILANS.find((b) => b.id === e.bilan)?.label ?? "—"}`, `Observations : ${e.observations || "—"}`, `Prochaine étape : ${e.prochaine_etape || "—"}`);
   return lignes.join("\n");
 }

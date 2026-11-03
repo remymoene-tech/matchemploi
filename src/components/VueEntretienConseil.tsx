@@ -22,10 +22,11 @@ export function VueEntretienConseil({ e, nomEtudiant }: { e: EntretienConseil; n
           <ul className="flex flex-col gap-1.5 text-sm">
             {s.items.map((it) => {
               const r = e.reponses[it.id];
+              const coche = Boolean(r?.coche) || r?.reponse === "Oui";
               return s.type === "cases" ? (
                 <li key={it.id} className="flex flex-col">
-                  <span className={r?.coche ? "" : "text-muted"}>{r?.coche ? "☑" : "☐"} {it.label}</span>
-                  {r?.coche && r.precision && <span className="ml-5 text-muted">{r.precision}</span>}
+                  <span className={coche ? "" : "text-muted"}>{coche ? "☑" : "☐"} {it.label}</span>
+                  {coche && r?.precision && <span className="ml-5 text-muted">{r.precision}</span>}
                 </li>
               ) : (
                 <li key={it.id} className="flex flex-col">
@@ -37,12 +38,13 @@ export function VueEntretienConseil({ e, nomEtudiant }: { e: EntretienConseil; n
           </ul>
         </section>
       ))}
-      {[["6. Qualités", e.qualites], ["7. Points faibles / axes d'amélioration", e.points_faibles]].map(([t, v]) => (
-        <section key={t} className="card flex flex-col gap-2 p-5 break-inside-avoid">
-          <h2 className="text-lg font-semibold">{t}</h2>
-          <p className="whitespace-pre-line text-sm">{v || "—"}</p>
+      {(e.qualites || e.points_faibles) && (
+        <section className="card flex flex-col gap-2 p-5 break-inside-avoid">
+          <h2 className="text-lg font-semibold">Autres remarques</h2>
+          {e.qualites && <p className="whitespace-pre-line text-sm"><span className="text-muted">Qualités : </span>{e.qualites}</p>}
+          {e.points_faibles && <p className="whitespace-pre-line text-sm"><span className="text-muted">Points à travailler : </span>{e.points_faibles}</p>}
         </section>
-      ))}
+      )}
       <section className="card flex flex-col gap-2 p-5 break-inside-avoid">
         <h2 className="text-lg font-semibold">8. Bilan</h2>
         <p className="text-sm"><b>{BILANS.find((b) => b.id === e.bilan)?.label ?? "—"}</b></p>
