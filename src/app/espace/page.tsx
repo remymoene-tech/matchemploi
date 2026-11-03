@@ -182,16 +182,18 @@ export default async function Espace() {
         </p>
       )}
 
-      {!!suggestions.length && (
+      {!!pistes.length && (
         <section className="flex flex-col gap-4 rounded-2xl p-5" style={{ background: "var(--accent-soft)" }}>
           <div className="flex flex-col gap-1">
             <span className="eyebrow">Proposé par Jobaprox</span>
             <h2 className="text-xl font-extrabold">
-              J&apos;ai aussi trouvé {suggestions.length} offre{suggestions.length > 1 ? "s" : ""} qui pourrai{suggestions.length > 1 ? "ent" : "t"} correspondre à ton CV
+              {suggestions.length
+                ? `J'ai aussi trouvé ${suggestions.length} offre${suggestions.length > 1 ? "s" : ""} qui pourrai${suggestions.length > 1 ? "ent" : "t"} correspondre à ton CV`
+                : "Ton expérience t'ouvre aussi ces métiers"}
             </h2>
             <p className="text-sm text-muted">Des métiers que tu n&apos;as pas demandés, mais où ton expérience est un vrai atout.</p>
           </div>
-          {pistes.filter((p) => suggestions.some((l) => l.piste === p.metier)).map((p) => {
+          {pistes.slice(0, 3).map((p) => {
             const offres = suggestions.filter((l) => l.piste === p.metier);
             return (
               <article key={p.metier} className="card flex flex-col gap-3 p-4">
@@ -205,6 +207,13 @@ export default async function Espace() {
                     <form action={ecarterPiste}><input type="hidden" name="metier" value={p.metier} /><button className="btn btn-sm">Pas pour moi</button></form>
                   </div>
                 </div>
+                {!offres.length && (
+                  <p className="text-sm text-muted">
+                    {c.recherche_en_cours
+                      ? "Jobaprox cherche des offres pour ce métier…"
+                      : "Pas encore d'offre à 70 % ou plus pour ce métier près de chez toi. Ajoute-le à tes recherches pour que Jobaprox cherche plus largement."}
+                  </p>
+                )}
                 <ul className="grid gap-2 md:grid-cols-2">
                   {offres.map((l) => (
                     <li key={l.offre_id} className="flex gap-3 rounded-lg border border-line p-3">
