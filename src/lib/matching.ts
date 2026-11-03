@@ -5,6 +5,7 @@ import { franceTravailConfigure, offresPourCandidat } from "@/lib/france-travail
 import { adzunaConfigure, offresAdzunaPourCandidat } from "@/lib/adzuna";
 import { envoyerEmail, echapper } from "@/lib/email";
 import { distanceKm, localiserLieu } from "@/lib/geo";
+import { avecDisc } from "@/lib/tests-serveur";
 import { SEUIL, SOURCES_AUTO, type Candidat, type Offre, type Correspondance, type Piste, type Recherche } from "@/lib/types";
 
 const PAR_APPEL = 8;      // offres notées par appel à l'IA
@@ -166,8 +167,9 @@ const MAX_PISTES_PAR_RUN = 8; // offres « pistes » notées par recherche
  */
 export async function rechercherPourCandidat(candidatId: string) {
   const db = createAdminClient();
-  const { data: c } = await db.from("candidats").select("*").eq("user_id", candidatId).single<Candidat>();
-  if (!c || !c.consentement) return { notees: 0, erreur: null as string | null };
+  const { data: brut } = await db.from("candidats").select("*").eq("user_id", candidatId).single<Candidat>();
+  if (!brut || !brut.consentement) return { notees: 0, erreur: null as string | null };
+  const c = await avecDisc(brut); // son profil DISC affine légèrement les notes
 
   await db.from("candidats").update({ recherche_en_cours: true }).eq("user_id", candidatId);
   let erreur: string | null = null;
@@ -299,7 +301,8 @@ export async function noterOffrePourTous(offreId: string) {
   if (o.ecole_id) requete = requete.eq("ecole_id", o.ecole_id);
   const { data: candidats } = await requete;
   const cibles = ((candidats ?? []) as Candidat[]).filter((c) => compatible(c, o));
-  await parLots(cibles, 4, async (c) => {
+  await parLots(cibles, 4, async (sansDisc) => {
+    const c = await avecDisc(sansDisc);
     try {
       await enregistrerNotes(c.user_id, await noterOffres(c, [o], (await refusDuCandidat(c.user_id)).refus));
       await notifier(c);

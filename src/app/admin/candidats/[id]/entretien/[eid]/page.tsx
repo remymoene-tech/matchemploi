@@ -12,7 +12,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     <PageEntretienConseil
       candidatId={id} eid={eid} ok={Boolean(ok)}
       conseillerParDefaut={process.env.NOM_EXPEDITEUR?.split("–")[0].trim() || ""}
-      retour={`/admin/candidats/${id}`}
+      retour={`/admin/candidats/${id}?onglet=suivi`}
       action={enregistrerEntretienAdmin}
     />
   );

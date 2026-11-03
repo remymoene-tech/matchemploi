@@ -4,6 +4,9 @@ import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
 import { Carte, type PointOffre } from "@/components/Carte";
 import { BILANS } from "@/lib/entretien-conseil";
+import { derniersTests } from "@/lib/tests-serveur";
+import { ResultatDisc, ResultatManagement } from "@/components/ResultatsTests";
+import { COULEURS } from "@/lib/tests";
 import {
   AVIS, SCORE_ORANGE, SEUIL, SUIVIS, contratLabel, estOffreEquipe, sourceLabel,
   type Candidat, type Correspondance, type Offre, type Piste, type Recherche,
@@ -32,8 +35,9 @@ const Ligne = ({ l, v }: { l: string; v: React.ReactNode }) => (
  * Fiche complète d'un candidat pour l'équipe : profil, CV, recherches, offres.
  * Les droits sont vérifiés par la page qui l'affiche.
  */
-export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche }: {
+export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil" }: {
   candidatId: string;
+  onglet?: "profil" | "suivi";
   /** Adresse de cette fiche, pour les liens vers les entretiens (ex. /admin/candidats/<id>). */
   baseFiche: string;
   cheminCV: string;
@@ -50,6 +54,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
     c.ecole_id ? db.from("ecoles").select("nom").eq("id", c.ecole_id).maybeSingle() : Promise.resolve({ data: null }),
     db.from("entretiens_conseil").select("id, date_entretien, conseiller, bilan, partage, prochaine_etape").eq("candidat_id", candidatId).order("date_entretien", { ascending: false }),
   ]);
+  const tests = await derniersTests(candidatId);
   const entretiens = (entData ?? []) as { id: string; date_entretien: string; conseiller: string; bilan: string; partage: boolean; prochaine_etape: string }[];
   const recherches = (rData ?? []) as Recherche[];
   const matchs = (mData ?? []) as Correspondance[];
@@ -89,6 +94,10 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
           <p className="text-muted">{[c.formation, c.poste_vise && `vise ${c.poste_vise}`].filter(Boolean).join(" · ")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          {tests.disc && (() => {
+            const d = COULEURS.find((x) => x.id === tests.disc!.dominante.split(",")[0]);
+            return d ? <span className="chip font-semibold text-white" style={{ background: d.hex, borderColor: d.hex }}>DISC : {d.nom}</span> : null;
+          })()}
           {!c.consentement && <span className="chip chip-minus">Accord RGPD manquant</span>}
           {c.cv_chemin && <a className="btn btn-primary" href={cheminCV} target="_blank">Ouvrir le CV (PDF)</a>}
         </div>
@@ -100,6 +109,17 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         ))}
       </section>
 
+      <nav className="flex gap-1 overflow-x-auto border-b border-line" aria-label="Onglets de la fiche">
+        {[["profil", "Profil et offres"], ["suivi", "Entretiens et tests"]].map(([id, nom]) => (
+          <Link key={id} href={id === "profil" ? baseFiche : `${baseFiche}?onglet=suivi`} aria-current={onglet === id}
+            className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-semibold ${onglet === id ? "border-accent text-ink" : "border-transparent text-muted"}`}>
+            {nom}
+          </Link>
+        ))}
+      </nav>
+
+      {onglet === "profil" ? (
+        <>
       <div className="grid gap-5 lg:grid-cols-2">
         <Bloc titre="Profil">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
@@ -150,26 +170,6 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
           )}
         </Bloc>
       </div>
-
-      <Bloc titre="Entretiens avec l'école" action={<Link className="btn btn-primary btn-sm" href={`${baseFiche}/entretien/nouveau`}>Nouvel entretien</Link>}>
-        {!entretiens.length && <p className="text-sm text-muted">Aucun entretien enregistré. Clique sur « Nouvel entretien » pendant ou après ton rendez-vous avec l&apos;étudiant.</p>}
-        <ul className="flex flex-col gap-2">
-          {entretiens.map((e) => (
-            <li key={e.id}>
-              <Link href={`${baseFiche}/entretien/${e.id}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line p-3 text-sm hover:border-accent">
-                <span className="flex flex-col">
-                  <b>{dateFr(e.date_entretien)}{e.conseiller ? ` · ${e.conseiller}` : ""}</b>
-                  {e.prochaine_etape && <span className="text-muted">Prochaine étape : {e.prochaine_etape.slice(0, 120)}</span>}
-                </span>
-                <span className="flex flex-wrap gap-1.5">
-                  {e.bilan && <span className={`chip ${e.bilan === "autonome" ? "chip-plus" : e.bilan === "renforce" ? "chip-minus" : "chip-tag"}`}>{BILANS.find((b) => b.id === e.bilan)?.label.split(" :")[0]}</span>}
-                  <span className="chip">{e.partage ? "Partagé avec l'étudiant" : "Privé"}</span>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </Bloc>
 
       <Bloc titre="Recherches">
         <ul className="flex flex-col gap-2 text-sm">
@@ -245,6 +245,38 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
           })}
         </ul>
       </Bloc>
+        </>
+      ) : (
+        <>
+      <Bloc titre="Entretiens avec l'école" action={<Link className="btn btn-primary btn-sm" href={`${baseFiche}/entretien/nouveau`}>Nouvel entretien</Link>}>
+        {!entretiens.length && <p className="text-sm text-muted">Aucun entretien enregistré. Clique sur « Nouvel entretien » pendant ou après ton rendez-vous avec l&apos;étudiant.</p>}
+        <ul className="flex flex-col gap-2">
+          {entretiens.map((e) => (
+            <li key={e.id}>
+              <Link href={`${baseFiche}/entretien/${e.id}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line p-3 text-sm hover:border-accent">
+                <span className="flex flex-col">
+                  <b>{dateFr(e.date_entretien)}{e.conseiller ? ` · ${e.conseiller}` : ""}</b>
+                  {e.prochaine_etape && <span className="text-muted">Prochaine étape : {e.prochaine_etape.slice(0, 120)}</span>}
+                </span>
+                <span className="flex flex-wrap gap-1.5">
+                  {e.bilan && <span className={`chip ${e.bilan === "autonome" ? "chip-plus" : e.bilan === "renforce" ? "chip-minus" : "chip-tag"}`}>{BILANS.find((b) => b.id === e.bilan)?.label.split(" :")[0]}</span>}
+                  <span className="chip">{e.partage ? "Partagé avec l'étudiant" : "Privé"}</span>
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </Bloc>
+
+      <Bloc titre="Test DISC" action={<Link className="btn btn-sm" href={`${baseFiche}/test/disc`}>{tests.disc ? "Le refaire passer" : "Faire passer le test"}</Link>}>
+        {tests.disc ? <ResultatDisc r={tests.disc} tutoie={false} /> : <p className="text-sm text-muted">Pas encore passé. L&apos;étudiant peut le faire dans son espace (« Mes tests »), ou tu peux le lui faire passer pendant un entretien.</p>}
+      </Bloc>
+
+      <Bloc titre="Style de management" action={<Link className="btn btn-sm" href={`${baseFiche}/test/management`}>{tests.management ? "Le refaire passer" : "Faire passer le test"}</Link>}>
+        {tests.management ? <ResultatManagement r={tests.management} tutoie={false} /> : <p className="text-sm text-muted">Pas encore passé.</p>}
+      </Bloc>
+        </>
+      )}
     </div>
   );
 }

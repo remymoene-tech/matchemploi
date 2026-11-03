@@ -12,6 +12,9 @@ import { noterOffrePourTous, rechercherPourCandidat } from "@/lib/matching";
 import { CONTRATS, SUIVIS, contactManquant } from "@/lib/types";
 import { envoyerMessageCorrespondance, type EtatEnvoi } from "@/lib/envoi-message";
 import { enregistrerEntretienConseil } from "@/lib/entretien-conseil-serveur";
+import { enregistrerTest } from "@/lib/tests-serveur";
+import type { TestId } from "@/lib/tests";
+import type { EtatTest } from "@/components/FormTests";
 import type { EtatEntretien } from "@/components/FormEntretienConseil";
 
 const t = (f: FormData, k: string, max = 300) => String(f.get(k) ?? "").trim().slice(0, max);
@@ -139,3 +142,14 @@ export async function enregistrerEntretienEcole(_: EtatEntretien, f: FormData): 
   if (!f.get("id")) redirect(`/ecole/etudiants/${candidat}/entretien/${r.id}?ok=1`);
   return { ok: "Fiche enregistrée." };
 }
+
+async function passerTestPour(test: TestId, f: FormData): Promise<EtatTest> {
+  const { ecole } = await exigerResponsable();
+  const candidat = t(f, "candidat_id", 60);
+  if (!(await etudiantDeLEcole(candidat, ecole.id))) return { erreur: "Cet étudiant n'appartient pas à ton école." };
+  const r = await enregistrerTest(candidat, test, f, "conseiller");
+  if (r.erreur) return r;
+  redirect(`/ecole/etudiants/${candidat}?onglet=suivi`);
+}
+export async function passerTestDiscEcole(_: EtatTest, f: FormData) { return passerTestPour("disc", f); }
+export async function passerTestManagementEcole(_: EtatTest, f: FormData) { return passerTestPour("management", f); }

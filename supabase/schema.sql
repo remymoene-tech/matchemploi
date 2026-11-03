@@ -238,3 +238,21 @@ alter table public.entretiens_conseil enable row level security;
 drop policy if exists "étudiant lit ses bilans partagés" on public.entretiens_conseil;
 create policy "étudiant lit ses bilans partagés" on public.entretiens_conseil
   for select using (auth.uid() = candidat_id and partage);
+
+-- ============================================================
+-- Tests (DISC, style de management) passés par les étudiants
+-- ============================================================
+create table if not exists public.tests_resultats (
+  id          uuid primary key default gen_random_uuid(),
+  candidat_id uuid not null references public.candidats(user_id) on delete cascade,
+  test        text not null,                -- disc | management
+  reponses    jsonb not null default '[]',
+  scores      jsonb not null default '{}',
+  dominante   text not null default '',
+  passe_par   text not null default 'candidat', -- candidat | conseiller
+  created_at  timestamptz not null default now()
+);
+alter table public.tests_resultats enable row level security;
+drop policy if exists "étudiant lit ses tests" on public.tests_resultats;
+create policy "étudiant lit ses tests" on public.tests_resultats
+  for select using (auth.uid() = candidat_id);

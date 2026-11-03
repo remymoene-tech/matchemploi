@@ -13,6 +13,9 @@ import { SUIVIS_PREPARATION, genererPreparation } from "@/lib/preparation";
 import { genererCode } from "@/lib/ecoles";
 import { envoyerMessageCorrespondance, type EtatEnvoi } from "@/lib/envoi-message";
 import { enregistrerEntretienConseil } from "@/lib/entretien-conseil-serveur";
+import { enregistrerTest } from "@/lib/tests-serveur";
+import type { TestId } from "@/lib/tests";
+import type { EtatTest } from "@/components/FormTests";
 import type { EtatEntretien } from "@/components/FormEntretienConseil";
 import { FREQUENCES, ecrireFrequence, type Frequence } from "@/lib/reglages";
 
@@ -169,3 +172,13 @@ export async function enregistrerEntretienAdmin(_: EtatEntretien, f: FormData): 
   if (!f.get("id")) redirect(`/admin/candidats/${candidat}/entretien/${r.id}?ok=1`);
   return { ok: "Fiche enregistrée." };
 }
+
+async function passerTestPour(test: TestId, f: FormData): Promise<EtatTest> {
+  await exigerAdmin();
+  const candidat = t(f, "candidat_id", 60);
+  const r = await enregistrerTest(candidat, test, f, "conseiller");
+  if (r.erreur) return r;
+  redirect(`/admin/candidats/${candidat}?onglet=suivi`);
+}
+export async function passerTestDiscAdmin(_: EtatTest, f: FormData) { return passerTestPour("disc", f); }
+export async function passerTestManagementAdmin(_: EtatTest, f: FormData) { return passerTestPour("management", f); }

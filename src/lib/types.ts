@@ -66,6 +66,8 @@ export type Candidat = {
   ecole_id?: string | null;
   pistes?: Piste[] | null;
   pistes_le?: string | null;
+  /** Dernier profil DISC (ajouté au moment de la notation, pas une colonne). */
+  disc?: { scores: Record<string, number>; dominante: string; secondaire: string } | null;
   updated_at: string;
 };
 

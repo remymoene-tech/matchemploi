@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, preparerEntretien, rechercherEntreprise, type Preparation, type Source } from "@/lib/ia";
 import type { Candidat, Offre } from "@/lib/types";
+import { avecDisc } from "@/lib/tests-serveur";
 
 export type FichePreparation = Preparation & {
   meta: { intitule: string; entreprise: string; lieu: string; contrat: string; lien: string; score: number };
@@ -29,10 +30,11 @@ export async function genererPreparation(candidatId: string, offreId: string, fo
     db.from("offres").select("*").eq("id", offreId).single<Offre>(),
   ]);
   if (!c || !o) return { ok: false, message: "Candidat ou offre introuvable." };
+  const cd = await avecDisc(c); // la fiche d'entretien tient compte de sa couleur DISC
 
   try {
     const recherche = await rechercherEntreprise(o); // null si la recherche n'aboutit pas
-    const prep = await preparerEntretien(c, o, m.forts ?? [], m.manques ?? [], recherche?.notes);
+    const prep = await preparerEntretien(cd, o, m.forts ?? [], m.manques ?? [], recherche?.notes);
     const fiche: FichePreparation = {
       ...prep,
       sources: recherche?.sources ?? [],

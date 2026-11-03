@@ -10,6 +10,9 @@ import { analyserCV, cheminCV, majCandidat, stockerCV, telechargerCV } from "@/l
 import { localiserCommune } from "@/lib/geo";
 import { ecoleParCode } from "@/lib/ecoles";
 import { genererPreparation } from "@/lib/preparation";
+import { enregistrerTest } from "@/lib/tests-serveur";
+import type { TestId } from "@/lib/tests";
+import type { EtatTest } from "@/components/FormTests";
 import { rechercherPourCandidat } from "@/lib/matching";
 import { AVIS, CONTRATS, MAX_RECHERCHES, RAISONS_REFUS, type Candidat, type Piste } from "@/lib/types";
 
@@ -272,3 +275,19 @@ export async function ecarterPiste(f: FormData) {
   await supabase.from("candidats").update({ pistes }).eq("user_id", user.id);
   revalidatePath("/espace");
 }
+
+/* ---------- Tests (DISC, style de management) ---------- */
+
+async function passerMonTest(test: TestId, f: FormData): Promise<EtatTest> {
+  const { user, supabase } = await exigerUtilisateur();
+  const r = await enregistrerTest(user.id, test, f, "candidat");
+  if (r.erreur) return r;
+  // Sa couleur DISC affine les notes : on relance la notation
+  if (test === "disc") {
+    await supabase.from("candidats").update({ updated_at: new Date().toISOString(), recherche_en_cours: true }).eq("user_id", user.id);
+    after(() => rechercherPourCandidat(user.id));
+  }
+  redirect(`/espace/tests?resultat=${test}`);
+}
+export async function passerTestDisc(_: EtatTest, f: FormData) { return passerMonTest("disc", f); }
+export async function passerTestManagement(_: EtatTest, f: FormData) { return passerMonTest("management", f); }

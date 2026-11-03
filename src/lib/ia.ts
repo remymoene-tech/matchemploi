@@ -152,7 +152,9 @@ Secteur : ${c.ville || "?"} ${c.code_postal} (mobilité ${c.mobilite_km} km) · 
 ${c.contrats.includes("alternance") ? `Rythme d'alternance : ${c.rythme || "?"}\n` : ""}Disponibilité : ${c.disponibilite || "?"}
 Projet : ${c.projet || "?"}
 Compétences : ${c.competences.join(", ") || "?"}
-CV : ${(c.cv_texte || "non fourni").slice(0, 4000)}`;
+CV : ${(c.cv_texte || "non fourni").slice(0, 4000)}${c.disc ? `
+Profil DISC (test de personnalité passé avec son école) : dominante ${c.disc.dominante}, secondaire ${c.disc.secondaire} (rouge = décidé et orienté action, jaune = communicant et enthousiaste, vert = à l'écoute et stable, bleu = rigoureux et précis).
+Utilise ce profil UNIQUEMENT pour ajuster de 5 points au maximum le savoir-être attendu par l'offre (relationnel, rigueur, autonomie, rythme). Ne baisse jamais fortement une note à cause de lui seul, et cite-le dans les points forts s'il aide.` : ""}`;
 }
 
 function offreTexte(o: Offre) {

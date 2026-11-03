@@ -18,7 +18,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
     <PageEntretienConseil
       candidatId={id} eid={eid} ok={Boolean(ok)}
       conseillerParDefaut={r?.nom || ""}
-      retour={`/ecole/etudiants/${id}`}
+      retour={`/ecole/etudiants/${id}?onglet=suivi`}
       action={enregistrerEntretienEcole}
     />
   );

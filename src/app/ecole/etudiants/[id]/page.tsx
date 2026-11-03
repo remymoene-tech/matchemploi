@@ -6,7 +6,8 @@ import { changerSuiviEcole } from "../../actions";
 
 export const metadata = { title: "Fiche étudiant · Jobaprox" };
 
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string }> }) {
+  const { onglet } = await searchParams;
   const { ecole } = await exigerResponsable();
   const { id } = await params;
   // Une école ne voit que ses propres étudiants
@@ -15,6 +16,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   return (
     <FicheCandidat
       candidatId={id}
+      onglet={onglet === "suivi" ? "suivi" : "profil"}
       baseFiche={`/ecole/etudiants/${id}`}
       cheminCV={`/ecole/cv/${id}`}
       retour={{ href: "/ecole?vue=etudiants", libelle: "Tous mes étudiants" }}
