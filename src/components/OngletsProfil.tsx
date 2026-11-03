@@ -1,8 +1,8 @@
 import Link from "next/link";
 
-/** Onglets de « Mon profil » : Mes infos · CV et réseau (puis CV · Réseau). */
-export function OngletsProfil({ actif }: { actif: "infos" | "cv" | "reseau" }) {
-  const n1 = actif === "infos" ? "infos" : "cvreseau";
+/** Onglets de « Mon profil » : Mes infos · CV et réseau (puis CV · Réseau) · Mes tests. */
+export function OngletsProfil({ actif }: { actif: "infos" | "cv" | "reseau" | "tests" }) {
+  const n1 = actif === "infos" || actif === "tests" ? actif : "cvreseau";
   const lien = (on: boolean) =>
     `-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-semibold ${on ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"}`;
   return (
@@ -11,6 +11,7 @@ export function OngletsProfil({ actif }: { actif: "infos" | "cv" | "reseau" }) {
       <nav className="flex gap-1 overflow-x-auto border-b border-line" aria-label="Mon profil">
         <Link href="/espace/profil" className={lien(n1 === "infos")}>Mes infos</Link>
         <Link href="/espace/cv" className={lien(n1 === "cvreseau")}>CV et réseau</Link>
+        <Link href="/espace/tests" className={lien(n1 === "tests")}>Mes tests</Link>
       </nav>
       {n1 === "cvreseau" && (
         <nav className="flex w-fit gap-1 rounded-full bg-accent-soft p-1" aria-label="CV et réseau">

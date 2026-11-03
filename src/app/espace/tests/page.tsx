@@ -4,6 +4,7 @@ import { derniersTests } from "@/lib/tests-serveur";
 import { peutPasserTest, syntheseEtudiant } from "@/lib/synthese";
 import { TESTS } from "@/lib/tests";
 import { ResultatDisc, ResultatManagement } from "@/components/ResultatsTests";
+import { OngletsProfil } from "@/components/OngletsProfil";
 
 export const metadata = { title: "Mes tests · MagnusMatch" };
 
@@ -15,9 +16,9 @@ export default async function MesTests({ searchParams }: { searchParams: Promise
   const bilan = await syntheseEtudiant(user.id);
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <Link href="/espace" className="text-sm text-muted">← Mes offres</Link>
+      <OngletsProfil actif="tests" />
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-extrabold">Mes tests et mon bilan</h1>
+        <h2 className="text-2xl font-extrabold">Mes tests et mon bilan</h2>
         <p className="text-muted">Mieux te connaître pour mieux te présenter en entretien. Ta couleur DISC aide aussi MagnusMatch à affiner tes offres.</p>
       </div>
       {resultat && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Merci ! Voici ton résultat. Il est aussi visible par ton conseiller.</p>}

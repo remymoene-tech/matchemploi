@@ -131,7 +131,6 @@ export default async function Espace() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/espace/tests" className="btn">Mes tests</Link>
           <Link href="/espace/recherches" className="btn">Mes recherches ({1 + autresRecherches.filter((r) => r.active).length})</Link>
           <form action={relancerRecherche}>
             <button className="btn btn-primary" disabled={c.recherche_en_cours}>
