@@ -181,7 +181,7 @@ alter table public.offres add column if not exists contact_tel text not null def
 drop policy if exists "candidat lit ses offres" on public.offres;
 create policy "candidat lit ses offres" on public.offres
   for select using (
-    source in ('france_travail', 'adzuna')
+    source in ('france_travail', 'adzuna', 'la_bonne_alternance')
     and exists (select 1 from public.correspondances c where c.offre_id = offres.id and c.candidat_id = auth.uid())
   );
 

@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, noterOffres, proposerPistes, type Note, type Refus } from "@/lib/ia";
 import { franceTravailConfigure, offresPourCandidat } from "@/lib/france-travail";
 import { adzunaConfigure, offresAdzunaPourCandidat } from "@/lib/adzuna";
+import { lbaConfigure, offresLBAPourCandidat } from "@/lib/la-bonne-alternance";
 import { envoyerEmail, echapper } from "@/lib/email";
 import { distanceKm, localiserLieu } from "@/lib/geo";
 import { avecDisc } from "@/lib/tests-serveur";
@@ -159,7 +160,7 @@ const MAX_PISTES_PAR_RUN = 8; // offres « pistes » notées par recherche
 
 /**
  * Recherche complète pour un candidat :
- * 1. pour chacune de ses recherches, récupère les offres France Travail et Adzuna,
+ * 1. pour chacune de ses recherches, récupère les offres France Travail, Adzuna et La bonne alternance,
  * 2. y ajoute les offres de l'équipe,
  * 3. cherche aussi des offres pour 2 métiers voisins (« pistes ») tirés de son expérience,
  * 4. fait noter par l'IA ce qui ne l'a pas encore été,
@@ -190,6 +191,7 @@ export async function rechercherPourCandidat(candidatId: string) {
       for (const src of [
         { nom: "France Travail", actif: franceTravailConfigure(), chercher: () => offresPourCandidat(cr) },
         { nom: "Adzuna", actif: adzunaConfigure(), chercher: () => offresAdzunaPourCandidat(cr) },
+        { nom: "La bonne alternance", actif: lbaConfigure(), chercher: () => offresLBAPourCandidat(cr, franceTravailConfigure()) },
       ].filter((x) => x.actif)) {
         try {
           ids.push(...(await importerOffres(await src.chercher())));

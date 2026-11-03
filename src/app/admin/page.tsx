@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { franceTravailConfigure } from "@/lib/france-travail";
 import { iaConfiguree } from "@/lib/ia";
 import { adzunaConfigure } from "@/lib/adzuna";
+import { lbaConfigure } from "@/lib/la-bonne-alternance";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
 import { MessageEnvoyable } from "@/components/MessageEnvoyable";
@@ -88,9 +89,9 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           L&apos;IA n&apos;est pas encore branchée : les candidats peuvent s&apos;inscrire et déposer leur CV, mais aucune offre n&apos;est notée. Ajoute ANTHROPIC_API_KEY dans Vercel pour activer la notation, puis clique sur « Relancer la recherche pour tous » dans l&apos;onglet Candidats.
         </p>
       )}
-      {!franceTravailConfigure() && !adzunaConfigure() && (
+      {!franceTravailConfigure() && !adzunaConfigure() && !lbaConfigure() && (
         <p className="rounded-xl bg-warn-soft p-4 text-sm">
-          Aucune source d&apos;offres automatique n&apos;est branchée : ajoute les identifiants France Travail et/ou Adzuna dans Vercel (voir le guide). En attendant, seules tes offres sont proposées.
+          Aucune source d&apos;offres automatique n&apos;est branchée : ajoute les identifiants France Travail, Adzuna ou La bonne alternance dans Vercel (voir le guide). En attendant, seules tes offres sont proposées.
         </p>
       )}
       {sp.ok && vue !== "reglages" && vue !== "ecoles" && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Offre enregistrée. Elle est comparée aux candidats en arrière-plan.</p>}

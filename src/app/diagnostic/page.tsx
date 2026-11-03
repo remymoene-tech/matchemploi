@@ -2,6 +2,7 @@ import { verifierConfig } from "@/lib/config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { testerFranceTravail } from "@/lib/france-travail";
 import { testerAdzuna } from "@/lib/adzuna";
+import { testerLBA } from "@/lib/la-bonne-alternance";
 import { moyenEnvoi } from "@/lib/email";
 
 export const metadata = { title: "Diagnostic · MagnusMatch" };
@@ -27,7 +28,7 @@ alter table public.correspondances add column if not exists raison_refus text;
 grant update (avis_candidat, raison_refus) on public.correspondances to authenticated;
 alter table public.offres add column if not exists contact_tel text not null default '';
 drop policy if exists "candidat lit ses offres" on public.offres;
-create policy "candidat lit ses offres" on public.offres for select using (source in ('france_travail', 'adzuna') and exists (select 1 from public.correspondances c where c.offre_id = offres.id and c.candidat_id = auth.uid()));
+create policy "candidat lit ses offres" on public.offres for select using (source in ('france_travail', 'adzuna', 'la_bonne_alternance') and exists (select 1 from public.correspondances c where c.offre_id = offres.id and c.candidat_id = auth.uid()));
 alter table public.correspondances add column if not exists preparation jsonb;
 alter table public.correspondances add column if not exists preparation_le timestamptz;
 create table if not exists public.recherches (id uuid primary key default gen_random_uuid(), candidat_id uuid not null references public.candidats(user_id) on delete cascade, poste text not null, mots_cles text not null default '', contrats text[] not null default '{}', mobilite_km integer not null default 20, active boolean not null default true, created_at timestamptz not null default now());
@@ -116,10 +117,13 @@ async function verifierBase() {
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }
 
+const SQL_LBA = `drop policy if exists "candidat lit ses offres" on public.offres;
+create policy "candidat lit ses offres" on public.offres for select using (source in ('france_travail', 'adzuna', 'la_bonne_alternance') and exists (select 1 from public.correspondances c where c.offre_id = offres.id and c.candidat_id = auth.uid()));`;
+
 export default async function Diagnostic() {
   const { controles, supabaseOk } = verifierConfig();
   const base = supabaseOk ? await verifierBase().catch(() => null) : null;
-  const [ft, az] = await Promise.all([testerFranceTravail(), testerAdzuna()]);
+  const [ft, az, lba] = await Promise.all([testerFranceTravail(), testerAdzuna(), testerLBA()]);
   const majManquante = base?.some((b, i) => i >= 3 && i !== 5 && !b.ok);
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
@@ -184,7 +188,7 @@ export default async function Diagnostic() {
 
       <h2 className="text-xl font-semibold">Sources d&apos;offres</h2>
       <ul className="card divide-y divide-line">
-        {([["France Travail", ft], ["Adzuna", az]] as const).map(([nom, t]) => (
+        {([["France Travail", ft], ["Adzuna", az], ["La bonne alternance", lba]] as const).map(([nom, t]) => (
           <li key={nom} className="flex flex-col gap-1 p-4">
             <div className="flex items-center justify-between gap-3">
               <span className="text-sm font-semibold">{nom}</span>
@@ -193,6 +197,13 @@ export default async function Diagnostic() {
               </span>
             </div>
             <p className="text-sm text-muted">{t.detail}</p>
+            {nom === "La bonne alternance" && (
+              <details className="text-sm">
+                <summary className="cursor-pointer font-semibold text-accent">À faire une seule fois : autoriser les étudiants à voir ces offres</summary>
+                <p className="mt-1 text-muted">Copie ce texte dans Supabase → Éditeur SQL → Nouvelle requête, puis Exécuter.</p>
+                <pre className="mt-1 overflow-x-auto rounded-lg bg-bg p-3 font-mono text-xs">{SQL_LBA}</pre>
+              </details>
+            )}
           </li>
         ))}
       </ul>

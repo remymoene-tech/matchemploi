@@ -107,6 +107,27 @@ Projet : ${c.projet}`,
   return r.mots_cles;
 }
 
+/** Codes métier ROME (ex. D1214) pour un poste : La bonne alternance cherche par code. Mis en cache. */
+const cacheRome = new Map<string, string[]>();
+export async function codesRome(poste: string): Promise<string[]> {
+  const cle = poste.trim().toLowerCase();
+  if (!cle) return [];
+  if (cacheRome.has(cle)) return cacheRome.get(cle)!;
+  try {
+    const r = await demander(
+      z.object({ codes: z.array(z.string()).describe("1 à 3 codes ROME, format lettre + 4 chiffres, ex. D1214") }),
+      `Donne les 1 à 3 codes ROME (nomenclature France Travail) qui correspondent le mieux à ce métier, du plus proche au moins proche.
+Métier : ${poste}`,
+      "low",
+    );
+    const codes = [...new Set(r.codes.map((x) => x.trim().toUpperCase()).filter((x) => /^[A-N]\d{4}$/.test(x)))].slice(0, 3);
+    cacheRome.set(cle, codes);
+    return codes;
+  } catch {
+    return [];
+  }
+}
+
 // ---------- 2. Lecture d'une annonce collée ----------
 const AnnonceSchema = z.object({
   entreprise: z.string(),

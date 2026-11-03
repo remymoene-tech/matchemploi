@@ -67,6 +67,12 @@ Sans ces clés, le site fonctionne quand même, mais ne propose que tes offres p
 2. **Dashboard → API Access Details** : copie l'**Application ID** → `ADZUNA_APP_ID` et l'**Application Key** → `ADZUNA_APP_KEY`.
 3. Ajoute-les dans Vercel puis redéploie. La page `/diagnostic` indique si la connexion fonctionne.
 
+## Étape 4 ter — La bonne alternance (offres d'alternance du service public)
+1. Va sur https://api.apprentissage.beta.gouv.fr et crée un compte (bouton de connexion en haut à droite).
+2. Dans ton compte, génère un **jeton d'accès** (« API key » / « jeton ») et copie-le en entier.
+3. Dans Vercel → Settings → Environment Variables, ajoute `LBA_API_TOKEN` avec ce jeton, puis **Redeploy**.
+4. Ouvre `/diagnostic` : la ligne « La bonne alternance » doit être verte. Exécute une fois le petit SQL proposé sous cette ligne.
+
 ## Étape 5 — Envoyer les emails depuis ta boîte Gmail (conseillé)
 1. Ton compte Google doit avoir la **validation en deux étapes** activée : https://myaccount.google.com/security
 2. Crée un **mot de passe d'application** : https://myaccount.google.com/apppasswords
