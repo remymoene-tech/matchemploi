@@ -183,16 +183,29 @@ export default async function Espace() {
         </p>
       )}
 
+      {lignes.length ? (
+        <OffresEspace lignes={lignes} seuil={SEUIL} domicile={domicile} candidatId={user.id} recherches={[c.poste_vise, ...autresRecherches.filter((r) => r.active).map((r) => r.poste)].filter(Boolean)} />
+      ) : (
+        !c.recherche_en_cours && (
+          <div className="card flex flex-col gap-2 border-dashed p-6">
+            <h2 className="text-lg font-semibold">Pas encore d&apos;offre à te montrer</h2>
+            <p className="max-w-[60ch] text-sm text-muted">
+              On relance la recherche régulièrement et on te prévient par email dès qu&apos;une offre te correspond.
+              Pour élargir les résultats, augmente ta distance maximale ou ajoute un type de contrat dans ton profil.
+            </p>
+          </div>
+        )
+      )}
+
       {!!pistes.length && (
         <section className="flex flex-col gap-4 rounded-2xl p-5" style={{ background: "var(--accent-soft)" }}>
           <div className="flex flex-col gap-1">
+            <h2 className="text-xl font-extrabold">Ton expérience t&apos;ouvre aussi ces métiers</h2>
             <span className="eyebrow">Proposé par MagnusMatch</span>
-            <h2 className="text-xl font-extrabold">
-              {suggestions.length
-                ? `J'ai aussi trouvé ${suggestions.length} offre${suggestions.length > 1 ? "s" : ""} qui pourrai${suggestions.length > 1 ? "ent" : "t"} correspondre à ton CV`
-                : "Ton expérience t'ouvre aussi ces métiers"}
-            </h2>
-            <p className="text-sm text-muted">Des métiers que tu n&apos;as pas demandés, mais où ton expérience est un vrai atout.</p>
+            <p className="text-sm text-muted">
+              Des métiers que tu n&apos;as pas demandés, mais où ton expérience est un vrai atout.
+              {suggestions.length ? ` J'ai aussi trouvé ${suggestions.length} offre${suggestions.length > 1 ? "s" : ""} qui pourrai${suggestions.length > 1 ? "ent" : "t"} te correspondre.` : ""}
+            </p>
           </div>
           {pistes.slice(0, 3).map((p) => {
             const offres = suggestions.filter((l) => l.piste === p.metier);
@@ -235,19 +248,6 @@ export default async function Espace() {
         </section>
       )}
 
-      {lignes.length ? (
-        <OffresEspace lignes={lignes} seuil={SEUIL} domicile={domicile} candidatId={user.id} recherches={[c.poste_vise, ...autresRecherches.filter((r) => r.active).map((r) => r.poste)].filter(Boolean)} />
-      ) : (
-        !c.recherche_en_cours && (
-          <div className="card flex flex-col gap-2 border-dashed p-6">
-            <h2 className="text-lg font-semibold">Pas encore d&apos;offre à te montrer</h2>
-            <p className="max-w-[60ch] text-sm text-muted">
-              On relance la recherche régulièrement et on te prévient par email dès qu&apos;une offre te correspond.
-              Pour élargir les résultats, augmente ta distance maximale ou ajoute un type de contrat dans ton profil.
-            </p>
-          </div>
-        )
-      )}
     </div>
   );
 }
