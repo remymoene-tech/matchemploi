@@ -10,6 +10,7 @@ import { SelectAuto } from "@/components/SelectAuto";
 import { MessageEnvoyable } from "@/components/MessageEnvoyable";
 import { ListeRelances } from "@/components/ListeRelances";
 import { Barres, Colonnes } from "@/components/Graphiques";
+import { OngletsCartes } from "@/components/OngletsCartes";
 import { echeance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
@@ -136,16 +137,13 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       {sp.ok && vue !== "reglages" && vue !== "ecoles" && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Offre enregistrée. Elle est comparée aux candidats en arrière-plan.</p>}
       {sp.relance && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Recherche relancée pour tous les candidats. Les résultats arrivent dans quelques minutes.</p>}
 
-      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-line">
-        <nav className="flex gap-1 overflow-x-auto" aria-label="Espace équipe">
-          {VUES.map((v) => (
-            <Link key={v.id} href={`/admin?vue=${v.id}`} aria-current={vue === v.id ? "page" : undefined}
-              className={`-mb-px border-b-2 px-4 py-2.5 text-[15px] font-semibold ${vue === v.id ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"}`}>
-              {v.label}
-            </Link>
-          ))}
-        </nav>
-        <nav className="flex flex-wrap gap-3 pb-2.5 text-sm" aria-label="Autres pages">
+      <div className="flex flex-col gap-2">
+        <OngletsCartes label="Espace équipe" onglets={[
+          { href: "/admin", icone: "🏠", label: "Accueil", sous: "Mes chiffres", actif: vue === "accueil" },
+          { href: "/admin?vue=offres", icone: "💼", label: "Mes offres", sous: `${mesOffresOuvertes} ouverte${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "offres" },
+          { href: "/admin?vue=candidats", icone: "👥", label: "Mes candidats", sous: `${C.size} inscrit${C.size > 1 ? "s" : ""}`, actif: vue === "candidats" },
+        ]} />
+        <nav className="flex flex-wrap justify-end gap-3 text-sm" aria-label="Autres pages">
           {AUTRES.map((v) => (
             <Link key={v.id} href={`/admin?vue=${v.id}`} className={vue === v.id ? "font-semibold text-ink underline underline-offset-4" : "text-muted hover:text-ink"}>{v.label}</Link>
           ))}
@@ -169,7 +167,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             ))}
           </section>
 
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
             <section className="card flex flex-col gap-4 p-5">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="text-lg font-semibold">Nouveaux candidats par semaine</h2>

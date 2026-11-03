@@ -1,18 +1,17 @@
 import Link from "next/link";
+import { OngletsCartes } from "@/components/OngletsCartes";
 
 /** Onglets de « Mon profil » : Mes infos · CV et réseau (puis CV · Réseau) · Mes tests. */
 export function OngletsProfil({ actif }: { actif: "infos" | "cv" | "reseau" | "tests" }) {
   const n1 = actif === "infos" || actif === "tests" ? actif : "cvreseau";
-  const lien = (on: boolean) =>
-    `-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-semibold ${on ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"}`;
   return (
     <div className="flex flex-col gap-3">
       <h1 className="text-3xl font-extrabold">Mon profil</h1>
-      <nav className="flex gap-1 overflow-x-auto border-b border-line" aria-label="Mon profil">
-        <Link href="/espace/profil" className={lien(n1 === "infos")}>Mes infos</Link>
-        <Link href="/espace/cv" className={lien(n1 === "cvreseau")}>CV et réseau</Link>
-        <Link href="/espace/tests" className={lien(n1 === "tests")}>Mes tests</Link>
-      </nav>
+      <OngletsCartes label="Mon profil" onglets={[
+        { href: "/espace/profil", icone: "🪪", label: "Mes infos", sous: "Coordonnées et projet", actif: n1 === "infos" },
+        { href: "/espace/cv", icone: "📄", label: "CV et réseau", sous: "CV et LinkedIn", actif: n1 === "cvreseau" },
+        { href: "/espace/tests", icone: "🧭", label: "Mes tests", sous: "DISC et management", actif: n1 === "tests" },
+      ]} />
       {n1 === "cvreseau" && (
         <nav className="flex w-fit gap-1 rounded-full bg-accent-soft p-1" aria-label="CV et réseau">
           {([["cv", "Mon CV", "/espace/cv"], ["reseau", "Réseau · LinkedIn", "/espace/reseau"]] as const).map(([id, label, href]) => (

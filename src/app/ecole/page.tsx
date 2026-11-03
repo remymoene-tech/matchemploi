@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OngletsCartes } from "@/components/OngletsCartes";
 import { exigerResponsable } from "@/lib/ecoles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Chips, Score } from "@/components/Score";
@@ -16,11 +17,11 @@ export const metadata = { title: "Espace École · MagnusMatch" };
 export const maxDuration = 300;
 
 const VUES = [
-  { id: "correspondances", label: "Correspondances" },
-  { id: "etudiants", label: "Étudiants" },
-  { id: "entreprises", label: "Entreprises & offres" },
-  { id: "relances", label: "Mes relances" },
-  { id: "inviter", label: "Inviter mes étudiants" },
+  { id: "correspondances", label: "Correspondances", icone: "🤝", sous: "Étudiants × offres" },
+  { id: "etudiants", label: "Étudiants", icone: "👥", sous: "" },
+  { id: "entreprises", label: "Entreprises & offres", icone: "💼", sous: "Mes offres" },
+  { id: "relances", label: "Mes relances", icone: "🔔", sous: "À rappeler" },
+  { id: "inviter", label: "Inviter", icone: "✉️", sous: "Lien et code" },
 ] as const;
 
 export default async function EspaceEcole({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; tout?: string; source?: string }> }) {
@@ -80,14 +81,11 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
         ))}
       </section>
 
-      <nav className="flex gap-1 overflow-x-auto border-b border-line">
-        {VUES.map((v) => (
-          <Link key={v.id} href={`/ecole?vue=${v.id}`}
-            className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-semibold ${vue === v.id ? "border-accent text-ink" : "border-transparent text-muted"}`}>
-            {v.label}
-          </Link>
-        ))}
-      </nav>
+      <OngletsCartes label="Espace école" onglets={VUES.map((v) => ({
+        href: `/ecole?vue=${v.id}`, icone: v.icone, label: v.label,
+        sous: v.id === "etudiants" ? `${etudiants.length} inscrit${etudiants.length > 1 ? "s" : ""}` : v.sous,
+        actif: vue === v.id,
+      }))} />
 
       {vue === "correspondances" && (
         <div className="flex flex-col gap-3">

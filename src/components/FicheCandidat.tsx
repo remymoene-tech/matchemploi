@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { OngletsCartes } from "@/components/OngletsCartes";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
@@ -164,14 +165,15 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         ))}
       </section>
 
-      <nav className="flex gap-1 overflow-x-auto border-b border-line" aria-label="Onglets de la fiche">
-        {([["profil", "Profil"], ["cv", "CV"], ["offres", `Offres (${lignes.length})`], ["echanges", `Échanges (${echanges.length})`], ["suivi", "Tests et entretien"]] as const).map(([id, nom]) => (
-          <Link key={id} href={id === "profil" ? baseFiche : `${baseFiche}?onglet=${id}`} aria-current={onglet === id}
-            className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2 text-sm font-semibold ${onglet === id ? "border-accent text-ink" : "border-transparent text-muted"}`}>
-            {nom}
-          </Link>
-        ))}
-      </nav>
+      <OngletsCartes label="Onglets de la fiche" onglets={([
+        ["profil", "🪪", "Profil", "Infos et projet"],
+        ["cv", "📄", "CV", "CV et LinkedIn"],
+        ["offres", "💼", "Offres", `${lignes.length} proposée${lignes.length > 1 ? "s" : ""}`],
+        ["echanges", "💬", "Échanges", `${echanges.length} noté${echanges.length > 1 ? "s" : ""}`],
+        ["suivi", "🧭", "Tests et entretien", "DISC, bilan"],
+      ] as const).map(([id, icone, label, sous]) => ({
+        href: id === "profil" ? baseFiche : `${baseFiche}?onglet=${id}`, icone, label, sous, actif: onglet === id,
+      }))} />
 
       {onglet === "profil" && (
         <>

@@ -12,7 +12,7 @@ export function Colonnes({ donnees, resume }: { donnees: Point[]; resume: string
         {donnees.map((d) => {
           const Conteneur = d.href ? Link : "div";
           return (
-          <Conteneur key={d.label} href={d.href ?? ""} className="group relative flex h-full flex-1 flex-col items-center justify-end">
+          <Conteneur key={d.label} href={d.href ?? ""} className="group relative flex h-full min-w-0 flex-1 flex-col items-center justify-end">
             <span className="mb-1 text-xs font-semibold tabular-nums text-ink">{d.valeur || ""}</span>
             <div
               className="w-full max-w-10 rounded-t-[4px] bg-[var(--accent)] opacity-90 transition-opacity group-hover:opacity-100"
@@ -26,7 +26,7 @@ export function Colonnes({ donnees, resume }: { donnees: Point[]; resume: string
         })}
       </div>
       <div className="flex gap-[2px]" aria-hidden>
-        {donnees.map((d) => <span key={d.label} className="flex-1 text-center text-[11px] text-muted">{d.label}</span>)}
+        {donnees.map((d) => <span key={d.label} className="min-w-0 flex-1 break-words text-center text-[10px] leading-tight text-muted sm:text-[11px]">{d.label}</span>)}
       </div>
       <table className="sr-only"><tbody>{donnees.map((d) => <tr key={d.label}><th>{d.label}</th><td>{d.valeur}</td></tr>)}</tbody></table>
     </figure>
