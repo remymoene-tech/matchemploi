@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { FicheCandidat } from "@/components/FicheCandidat";
 import { autoriserTestEcole, changerSuiviEcole, ajouterEchangeEcole, actionFaiteEcole, genererCvAmelioreEcole, supprimerEchangeEcole, genererSyntheseEcole } from "../../actions";
 
-export const metadata = { title: "Fiche étudiant · Jobaprox" };
+export const metadata = { title: "Fiche étudiant · MagnusJob" };
 
 export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string }> }) {
   const { onglet } = await searchParams;

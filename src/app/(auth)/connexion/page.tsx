@@ -2,7 +2,7 @@ import Link from "next/link";
 import { FormAuth } from "@/components/FormAuth";
 import { connexion } from "../actions";
 
-export const metadata = { title: "Connexion · Jobaprox" };
+export const metadata = { title: "Connexion · MagnusJob" };
 
 export default function Page() {
   return (

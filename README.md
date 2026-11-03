@@ -1,4 +1,4 @@
-# Jobaprox
+# MagnusJob
 
 Site qui aide les gens à trouver un emploi ou une alternance :
 le candidat crée son espace, dépose son CV et décrit son projet ;
@@ -70,13 +70,13 @@ Sans ces clés, le site fonctionne quand même, mais ne propose que tes offres p
 ## Étape 5 — Envoyer les emails depuis ta boîte Gmail (conseillé)
 1. Ton compte Google doit avoir la **validation en deux étapes** activée : https://myaccount.google.com/security
 2. Crée un **mot de passe d'application** : https://myaccount.google.com/apppasswords
-   (nom : « Jobaprox ») → Google affiche 16 lettres : copie-les.
+   (nom : « MagnusJob ») → Google affiche 16 lettres : copie-les.
 3. Dans Vercel, ajoute :
    - `SMTP_HOST` = `smtp.gmail.com`
    - `SMTP_PORT` = `465`
    - `SMTP_USER` = ton adresse Gmail
    - `SMTP_PASS` = les 16 lettres (sans espaces)
-   - `NOM_EXPEDITEUR` = le nom affiché, ex. `Rémy – Jobaprox`
+   - `NOM_EXPEDITEUR` = le nom affiché, ex. `Rémy – MagnusJob`
 4. Redéploie. La page `/diagnostic` doit afficher « Envoi d'emails : OK ».
 
 ## Étape 5 bis — Resend (plus tard, avec un nom de domaine)

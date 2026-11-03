@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Palette Jobaprox : vert pâle et frais, encre vert sapin. Le vert pâle remplit les boutons,
+/* Palette MagnusJob : vert pâle et frais, encre vert sapin. Le vert pâle remplit les boutons,
    un vert plus soutenu sert aux liens et au texte pour rester lisible. Ambre/rouge réservés aux scores. */
 :root {
   --bg: #f2f8f3;

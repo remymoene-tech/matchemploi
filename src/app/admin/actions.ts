@@ -161,7 +161,7 @@ export async function retirerResponsable(f: FormData) {
 
 export async function envoyerMessageAdmin(_: EtatEnvoi, f: FormData): Promise<EtatEnvoi> {
   const { user } = await exigerAdmin();
-  const r = await envoyerMessageCorrespondance(f, { nom: process.env.NOM_EXPEDITEUR || "L'équipe Jobaprox", email: user.email! });
+  const r = await envoyerMessageCorrespondance(f, { nom: process.env.NOM_EXPEDITEUR || "L'équipe MagnusJob", email: user.email! });
   revalidatePath("/admin");
   return r;
 }

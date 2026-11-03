@@ -35,7 +35,7 @@ export function FormNouvelleRecherche({ contratsParDefaut, distanceParDefaut }: 
         ))}
       </fieldset>
       {etat.erreur && <p className="rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad">{etat.erreur}</p>}
-      {etat.ok && <p className="rounded-lg bg-good-soft px-3 py-2 text-sm text-good">Recherche ajoutée : Jobaprox cherche déjà les offres.</p>}
+      {etat.ok && <p className="rounded-lg bg-good-soft px-3 py-2 text-sm text-good">Recherche ajoutée : MagnusJob cherche déjà les offres.</p>}
       <div className="flex justify-end">
         <button className="btn btn-primary" disabled={enCours}>{enCours ? "Ajout…" : "Ajouter cette recherche"}</button>
       </div>

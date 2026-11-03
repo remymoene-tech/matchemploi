@@ -1,5 +1,5 @@
 -- ============================================================
--- Jobaprox : structure de la base de données
+-- MagnusJob : structure de la base de données
 -- À coller une seule fois dans Supabase > SQL Editor > New query > Run
 -- ============================================================
 
@@ -186,13 +186,13 @@ create policy "candidat lit ses offres" on public.offres
   );
 
 -- ============================================================
--- Fiche « Préparer mon entretien » (rédigée par Jobaprox)
+-- Fiche « Préparer mon entretien » (rédigée par MagnusJob)
 -- ============================================================
 alter table public.correspondances add column if not exists preparation jsonb;
 alter table public.correspondances add column if not exists preparation_le timestamptz;
 
 -- ============================================================
--- Plusieurs recherches par candidat + pistes proposées par Jobaprox
+-- Plusieurs recherches par candidat + pistes proposées par MagnusJob
 -- ============================================================
 create table if not exists public.recherches (
   id          uuid primary key default gen_random_uuid(),
@@ -209,7 +209,7 @@ drop policy if exists "candidat gère ses recherches" on public.recherches;
 create policy "candidat gère ses recherches" on public.recherches
   for all using (auth.uid() = candidat_id) with check (auth.uid() = candidat_id);
 alter table public.correspondances add column if not exists recherche_id uuid references public.recherches(id) on delete set null;
-alter table public.correspondances add column if not exists piste text;   -- métier voisin proposé par Jobaprox
+alter table public.correspondances add column if not exists piste text;   -- métier voisin proposé par MagnusJob
 alter table public.candidats add column if not exists pistes jsonb;
 alter table public.candidats add column if not exists pistes_le timestamptz;
 
@@ -280,7 +280,7 @@ create table if not exists public.syntheses_candidat (
 alter table public.syntheses_candidat enable row level security; -- serveur uniquement
 
 -- ============================================================
--- CV amélioré par Jobaprox
+-- CV amélioré par MagnusJob
 -- ============================================================
 alter table public.candidats add column if not exists cv_ameliore jsonb;
 alter table public.candidats add column if not exists cv_ameliore_le timestamptz;

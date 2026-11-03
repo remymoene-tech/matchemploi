@@ -5,7 +5,7 @@ import { BoutonFiche, BoutonImprimer } from "@/components/BoutonFiche";
 import { accesFiche } from "../../acces";
 import type { FichePreparation } from "@/lib/preparation";
 
-export const metadata = { title: "Préparer mon entretien · Jobaprox" };
+export const metadata = { title: "Préparer mon entretien · MagnusJob" };
 export const maxDuration = 300;
 
 function Section({ titre, children }: { titre: string; children: React.ReactNode }) {
@@ -43,7 +43,7 @@ export default async function FicheEntretien({ params }: { params: Promise<{ can
         <div className="card flex flex-col items-start gap-3 p-6">
           {o && <p className="text-sm text-muted">{c?.nom} → {o.intitule} chez {o.entreprise}</p>}
           <p className="max-w-[60ch]">
-            Jobaprox fait des recherches sur l&apos;entreprise, puis prépare une fiche : ce qu&apos;il faut savoir, la présentation en 30 secondes,
+            MagnusJob fait des recherches sur l&apos;entreprise, puis prépare une fiche : ce qu&apos;il faut savoir, la présentation en 30 secondes,
             les questions probables avec des pistes de réponse, et les questions à poser.
           </p>
           <BoutonFiche candidat={candidat} offre={offre} libelle="Préparer la fiche d'entretien" />
@@ -76,7 +76,7 @@ export default async function FicheEntretien({ params }: { params: Promise<{ can
         {!!f.entreprise.a_verifier.length && <><span className="eyebrow">À vérifier avant l&apos;entretien</span><Liste items={f.entreprise.a_verifier} /></>}
         {!!f.sources?.length && (
           <div className="flex flex-col gap-1 border-t border-line pt-3">
-            <span className="eyebrow">Sources consultées par Jobaprox</span>
+            <span className="eyebrow">Sources consultées par MagnusJob</span>
             <ul className="flex flex-col gap-1 text-sm">
               {f.sources.map((s) => (
                 <li key={s.url} className="min-w-0 truncate"><a className="text-accent" href={s.url} target="_blank" rel="noopener noreferrer">{s.titre || s.url}</a></li>
@@ -124,7 +124,7 @@ export default async function FicheEntretien({ params }: { params: Promise<{ can
       </div>
 
       <p className="hint">
-        Fiche préparée par Jobaprox (intelligence artificielle) à partir de l&apos;offre, de ton profil et de recherches sur internet.
+        Fiche préparée par MagnusJob (intelligence artificielle) à partir de l&apos;offre, de ton profil et de recherches sur internet.
         Vérifie les informations sur l&apos;entreprise avant l&apos;entretien. Bonne chance !
       </p>
     </div>

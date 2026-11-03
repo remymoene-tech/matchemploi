@@ -9,7 +9,7 @@ import nodemailer from "nodemailer";
  * Sans configuration, aucun email ne part (le site fonctionne quand même).
  */
 export type OptionsEmail = {
-  /** Nom affiché comme expéditeur, ex. « IFP Salon – Jobaprox ». */
+  /** Nom affiché comme expéditeur, ex. « IFP Salon – MagnusJob ». */
   nomExpediteur?: string;
   /** Adresse qui reçoit les réponses. */
   repondreA?: string;
@@ -42,7 +42,7 @@ export async function envoyerEmail(to: string, subject: string, html: string, o:
     if (moyen === "smtp") {
       const adresse = process.env.SMTP_USER!;
       await smtp().sendMail({
-        from: { name: o.nomExpediteur ?? "Jobaprox", address: adresse },
+        from: { name: o.nomExpediteur ?? "MagnusJob", address: adresse },
         to,
         subject,
         html,
@@ -53,7 +53,7 @@ export async function envoyerEmail(to: string, subject: string, html: string, o:
       return true;
     }
     if (moyen === "resend") {
-      const exp = process.env.EMAIL_EXPEDITEUR ?? "Jobaprox <onboarding@resend.dev>";
+      const exp = process.env.EMAIL_EXPEDITEUR ?? "MagnusJob <onboarding@resend.dev>";
       const adresse = exp.match(/<([^>]+)>/)?.[1] ?? exp;
       const res = await fetch("https://api.resend.com/emails", {
         method: "POST",

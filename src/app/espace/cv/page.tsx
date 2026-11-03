@@ -8,7 +8,7 @@ import { BoutonSynthese } from "@/components/BoutonSynthese";
 import { CvRendu } from "@/components/CvRendu";
 import { genererMonCvAmeliore } from "../actions";
 
-export const metadata = { title: "Mon CV · Jobaprox" };
+export const metadata = { title: "Mon CV · MagnusJob" };
 export const maxDuration = 300;
 
 export default async function MonCV({ searchParams }: { searchParams: Promise<{ nouveau?: string }> }) {
@@ -94,9 +94,9 @@ export default async function MonCV({ searchParams }: { searchParams: Promise<{ 
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex flex-col gap-1">
             <span className="eyebrow">Une vraie aide</span>
-            <h2 className="text-lg font-semibold">Ton CV amélioré par Jobaprox</h2>
+            <h2 className="text-lg font-semibold">Ton CV amélioré par MagnusJob</h2>
             <p className="max-w-[60ch] text-sm text-muted">
-              Jobaprox réécrit ton CV en appliquant ses conseils : une description de ton projet en haut, tes expériences détaillées avec des verbes d&apos;action,
+              MagnusJob réécrit ton CV en appliquant ses conseils : une description de ton projet en haut, tes expériences détaillées avec des verbes d&apos;action,
               tes compétences classées. Il n&apos;invente rien : ce qui manque est marqué « à compléter ».
             </p>
           </div>
@@ -181,7 +181,7 @@ export default async function MonCV({ searchParams }: { searchParams: Promise<{ 
         ) : null,
       )}
 
-      <p className="hint">Tu as amélioré ton CV ? Dépose la nouvelle version ci-dessus pour un nouvel avis. Conseils proposés automatiquement par Jobaprox (intelligence artificielle) : garde ton esprit critique. En France, la photo sur un CV est facultative.</p>
+      <p className="hint">Tu as amélioré ton CV ? Dépose la nouvelle version ci-dessus pour un nouvel avis. Conseils proposés automatiquement par MagnusJob (intelligence artificielle) : garde ton esprit critique. En France, la photo sur un CV est facultative.</p>
     </div>
   );
 }

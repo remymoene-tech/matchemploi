@@ -25,7 +25,7 @@ export function FormEntretienConseil({ initial, action, nomEtudiant, candidatId 
 
       <section className="card grid gap-4 p-5 sm:grid-cols-2">
         <div className="flex flex-col gap-1 sm:col-span-2">
-          <span className="eyebrow">Jobaprox — fiche d&apos;entretien alternance</span>
+          <span className="eyebrow">MagnusJob — fiche d&apos;entretien alternance</span>
           <h2 className="text-2xl font-extrabold">{nomEtudiant}</h2>
         </div>
         {[

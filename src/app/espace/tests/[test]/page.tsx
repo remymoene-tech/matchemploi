@@ -6,7 +6,7 @@ import { peutPasserTest } from "@/lib/synthese";
 import { FormTestDisc, FormTestManagement } from "@/components/FormTests";
 import { passerTestDisc, passerTestManagement } from "../../actions";
 
-export const metadata = { title: "Test · Jobaprox" };
+export const metadata = { title: "Test · MagnusJob" };
 export const maxDuration = 120;
 
 export default async function PasserTest({ params }: { params: Promise<{ test: string }> }) {

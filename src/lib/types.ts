@@ -123,7 +123,7 @@ export type Recherche = {
   active: boolean;
 };
 
-/** Métier voisin que Jobaprox propose à partir de l'expérience du candidat. */
+/** Métier voisin que MagnusJob propose à partir de l'expérience du candidat. */
 export type Piste = { metier: string; mots_cles: string; raison: string; ecartee?: boolean };
 
 export const MAX_RECHERCHES = 4; // en plus de la recherche principale

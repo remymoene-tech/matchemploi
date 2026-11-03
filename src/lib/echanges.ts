@@ -56,13 +56,13 @@ export async function ajouterEchange(candidatId: string, f: FormData, auteur: st
   return {};
 }
 
-/** Note automatiquement un email envoyé depuis Jobaprox (n'échoue jamais). */
+/** Note automatiquement un email envoyé depuis MagnusJob (n'échoue jamais). */
 export async function noterEmailEnvoye(candidatId: string, auteur: string, destinataire: string, objet: string, cible: string) {
   try {
     await createAdminClient().from("echanges").insert({
       candidat_id: candidatId,
       type: "email",
-      resume: `Email envoyé depuis Jobaprox ${cible === "entreprise" ? "à l'entreprise" : "à l'étudiant"} (${destinataire}) : « ${objet} »`,
+      resume: `Email envoyé depuis MagnusJob ${cible === "entreprise" ? "à l'entreprise" : "à l'étudiant"} (${destinataire}) : « ${objet} »`,
       auteur,
     });
   } catch {

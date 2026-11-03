@@ -8,7 +8,7 @@ import { SCORE_ORANGE, SCORE_VERT, SEUIL, contratLabel, estOffreEquipe, sourceLa
 import { adopterPiste, ecarterPiste } from "./actions";
 import { Chips, Score } from "@/components/Score";
 
-export const metadata = { title: "Mes offres · Jobaprox" };
+export const metadata = { title: "Mes offres · MagnusJob" };
 export const maxDuration = 300;
 
 type Ligne = {
@@ -59,7 +59,7 @@ export default async function Espace() {
     if (!r.error) { data = r.data; break; }
   }
 
-  // Ses recherches (pour les filtres) et les pistes proposées par Jobaprox
+  // Ses recherches (pour les filtres) et les pistes proposées par MagnusJob
   const { data: rechData } = await supabase.from("recherches").select("id, poste, active").eq("candidat_id", user.id).order("created_at");
   const autresRecherches = (rechData ?? []) as { id: string; poste: string; active: boolean }[];
   const pistes = ((c.pistes ?? []) as Piste[]).filter((p) => !p.ecartee);
@@ -186,7 +186,7 @@ export default async function Espace() {
       {!!pistes.length && (
         <section className="flex flex-col gap-4 rounded-2xl p-5" style={{ background: "var(--accent-soft)" }}>
           <div className="flex flex-col gap-1">
-            <span className="eyebrow">Proposé par Jobaprox</span>
+            <span className="eyebrow">Proposé par MagnusJob</span>
             <h2 className="text-xl font-extrabold">
               {suggestions.length
                 ? `J'ai aussi trouvé ${suggestions.length} offre${suggestions.length > 1 ? "s" : ""} qui pourrai${suggestions.length > 1 ? "ent" : "t"} correspondre à ton CV`
@@ -211,8 +211,8 @@ export default async function Espace() {
                 {!offres.length && (
                   <p className="text-sm text-muted">
                     {c.recherche_en_cours
-                      ? "Jobaprox cherche des offres pour ce métier…"
-                      : "Pas encore d'offre à 70 % ou plus pour ce métier près de chez toi. Ajoute-le à tes recherches pour que Jobaprox cherche plus largement."}
+                      ? "MagnusJob cherche des offres pour ce métier…"
+                      : "Pas encore d'offre à 70 % ou plus pour ce métier près de chez toi. Ajoute-le à tes recherches pour que MagnusJob cherche plus largement."}
                   </p>
                 )}
                 <ul className="grid gap-2 md:grid-cols-2">

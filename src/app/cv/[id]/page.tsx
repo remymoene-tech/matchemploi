@@ -6,7 +6,7 @@ import { CvRendu } from "@/components/CvRendu";
 import { BoutonImprimer } from "@/components/BoutonFiche";
 import type { Candidat } from "@/lib/types";
 
-export const metadata = { title: "CV · Jobaprox" };
+export const metadata = { title: "CV · MagnusJob" };
 
 /** CV amélioré prêt à imprimer : visible par le candidat lui-même et par son équipe. */
 export default async function CvImprimable({ params }: { params: Promise<{ id: string }> }) {

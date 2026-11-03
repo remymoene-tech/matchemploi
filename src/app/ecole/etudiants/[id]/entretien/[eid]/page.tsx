@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { PageEntretienConseil } from "@/components/PageEntretienConseil";
 import { enregistrerEntretienEcole } from "../../../../actions";
 
-export const metadata = { title: "Fiche d'entretien · Jobaprox" };
+export const metadata = { title: "Fiche d'entretien · MagnusJob" };
 
 export default async function Page({ params, searchParams }: { params: Promise<{ id: string; eid: string }>; searchParams: Promise<{ ok?: string }> }) {
   const { user, ecole } = await exigerResponsable();

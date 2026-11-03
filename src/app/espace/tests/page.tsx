@@ -5,7 +5,7 @@ import { peutPasserTest, syntheseEtudiant } from "@/lib/synthese";
 import { TESTS } from "@/lib/tests";
 import { ResultatDisc, ResultatManagement } from "@/components/ResultatsTests";
 
-export const metadata = { title: "Mes tests · Jobaprox" };
+export const metadata = { title: "Mes tests · MagnusJob" };
 
 export default async function MesTests({ searchParams }: { searchParams: Promise<{ resultat?: string }> }) {
   const { resultat } = await searchParams;
@@ -18,13 +18,13 @@ export default async function MesTests({ searchParams }: { searchParams: Promise
       <Link href="/espace" className="text-sm text-muted">← Mes offres</Link>
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-extrabold">Mes tests et mon bilan</h1>
-        <p className="text-muted">Mieux te connaître pour mieux te présenter en entretien. Ta couleur DISC aide aussi Jobaprox à affiner tes offres.</p>
+        <p className="text-muted">Mieux te connaître pour mieux te présenter en entretien. Ta couleur DISC aide aussi MagnusJob à affiner tes offres.</p>
       </div>
       {resultat && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Merci ! Voici ton résultat. Il est aussi visible par ton conseiller.</p>}
       {bilan && (
         <section className="flex flex-col gap-4 rounded-2xl p-5" style={{ background: "var(--accent-soft)" }}>
           <div>
-            <span className="eyebrow">Mon bilan Jobaprox</span>
+            <span className="eyebrow">Mon bilan MagnusJob</span>
             <h2 className="text-xl font-extrabold">Ce qui ressort de ton profil</h2>
           </div>
           <p>{bilan.message}</p>

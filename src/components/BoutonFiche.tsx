@@ -11,7 +11,7 @@ export function BoutonFiche({ candidat, offre, forcer, libelle }: { candidat: st
       <input type="hidden" name="offre_id" value={offre} />
       {forcer && <input type="hidden" name="forcer" value="1" />}
       <button className={`btn w-fit ${forcer ? "btn-sm" : "btn-primary"}`} disabled={enCours}>
-        {enCours ? "Jobaprox prépare la fiche… (30 s environ)" : libelle}
+        {enCours ? "MagnusJob prépare la fiche… (30 s environ)" : libelle}
       </button>
       {etat.erreur && <p className="rounded-lg bg-bad-soft px-3 py-2 text-sm text-bad">{etat.erreur}</p>}
     </form>

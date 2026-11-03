@@ -9,7 +9,7 @@ function Ecran({ url, children }: { url: string; children: React.ReactNode }) {
     <div className="card overflow-hidden shadow-lg">
       <div className="flex items-center gap-2 border-b border-line bg-bg px-3 py-2">
         <span className="h-2.5 w-2.5 rounded-full bg-bad/60" /><span className="h-2.5 w-2.5 rounded-full bg-warn/60" /><span className="h-2.5 w-2.5 rounded-full bg-good/60" />
-        <span className="ml-2 truncate rounded bg-surface px-2 py-0.5 font-mono text-[11px] text-muted">jobaprox.fr/{url}</span>
+        <span className="ml-2 truncate rounded bg-surface px-2 py-0.5 font-mono text-[11px] text-muted">magnusjob.fr/{url}</span>
       </div>
       <div className="h-[340px] overflow-hidden p-4 sm:h-[360px]">{children}</div>
     </div>
@@ -109,7 +109,7 @@ export function ApercuApprend() {
         </div>
         <div className="flex items-start gap-2 rounded-lg p-3 text-[12px]" style={{ background: "var(--accent-soft)" }}>
           <span className="text-lg leading-none">↻</span>
-          <p><b>Tes offres sont renotées.</b> Les postes loin de chez toi ou le samedi baissent : Jobaprox a compris ce que tu ne veux pas.</p>
+          <p><b>Tes offres sont renotées.</b> Les postes loin de chez toi ou le samedi baissent : MagnusJob a compris ce que tu ne veux pas.</p>
         </div>
       </div>
     </Ecran>
@@ -151,7 +151,7 @@ export function ApercuAlerte() {
       <div className="mx-auto flex h-full max-w-sm flex-col gap-3">
         <div className="flex items-center gap-3 rounded-lg border border-line p-3">
           <span className="grid h-9 w-9 place-items-center rounded-full font-bold text-accent-ink" style={{ background: "var(--accent)" }}>J</span>
-          <div className="min-w-0"><p className="text-[13px] font-semibold">Jobaprox</p><p className="truncate text-[12px] text-muted">3 offres correspondent à ton profil</p></div>
+          <div className="min-w-0"><p className="text-[13px] font-semibold">MagnusJob</p><p className="truncate text-[12px] text-muted">3 offres correspondent à ton profil</p></div>
           <span className="ml-auto text-[11px] text-muted">7:12</span>
         </div>
         <div className="flex flex-col gap-2 rounded-lg border border-line p-3 text-[13px]">
