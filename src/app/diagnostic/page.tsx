@@ -2,6 +2,7 @@ import { verifierConfig } from "@/lib/config";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { testerFranceTravail } from "@/lib/france-travail";
 import { testerAdzuna } from "@/lib/adzuna";
+import { Copier } from "@/components/Copier";
 import { testerLBA } from "@/lib/la-bonne-alternance";
 import { moyenEnvoi } from "@/lib/email";
 
@@ -165,7 +166,8 @@ export default async function Diagnostic() {
       {majManquante && (
         <div className="flex flex-col gap-2 rounded-xl bg-warn-soft p-4 text-sm">
           <p>Mise à jour à faire : copie ce texte dans Supabase → Éditeur SQL → Nouvelle requête, puis clique sur Exécuter.</p>
-          <pre className="overflow-x-auto rounded-lg bg-surface p-3 font-mono text-xs">{SQL_MAJ}</pre>
+          <pre className="whitespace-pre-wrap break-all rounded-lg bg-surface p-3 font-mono text-xs">{SQL_MAJ}</pre>
+          <div><Copier texte={SQL_MAJ} /></div>
         </div>
       )}
 
@@ -201,7 +203,8 @@ export default async function Diagnostic() {
               <details className="text-sm">
                 <summary className="cursor-pointer font-semibold text-accent">À faire une seule fois : autoriser les étudiants à voir ces offres</summary>
                 <p className="mt-1 text-muted">Copie ce texte dans Supabase → Éditeur SQL → Nouvelle requête, puis Exécuter.</p>
-                <pre className="mt-1 overflow-x-auto rounded-lg bg-bg p-3 font-mono text-xs">{SQL_LBA}</pre>
+                <pre className="mt-1 whitespace-pre-wrap break-all rounded-lg bg-bg p-3 font-mono text-xs">{SQL_LBA}</pre>
+                <div className="mt-2"><Copier texte={SQL_LBA} /></div>
               </details>
             )}
           </li>
