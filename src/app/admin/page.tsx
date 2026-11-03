@@ -9,7 +9,7 @@ import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
 import { MessageEnvoyable } from "@/components/MessageEnvoyable";
 import { ListeRelances } from "@/components/ListeRelances";
-import { relancesDe } from "@/lib/echanges";
+import { echeance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
 import { ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
@@ -20,6 +20,7 @@ export const metadata = { title: "Admin · MagnusMatch" };
 export const maxDuration = 300;
 
 const VUES = [
+  { id: "accueil", label: "Tableau de bord" },
   { id: "correspondances", label: "Correspondances" },
   { id: "candidats", label: "Candidats" },
   { id: "offres", label: "Offres" },
@@ -32,7 +33,7 @@ const VUES = [
 export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
-  const vue = VUES.some((v) => v.id === sp.vue) ? sp.vue! : "correspondances";
+  const vue = VUES.some((v) => v.id === sp.vue) ? sp.vue! : "accueil";
   const db = createAdminClient();
 
   const [{ data: ecolesData, error: ecolesErreur }, { data: respData }, { data: entData, error: entErreur }] = await Promise.all([
@@ -69,7 +70,40 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     (a, b) => Number(b.suivi === "a_traiter") - Number(a.suivi === "a_traiter") || b.score - a.score,
   );
   const aTraiter = equipe.filter((m) => m.suivi === "a_traiter").length;
-  const interesses = lignes.filter((m) => m.avis_candidat === "interesse" || m.avis_candidat === "postule").length;
+
+  // ---- Tableau de bord ----
+  const tousCandidats = [...C.values()];
+  const maintenant = maintenantMs();
+  const ilYa7j = new Date(maintenant - 7 * 864e5).toISOString();
+  const nouveaux = tousCandidats.filter((c) => (c as Candidat & { created_at?: string }).created_at && (c as Candidat & { created_at?: string }).created_at! >= ilYa7j).length;
+  const avecCV = tousCandidats.filter((c) => c.cv_chemin).length;
+  const sansEntretien = tousCandidats.filter((c) => !dernierEntretien.has(c.user_id));
+  const SOURCES_TB = [
+    { id: "france_travail", label: "France Travail" },
+    { id: "adzuna", label: "Adzuna" },
+    { id: "la_bonne_alternance", label: "La bonne alternance" },
+    { id: "partenaire", label: "Vos offres" },
+    { id: "externe", label: "Annonces collées" },
+  ];
+  const [comptes, { count: nbInteresses }, { count: nbPostules }, mesRelances] = await Promise.all([
+    vue === "accueil"
+      ? Promise.all(SOURCES_TB.map((x) => db.from("offres").select("id", { count: "exact", head: true }).eq("source", x.id).eq("ouverte", true)))
+      : Promise.resolve([]),
+    db.from("correspondances").select("id", { count: "exact", head: true }).eq("avis_candidat", "interesse"),
+    db.from("correspondances").select("id", { count: "exact", head: true }).eq("avis_candidat", "postule"),
+    vue === "accueil" ? relancesDe(moi.user.email ?? "") : Promise.resolve([]),
+  ]);
+  const parSource = SOURCES_TB.map((x, i) => ({ ...x, n: comptes[i]?.count ?? 0 }));
+  const totalOffres = parSource.reduce((t, x) => t + x.n, 0);
+  const maxSource = Math.max(1, ...parSource.map((x) => x.n));
+  const pipeline = SUIVIS.map((x) => ({ ...x, n: equipe.filter((m) => m.suivi === x.id).length }));
+  const finJour = new Date(); finJour.setHours(23, 59, 59, 999);
+  const relancesDuJour = mesRelances.filter((r) => { const d = echeance(r); return d && d <= finJour; });
+  const meilleure = new Map<string, number>();
+  for (const m of toutes) meilleure.set(m.candidat_id, Math.max(meilleure.get(m.candidat_id) ?? 0, m.score));
+  const recents = [...tousCandidats]
+    .sort((a, b) => ((b as Candidat & { created_at?: string }).created_at ?? "").localeCompare((a as Candidat & { created_at?: string }).created_at ?? ""))
+    .slice(0, 8);
 
   return (
     <div className="flex flex-col gap-6">
@@ -97,20 +131,6 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       {sp.ok && vue !== "reglages" && vue !== "ecoles" && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Offre enregistrée. Elle est comparée aux candidats en arrière-plan.</p>}
       {sp.relance && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Recherche relancée pour tous les candidats. Les résultats arrivent dans quelques minutes.</p>}
 
-      <section className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        {[
-          ["Candidats", C.size],
-          [`Duos ≥ ${SEUIL} % sur vos offres`, equipe.length],
-          ["À traiter", aTraiter],
-          ["Candidats intéressés", interesses],
-        ].map(([l, v]) => (
-          <div key={l} className="card flex flex-col p-4">
-            <span className="eyebrow">{l}</span>
-            <b className="font-mono text-2xl tabular-nums">{v}</b>
-          </div>
-        ))}
-      </section>
-
       <nav className="flex gap-1 overflow-x-auto border-b border-line">
         {VUES.map((v) => (
           <Link key={v.id} href={`/admin?vue=${v.id}`}
@@ -119,6 +139,134 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </Link>
         ))}
       </nav>
+
+      {vue === "accueil" && (
+        <div className="flex flex-col gap-6">
+          <section className="grid grid-cols-2 gap-3 md:grid-cols-4" aria-label="Chiffres clés">
+            {([
+              ["Candidats inscrits", C.size, nouveaux ? `+${nouveaux} cette semaine` : `${avecCV} avec un CV`, "/admin?vue=candidats"],
+              ["Offres disponibles", totalOffres, `dont ${parSource[3].n + parSource[4].n} de l'équipe`, "/admin?vue=offres"],
+              ["À traiter", aTraiter, `duos ≥ ${SEUIL} % sur vos offres`, "/admin?vue=correspondances"],
+              ["Mes relances du jour", relancesDuJour.length, mesRelances.length ? `${mesRelances.length} en attente au total` : "aucune en attente", "/admin?vue=relances"],
+              ["Candidats intéressés", nbInteresses ?? 0, "« Ça m'intéresse »", "/admin?vue=correspondances&source=toutes"],
+              ["Candidatures envoyées", nbPostules ?? 0, "« J'ai postulé »", "/admin?vue=correspondances&source=toutes"],
+              ["Sans entretien", sansEntretien.length, "candidats jamais reçus", "/admin?vue=entretiens"],
+              ["CV déposés", `${avecCV}/${C.size}`, C.size ? `${Math.round((avecCV / C.size) * 100)} % des candidats` : "—", "/admin?vue=candidats"],
+            ] as const).map(([l, v, sous, href], i) => (
+              <Link key={l} href={href} className={`card flex flex-col gap-0.5 p-4 transition-colors hover:border-accent ${i === 2 && aTraiter ? "border-accent" : ""}`}>
+                <span className="eyebrow">{l}</span>
+                <b className="text-3xl font-semibold tabular-nums">{v}</b>
+                <span className="text-xs text-muted">{sous}</span>
+              </Link>
+            ))}
+          </section>
+
+          <div className="grid gap-4 lg:grid-cols-2">
+            <section className="card flex flex-col gap-3 p-5">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">À traiter maintenant</h2>
+                <Link href="/admin?vue=correspondances" className="text-sm font-semibold text-accent">Tout voir →</Link>
+              </div>
+              {!aTraiter && <p className="text-sm text-muted">Rien à traiter : aucun nouveau duo à {SEUIL} % ou plus sur vos offres.</p>}
+              <ul className="flex flex-col divide-y divide-line">
+                {equipe.filter((m) => m.suivi === "a_traiter").sort((a, b) => b.score - a.score).slice(0, 5).map((m) => {
+                  const c = C.get(m.candidat_id)!, o = O.get(m.offre_id)!;
+                  return (
+                    <li key={`${m.candidat_id}-${m.offre_id}`} className="flex items-center gap-3 py-2">
+                      <Score score={m.score} seuil={SEUIL} />
+                      <div className="min-w-0 text-sm">
+                        <Link href={`/admin/candidats/${c.user_id}?onglet=offres`} className="font-semibold hover:text-accent hover:underline">{c.nom || c.email}</Link>
+                        <p className="truncate text-muted">{o.intitule} · {o.entreprise}</p>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+
+            <section className="card flex flex-col gap-3 p-5">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">Mes relances du jour</h2>
+                <Link href="/admin?vue=relances" className="text-sm font-semibold text-accent">Toutes mes relances →</Link>
+              </div>
+              {!relancesDuJour.length && <p className="text-sm text-muted">Aucune relance prévue aujourd&apos;hui.</p>}
+              <ul className="flex flex-col divide-y divide-line">
+                {relancesDuJour.slice(0, 5).map((r) => {
+                  const d = echeance(r)!;
+                  const retard = d.getTime() < maintenant;
+                  return (
+                    <li key={r.id} className="flex items-start justify-between gap-3 py-2 text-sm">
+                      <div className="min-w-0">
+                        <Link href={`/admin/candidats/${r.candidat_id}?onglet=echanges`} className="font-semibold hover:text-accent hover:underline">{r.nom}</Link>
+                        <p className="text-muted">{r.action}</p>
+                      </div>
+                      <span className={`chip shrink-0 ${retard ? "chip-minus" : "chip-tag"}`}>
+                        {retard ? "En retard" : d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          </div>
+
+          <section className="card flex flex-col gap-3 p-5">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">Suivi des mises en relation</h2>
+              <span className="text-sm text-muted">sur vos offres, duos à {SEUIL} % ou plus</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+              {pipeline.map((p) => (
+                <div key={p.id} className={`rounded-lg p-3 ${p.id === "embauche" ? "bg-good-soft" : p.id === "refus" ? "bg-bg" : "bg-accent-soft"}`}>
+                  <b className="text-2xl font-semibold tabular-nums">{p.n}</b>
+                  <p className="text-xs text-muted">{p.label}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <div className="grid gap-4 lg:grid-cols-3">
+            <section className="card flex flex-col gap-3 p-5 lg:col-span-2">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">Derniers candidats inscrits</h2>
+                <Link href="/admin?vue=candidats" className="text-sm font-semibold text-accent">Tous les candidats →</Link>
+              </div>
+              {!recents.length && <p className="text-sm text-muted">Aucun candidat inscrit pour l&apos;instant.</p>}
+              <ul className="flex flex-col divide-y divide-line">
+                {recents.map((c) => {
+                  const best = meilleure.get(c.user_id);
+                  return (
+                    <li key={c.user_id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                      <div className="min-w-0">
+                        <Link href={`/admin/candidats/${c.user_id}`} className="font-semibold hover:text-accent hover:underline">{c.nom || c.email}</Link>
+                        <p className="text-muted">{[c.poste_vise, c.ville, ecoles.find((x) => x.id === c.ecole_id)?.nom].filter(Boolean).join(" · ") || "Profil à compléter"}</p>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className={`chip ${c.cv_chemin ? "chip-plus" : "chip-minus"}`}>{c.cv_chemin ? "CV ✓" : "Sans CV"}</span>
+                        {!dernierEntretien.has(c.user_id) && <span className="chip">Pas d&apos;entretien</span>}
+                        {best != null && <span className="chip chip-tag">Meilleure offre {best} %</span>}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+
+            <section className="card flex flex-col gap-3 p-5">
+              <h2 className="text-lg font-semibold">Offres par source</h2>
+              <ul className="flex flex-col gap-2.5">
+                {parSource.map((x) => (
+                  <li key={x.id} className="flex flex-col gap-1 text-sm">
+                    <div className="flex justify-between"><span>{x.label}</span><b className="tabular-nums">{x.n}</b></div>
+                    <div className="h-2 overflow-hidden rounded-full bg-bg"><div className="h-full rounded-full bg-[var(--sauge)]" style={{ width: `${(x.n / maxSource) * 100}%` }} /></div>
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-muted">Offres ouvertes récupérées pour vos candidats, plus celles de l&apos;équipe.</p>
+            </section>
+          </div>
+        </div>
+      )}
 
       {vue === "correspondances" && (
         <div className="flex flex-col gap-3">
