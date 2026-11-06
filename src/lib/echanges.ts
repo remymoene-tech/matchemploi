@@ -85,8 +85,9 @@ export async function echangesDeLEntreprise(entrepriseId: string): Promise<Echan
 export type Relance = { id: string; candidat_id: string | null; entreprise_id: string | null; nom: string; action: string; action_a: string | null; action_le: string | null; type: string; auteur: string };
 
 /** Lien vers la fiche concernée (onglet Échanges). */
-export const lienRelance = (r: Pick<Relance, "candidat_id" | "entreprise_id">, baseCandidats = "/admin/candidats") =>
-  r.entreprise_id ? `/admin/entreprises/${r.entreprise_id}?onglet=echanges` : `${baseCandidats}/${r.candidat_id}?onglet=echanges`;
+export const lienRelance = (r: Pick<Relance, "candidat_id" | "entreprise_id"> & { action?: string }, baseCandidats = "/admin/candidats") =>
+  r.entreprise_id ? `/admin/entreprises/${r.entreprise_id}?onglet=echanges`
+    : `${baseCandidats}/${r.candidat_id}?onglet=${r.action?.startsWith("🎯") ? "prospections" : "echanges"}`;
 
 /** Relances non faites d'un recruteur (les siennes), ou de toute l'équipe si auteur = null. */
 export async function relancesDe(auteur: string | null): Promise<Relance[]> {

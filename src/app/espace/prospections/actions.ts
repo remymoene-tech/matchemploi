@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { exigerUtilisateur } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { localVersISO } from "@/lib/echanges";
-import { RECRUTE, TYPES_PROSPECTION } from "@/lib/prospections";
+import { RECRUTE, TYPES_PROSPECTION, notifierEntrepriseQuiRecrute } from "@/lib/prospections";
 
 export type EtatProspection = { erreur?: string; ok?: boolean };
 const txt = (f: FormData, k: string, max = 300) => String(f.get(k) ?? "").trim().slice(0, max);
@@ -63,6 +63,7 @@ export async function creerProspection(_: EtatProspection, f: FormData): Promise
     ...e, prospection_id: data.id, candidat_id: user.id,
     resume: e.resume || `Premier contact. ${p.recrute === "oui" ? "Recrute" : "Ne recrute pas"} : ${p.justification}`,
   });
+  if (p.recrute === "oui") await notifierEntrepriseQuiRecrute(user.id, p.entreprise, p.justification);
   redirect(`/espace/prospections/${data.id}?nouveau=1`);
 }
 
@@ -88,6 +89,10 @@ export async function majProspection(_: EtatProspection, f: FormData): Promise<E
     recrute, justification, updated_at: new Date().toISOString(),
   }).eq("id", id).eq("candidat_id", user.id);
   if (error) return { erreur: "L'enregistrement a échoué." };
+  // Passe à « recrute » : l'équipe est prévenue
+  if (recrute === "oui" && avant && avant.recrute !== "oui") {
+    await notifierEntrepriseQuiRecrute(user.id, txt(f, "entreprise", 150) || avant.entreprise, justification);
+  }
   revalidatePath(`/espace/prospections/${id}`);
   return { ok: true };
 }

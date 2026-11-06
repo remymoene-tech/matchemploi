@@ -114,3 +114,32 @@ export async function prospectionsDeLEntreprise(e: { id: string; nom: string }) 
   }
   return [...vues.values()];
 }
+
+/**
+ * L'étudiant a noté qu'une entreprise recrute : notification 🔔 immédiate pour l'équipe
+ * (les admins et les responsables de son école), sous forme de relance à traiter sur sa fiche.
+ */
+export async function notifierEntrepriseQuiRecrute(candidatId: string, entreprise: string, justification: string) {
+  try {
+    const base = db();
+    const { data: c } = await base.from("candidats").select("nom, email, ecole_id").eq("user_id", candidatId).maybeSingle();
+    const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+    const { data: resp } = c?.ecole_id ? await base.from("responsables").select("email").eq("ecole_id", c.ecole_id) : { data: [] };
+    const destinataires = [...new Set([...admins, ...(resp ?? []).map((r) => (r.email as string).toLowerCase())])];
+    const nom = c?.nom || c?.email || "Un étudiant";
+    const maintenant = new Date().toISOString();
+    if (!destinataires.length) return;
+    await base.from("echanges").insert(destinataires.map((auteur) => ({
+      candidat_id: candidatId,
+      type: "autre",
+      date_echange: maintenant,
+      resume: `🎯 ${nom} a noté que « ${entreprise} » recrute. Ce qu'on lui a dit : ${justification}`,
+      action: `🎯 ${entreprise} recrute (prospection de ${nom}) : à traiter`,
+      action_le: maintenant.slice(0, 10),
+      action_a: maintenant,
+      auteur,
+    })));
+  } catch {
+    /* la notification ne doit jamais bloquer l'étudiant */
+  }
+}
