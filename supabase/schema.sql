@@ -360,3 +360,6 @@ alter table public.candidats add column if not exists motif_admission text not n
 
 -- Questionnaire des besoins sur la fiche entreprise
 alter table public.entreprises add column if not exists attentes jsonb;
+
+-- Date d'expiration des offres de l'équipe (fermées automatiquement)
+alter table public.offres add column if not exists expire_le timestamptz;

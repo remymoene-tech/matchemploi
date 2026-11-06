@@ -2,6 +2,7 @@ import Link from "next/link";
 import { exigerAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { franceTravailConfigure } from "@/lib/france-travail";
+import { fermerOffresExpirees } from "@/lib/matching";
 import { iaConfiguree } from "@/lib/ia";
 import { adzunaConfigure } from "@/lib/adzuna";
 import { lbaConfigure } from "@/lib/la-bonne-alternance";
@@ -12,6 +13,7 @@ import { ListeRelances } from "@/components/ListeRelances";
 import { Barres, Colonnes } from "@/components/Graphiques";
 import { OngletsCartes } from "@/components/OngletsCartes";
 import { ADMISSIONS, admission } from "@/lib/admission";
+import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
 import { anneeLabel, lireFormations } from "@/lib/formations";
@@ -48,6 +50,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const sous = sp.sous === "offres" || sp.sous === "candidats" ? sp.sous
     : sp.vue === "offres" ? (sp.suivi ? "candidats" : "offres") : sp.vue === "correspondances" ? "candidats" : "entreprises";
   const db = createAdminClient();
+  await fermerOffresExpirees(); // les offres expirées se ferment toutes seules
 
   const [{ data: ecolesData, error: ecolesErreur }, { data: respData }, { data: entData, error: entErreur }] = await Promise.all([
     db.from("ecoles").select("*").order("nom"),
@@ -730,7 +733,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 </div>
                 <div className="flex flex-wrap justify-end gap-1">
                   <span className={`chip ${o.source === "partenaire" ? "chip-tag" : ""}`}>{sourceLabel(o.source)}</span>
-                  {!o.ouverte && <span className="chip chip-minus">Fermée</span>}
+                  {(() => { const x = texteExpiration(o.expire_le, maintenant); return x ? <span className={`chip ${x.chip}`}>{x.texte}</span> : null; })()}
+                  {!o.ouverte && !estExpiree(o, maintenant) && <span className="chip chip-minus">Fermée</span>}
                 </div>
               </div>
               <p className="text-sm">{[o.contrat_libelle || contratLabel(o.contrat), o.lieu].filter(Boolean).join(" · ")}</p>

@@ -109,6 +109,8 @@ export type Offre = {
   longitude?: number | null;
   ecole_id?: string | null;
   attentes?: import("@/lib/attentes").Attentes | null;
+  /** Date d'expiration (offres de l'équipe) : fermée automatiquement ensuite. */
+  expire_le?: string | null;
 };
 
 export type Correspondance = {

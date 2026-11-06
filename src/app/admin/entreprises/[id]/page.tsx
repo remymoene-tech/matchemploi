@@ -6,6 +6,7 @@ import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, entrepriseParId, offresDe, sta
 import { echangesDeLEntreprise, echeance, maintenantMs } from "@/lib/echanges";
 import { OngletsCartes } from "@/components/OngletsCartes";
 import { QuestionnaireAttentes } from "@/components/QuestionnaireAttentes";
+import { texteExpiration } from "@/lib/expiration";
 import { FormEchange } from "@/components/FormEchange";
 import { JournalEchanges } from "@/components/JournalEchanges";
 import { actionFaiteEntreprise, ajouterEchangeEntreprise, enregistrerEntreprise, supprimerEchangeEntreprise, supprimerEntreprise } from "../../actions";
@@ -160,7 +161,7 @@ export default async function FicheEntreprise({ params, searchParams }: {
                 <article key={o.id} className="card flex flex-col gap-2 p-5">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold">💼 {o.intitule}</h3>
-                    {!o.ouverte && <span className="chip chip-minus">Fermée</span>}
+                    {(() => { const x = texteExpiration(o.expire_le, maintenant); return x ? <span className={`chip ${x.chip}`}>{x.texte}</span> : !o.ouverte ? <span className="chip chip-minus">Fermée</span> : null; })()}
                   </div>
                   <p className="text-sm text-muted">{[o.contrat_libelle || contratLabel(o.contrat), o.lieu].filter(Boolean).join(" · ")}</p>
                   <p className="text-sm">👥 {m.filter((x) => x.score >= 75).length} candidat(s) à 75 % ou plus · {m.filter((x) => x.suivi === "embauche").length} embauché(s)</p>

@@ -1,6 +1,7 @@
 "use server";
 
 import { lireAttentes } from "@/lib/attentes";
+import { estExpiree, lireExpiration } from "@/lib/expiration";
 
 import { after } from "next/server";
 import { redirect } from "next/navigation";
@@ -68,8 +69,14 @@ export async function enregistrerOffre(f: FormData) {
     attentes: lireAttentes(f),
     entreprise_id: t(f, "entreprise_id", 60) || null,
     ouverte: f.get("ouverte") === "on",
+    expire_le: null as string | null,
     updated_at: new Date().toISOString(),
   };
+  if (id) {
+    const { data: avant } = await createAdminClient().from("offres").select("*").eq("id", id).maybeSingle();
+    donnees.expire_le = lireExpiration(f, avant?.expire_le);
+  } else donnees.expire_le = lireExpiration(f, null);
+  if (estExpiree(donnees)) donnees.ouverte = false;
   if (!donnees.entreprise || !donnees.intitule) redirect(`/admin/offres/${id || "nouvelle"}?erreur=1`);
   if (contactManquant(donnees)) redirect(`/admin/offres/${id || "nouvelle"}?erreur=contact`);
   const db = createAdminClient();
@@ -84,10 +91,10 @@ export async function enregistrerOffre(f: FormData) {
           return error;
         });
   let erreur = await ecrire(avecGPS);
-  if (erreur && /latitude|longitude|contact_tel|attentes|entreprise_id/.test(erreur.message)) {
+  if (erreur && /latitude|longitude|contact_tel|attentes|entreprise_id|expire_le/.test(erreur.message)) {
     // Base pas encore à jour : on enregistre sans les colonnes récentes
-    const { contact_tel: _t, attentes: _a, entreprise_id: _e, ...ancien } = donnees;
-    void _t; void _a; void _e;
+    const { contact_tel: _t, attentes: _a, entreprise_id: _e, expire_le: _x, ...ancien } = donnees;
+    void _t; void _a; void _e; void _x;
     erreur = await ecrire(ancien as typeof donnees);
   }
   if (donnees.ouverte) after(() => noterOffrePourTous(offreId));

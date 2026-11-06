@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { QuestionnaireAttentes } from "@/components/QuestionnaireAttentes";
+import { ChampExpiration } from "@/components/ChampExpiration";
 import { notFound } from "next/navigation";
 import { exigerAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -97,6 +98,7 @@ export default async function Page({ params, searchParams }: {
           <textarea className="input min-h-40" id="description" name="description" defaultValue={o.description ?? ""} />
         </div>
         <QuestionnaireAttentes a={o.attentes} />
+        <ChampExpiration expire={o.expire_le} nouvelle={!o.id} />
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" name="ouverte" defaultChecked={o.ouverte && !sp.verifier} className="accent-[var(--accent)]" />
           Offre ouverte : la comparer aux profils des candidats

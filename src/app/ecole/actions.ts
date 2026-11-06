@@ -1,6 +1,7 @@
 "use server";
 
 import { lireAttentes } from "@/lib/attentes";
+import { estExpiree, lireExpiration } from "@/lib/expiration";
 import { changerAdmission } from "@/lib/admission-serveur";
 import { majDiplome } from "@/lib/diplome-serveur";
 
@@ -63,8 +64,14 @@ export async function enregistrerOffreEcole(f: FormData) {
     contact_tel: t(f, "contact_tel", 30),
     attentes: lireAttentes(f),
     ouverte: f.get("ouverte") === "on",
+    expire_le: null as string | null,
     updated_at: new Date().toISOString(),
   };
+  if (id) {
+    const { data: avant } = await createAdminClient().from("offres").select("*").eq("id", id).eq("ecole_id", ecole.id).maybeSingle();
+    donnees.expire_le = lireExpiration(f, avant?.expire_le);
+  } else donnees.expire_le = lireExpiration(f, null);
+  if (estExpiree(donnees)) donnees.ouverte = false;
   if (!donnees.entreprise || !donnees.intitule) redirect(`/ecole/offres/${id || "nouvelle"}?erreur=1`);
   if (contactManquant(donnees)) redirect(`/ecole/offres/${id || "nouvelle"}?erreur=contact`);
   const db = createAdminClient();
@@ -79,9 +86,9 @@ export async function enregistrerOffreEcole(f: FormData) {
           return error;
         });
   const erreur = await ecrire(ligne);
-  if (erreur && /contact_tel|attentes/.test(erreur.message)) {
-    const { contact_tel: _t, attentes: _a, ...sans } = ligne;
-    void _a;
+  if (erreur && /contact_tel|attentes|expire_le/.test(erreur.message)) {
+    const { contact_tel: _t, attentes: _a, expire_le: _x, ...sans } = ligne;
+    void _a; void _x;
     void _t;
     await ecrire(sans);
   }

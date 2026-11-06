@@ -5,6 +5,7 @@ import { franceTravailConfigure, offresPourCandidat } from "@/lib/france-travail
 import { adzunaConfigure, offresAdzunaPourCandidat } from "@/lib/adzuna";
 import { lbaConfigure, offresLBAPourCandidat } from "@/lib/la-bonne-alternance";
 import { estAdmis } from "@/lib/admission";
+import { estExpiree } from "@/lib/expiration";
 import { envoyerEmail, echapper } from "@/lib/email";
 import { distanceKm, localiserLieu } from "@/lib/geo";
 import { avecDisc } from "@/lib/tests-serveur";
@@ -31,7 +32,7 @@ function jobEtudiant(c: Candidat, o: Offre) {
 }
 
 function compatible(c: Candidat, o: Offre) {
-  if (!o.ouverte) return false;
+  if (!o.ouverte || estExpiree(o)) return false;
   if (o.ecole_id && o.ecole_id !== c.ecole_id) return false; // offre partenaire réservée aux étudiants de cette école
   if (c.contrats.length && o.contrat && !c.contrats.includes(o.contrat) && !jobEtudiant(c, o)) return false;
   if (c.latitude != null && c.longitude != null && o.latitude != null && o.longitude != null) {
@@ -327,9 +328,17 @@ export async function noterOffrePourTous(offreId: string) {
   });
 }
 
+/** Ferme les offres de l'équipe arrivées à leur date d'expiration (n'échoue jamais). */
+export async function fermerOffresExpirees() {
+  try {
+    await createAdminClient().from("offres").update({ ouverte: false }).eq("ouverte", true).lte("expire_le", new Date().toISOString());
+  } catch { /* colonne pas encore créée */ }
+}
+
 /** Recherche quotidienne pour tous les candidats (appelée par la tâche planifiée). */
 export async function rechercheQuotidienne(budgetMs = 240_000) {
   const debut = Date.now();
+  await fermerOffresExpirees();
   const db = createAdminClient();
   const { data } = await db
     .from("candidats")
