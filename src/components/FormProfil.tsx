@@ -75,13 +75,17 @@ export function FormProfil({ c, codeEcole, nomEcole, formations = [] }: { c: Par
         <div className="grid gap-4 sm:grid-cols-[1fr_12rem]">
           <div className="flex flex-col gap-3">
             {formations.length > 0 && (
-              <Champ id="formation_choix" label={`🎓 Ta formation${nomEcole ? ` à ${nomEcole}` : ""}`}>
-                <select className="input" id="formation_choix" name="formation_choix" value={choix} onChange={(e) => setChoix(e.target.value)} required>
-                  <option value="" disabled>Choisir…</option>
-                  {formations.map((x) => <option key={x.nom} value={x.nom}>{x.nom} · {x.duree} an{x.duree > 1 ? "s" : ""}</option>)}
-                  <option value="autre">Autre diplôme…</option>
-                </select>
-              </Champ>
+              <fieldset className="flex flex-col gap-2">
+                <legend className="label mb-1">🎓 Ta formation{nomEcole ? ` à ${nomEcole}` : ""}</legend>
+                <div className="flex flex-wrap gap-2">
+                  {[...formations.map((x) => ({ id: x.nom, label: `${x.nom} · ${x.duree} an${x.duree > 1 ? "s" : ""}` })), { id: "autre", label: "Autre diplôme…" }].map((o) => (
+                    <label key={o.id} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-4 py-2 text-sm has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
+                      <input type="radio" name="formation_choix" value={o.id} checked={choix === o.id} onChange={() => setChoix(o.id)} required className="sr-only" />
+                      {o.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
             )}
             {choix === "autre" && (
               <Champ id="formation" label="🎓 Diplôme que tu prépares (nom complet)" hint="Écris le nom en entier, ex. « BTS NDRC – Négociation et digitalisation de la relation client »">
@@ -89,14 +93,17 @@ export function FormProfil({ c, codeEcole, nomEcole, formations = [] }: { c: Par
               </Champ>
             )}
             {fChoisie && (
-              <Champ id="annee_cursus" label="📚 Ton année" hint="L'année de formation que tu fais à la rentrée">
-                <select className="input" id="annee_cursus" name="annee_cursus" defaultValue={c.annee_cursus ?? ""} required>
-                  <option value="" disabled>Choisir…</option>
+              <fieldset className="flex flex-col gap-2">
+                <legend className="label mb-1">📚 Ton année à la rentrée</legend>
+                <div className="flex flex-wrap gap-2">
                   {Array.from({ length: fChoisie.duree }, (_, i) => i + 1).map((n) => (
-                    <option key={n} value={n}>{anneeLabel(n)} · {fChoisie.alternance.includes(n) ? "alternance" : "formation initiale"}</option>
+                    <label key={n} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-4 py-2 text-sm has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
+                      <input type="radio" name="annee_cursus" value={n} defaultChecked={c.annee_cursus === n} required className="sr-only" />
+                      {anneeLabel(n)} · {fChoisie.alternance.includes(n) ? "alternance" : "initiale"}
+                    </label>
                   ))}
-                </select>
-              </Champ>
+                </div>
+              </fieldset>
             )}
           </div>
           <Champ id="diplome_annee" label="📅 Année du diplôme" hint="L'année où tu l'obtiendras">

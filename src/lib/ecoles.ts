@@ -41,9 +41,17 @@ export function genererCode(nom: string) {
   return `${base || "ECOLE"}-${Math.floor(1000 + Math.random() * 9000)}`;
 }
 
-/** Formations d'une école (vide si la colonne n'existe pas encore). */
+/** Formations d'une école ; sans école, celles de toutes les écoles (vide si la colonne n'existe pas encore). */
 export async function formationsDeLEcole(ecoleId: string | null | undefined) {
-  if (!ecoleId) return [];
-  const { data, error } = await createAdminClient().from("ecoles").select("formations").eq("id", ecoleId).maybeSingle();
-  return error || !data ? [] : lireFormations(data.formations);
+  const db = createAdminClient();
+  if (ecoleId) {
+    const { data, error } = await db.from("ecoles").select("formations").eq("id", ecoleId).maybeSingle();
+    const f = error || !data ? [] : lireFormations(data.formations);
+    if (f.length) return f;
+  }
+  const { data, error } = await db.from("ecoles").select("formations");
+  if (error) return [];
+  const vues = new Map<string, ReturnType<typeof lireFormations>[number]>();
+  for (const e of data ?? []) for (const f of lireFormations(e.formations)) if (!vues.has(f.nom)) vues.set(f.nom, f);
+  return [...vues.values()];
 }

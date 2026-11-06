@@ -230,33 +230,41 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         <>
         {changerDiplome && (
           <Bloc titre="🎓 Diplôme préparé">
-            <form action={changerDiplome} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_auto] lg:items-end">
+            <form action={changerDiplome} className="flex flex-col gap-4">
               <input type="hidden" name="candidat_id" value={candidatId} />
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-semibold">Diplôme</span>
-                {formationsEcole.length > 0 ? (
-                  <select className="input" name="formation_choix" defaultValue={formationCatalogue ? c.formation : "autre"}>
-                    {formationsEcole.map((x) => <option key={x.nom} value={x.nom}>{x.nom} · {x.duree} an{x.duree > 1 ? "s" : ""}</option>)}
-                    <option value="autre">Autre (préciser à côté)</option>
+              <fieldset className="flex flex-col gap-2 text-sm">
+                <legend className="mb-1 font-semibold">Diplôme</legend>
+                <div className="flex flex-wrap gap-2">
+                  {[...formationsEcole.map((x) => ({ id: x.nom, label: `${x.nom} · ${x.duree} an${x.duree > 1 ? "s" : ""}` })), { id: "autre", label: "Autre" }].map((o) => (
+                    <label key={o.id} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-4 py-2 has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
+                      <input type="radio" name="formation_choix" value={o.id} defaultChecked={o.id === "autre" ? !formationCatalogue : c.formation === o.id} className="sr-only" />
+                      {o.label}
+                    </label>
+                  ))}
+                </div>
+                <input className="input sm:max-w-md" name="formation_autre" defaultValue={formationCatalogue ? "" : c.formation} placeholder="Si « Autre » : nom du diplôme" />
+              </fieldset>
+              <fieldset className="flex flex-col gap-2 text-sm">
+                <legend className="mb-1 font-semibold">Année de formation</legend>
+                <div className="flex flex-wrap gap-2">
+                  {Array.from({ length: anneeMax }, (_, i) => i + 1).map((n) => (
+                    <label key={n} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-4 py-2 has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
+                      <input type="radio" name="annee_cursus" value={n} defaultChecked={c.annee_cursus === n} className="sr-only" />
+                      {n === 1 ? "1re" : `${n}e`} année
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="flex flex-col gap-1 text-sm">
+                  <span className="font-semibold">Année du diplôme</span>
+                  <select className="input" name="diplome_annee" defaultValue={c.diplome_annee ?? ""}>
+                    <option value="">—</option>
+                    {Array.from({ length: 8 }, (_, i) => anMaintenant - 1 + i).map((a) => <option key={a} value={a}>{a}</option>)}
                   </select>
-                ) : <input type="hidden" name="formation_choix" value="autre" />}
-                <input className="input" name="formation_autre" defaultValue={formationCatalogue ? "" : c.formation} placeholder={formationsEcole.length ? "Autre diplôme…" : "BTS NDRC – …"} />
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-semibold">Année de formation</span>
-                <select className="input" name="annee_cursus" defaultValue={c.annee_cursus ?? ""}>
-                  <option value="">—</option>
-                  {Array.from({ length: anneeMax }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n === 1 ? "1re" : `${n}e`} année</option>)}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                <span className="font-semibold">Année du diplôme</span>
-                <select className="input" name="diplome_annee" defaultValue={c.diplome_annee ?? ""}>
-                  <option value="">—</option>
-                  {Array.from({ length: 8 }, (_, i) => anMaintenant - 1 + i).map((a) => <option key={a} value={a}>{a}</option>)}
-                </select>
-              </label>
-              <button className="btn btn-primary">Enregistrer</button>
+                </label>
+                <button className="btn btn-primary">Enregistrer</button>
+              </div>
             </form>
             <p className="text-xs text-muted">Actuellement : {c.formation ? diplomeLabel(c) : "non renseigné"}. Le rythme (initial ou alternance) se met à jour selon la formation de l&apos;école.</p>
           </Bloc>
