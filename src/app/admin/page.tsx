@@ -16,7 +16,7 @@ import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe, st
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -386,7 +386,13 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                         <div className="text-xs text-muted">{[c.poste_vise, c.ville].filter(Boolean).join(" · ") || "Profil à compléter"}</div>
                         {!c.consentement && <span className="chip chip-minus mt-1">Accord RGPD manquant</span>}
                       </td>
-                      <td className="p-3">{(() => { const a = admission(c.statut_admission); return <span className={`chip whitespace-nowrap ${a.chip}`}>{a.icone} {a.label}</span>; })()}</td>
+                      <td className="p-3">
+                        <form action={changerAdmissionAdmin} className={`rounded-lg ${admission(c.statut_admission).id === "admis" ? "" : "ring-1 ring-line"}`}>
+                          <input type="hidden" name="candidat_id" value={c.user_id} />
+                          <SelectAuto name="statut_admission" label={`Admission de ${c.nom || c.email}`} defaultValue={admission(c.statut_admission).id}
+                            options={ADMISSIONS.map((a) => ({ id: a.id, label: `${a.icone} ${a.label}` }))} />
+                        </form>
+                      </td>
                       <td className="p-3">{c.formation ? <>{c.formation}{c.diplome_annee ? <div className="text-xs text-muted">📅 {c.diplome_annee}</div> : null}</> : <span className="chip chip-minus">À compléter</span>}</td>
                       <td className="p-3 text-muted">{ecoles.find((x) => x.id === c.ecole_id)?.nom ?? "—"}</td>
                       <td className="p-3">{c.cv_chemin ? <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">📄 Ouvrir</a> : <span className="chip chip-minus">Sans CV</span>}</td>

@@ -291,4 +291,5 @@ export async function changerAdmissionAdmin(f: FormData) {
   const candidat = t(f, "candidat_id", 60);
   await changerAdmission(candidat, t(f, "statut_admission", 30));
   revalidatePath(`/admin/candidats/${candidat}`);
+  revalidatePath("/admin");
 }
