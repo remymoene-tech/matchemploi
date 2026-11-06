@@ -10,7 +10,7 @@ import { exigerAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, lireAnnonce } from "@/lib/ia";
 import { noterOffrePourTous, rechercheQuotidienne } from "@/lib/matching";
-import { CONTRATS, SUIVIS, contactManquant } from "@/lib/types";
+import { CONTRATS, SOURCES_AUTO, SUIVIS, contactManquant, type Offre } from "@/lib/types";
 import { localiserLieu } from "@/lib/geo";
 import { SUIVIS_PREPARATION, genererPreparation } from "@/lib/preparation";
 import { genererCode } from "@/lib/ecoles";
@@ -20,7 +20,7 @@ import { enregistrerTest } from "@/lib/tests-serveur";
 import { genererSynthese } from "@/lib/synthese";
 import { genererCvAmeliore } from "@/lib/cv-ameliore";
 import { ajouterEchange } from "@/lib/echanges";
-import { lireEntreprise } from "@/lib/entreprises";
+import { lireEntreprise, offresDe } from "@/lib/entreprises";
 import { lireFormations } from "@/lib/formations";
 import { changerAdmission } from "@/lib/admission-serveur";
 import { majDiplome } from "@/lib/diplome-serveur";
@@ -392,4 +392,42 @@ export async function envoyerFicheBesoin(f: FormData) {
   }
   revalidatePath(`/admin/entreprises/${id}`);
   redirect(`/admin/entreprises/${id}?besoin=${envoye ? "envoye" : "lien"}#besoins`);
+}
+
+/**
+ * Entreprise qui recrute : MagnusMatch cherche les étudiants à 70 % et plus.
+ * Sans offre ouverte, on crée un « besoin de recrutement » (offre interne, invisible des étudiants)
+ * à partir de la fiche besoin et des notes, puis tous les étudiants admis sont notés en arrière-plan.
+ */
+export async function chercherCandidatsEntreprise(f: FormData) {
+  await exigerAdmin();
+  const id = t(f, "id", 60);
+  const db = createAdminClient();
+  const { data: e } = await db.from("entreprises").select("*").eq("id", id).maybeSingle();
+  if (!e) redirect("/admin?vue=entreprises");
+  const { data: toutes } = await db.from("offres").select("*").not("source", "in", `(${SOURCES_AUTO.join(",")})`).eq("ouverte", true);
+  let ouvertes = offresDe(e, (toutes ?? []) as Offre[]);
+  if (!ouvertes.length) {
+    const { data: prosp } = await db.from("prospections").select("entreprise, recrute, justification").eq("recrute", "oui");
+    const ditsParEtudiants = (prosp ?? []).filter((p) => memeEntreprise(p.entreprise, e.nom)).map((p) => `- ${p.justification}`).join("\n");
+    const position = e.ville ? await localiserLieu(e.ville) : null;
+    const { data: o } = await db.from("offres").insert({
+      source: "partenaire",
+      entreprise: e.nom,
+      intitule: `Recrutement ${e.secteur ? `(${e.secteur}) ` : ""}— ${e.nom}`,
+      contrat: "", contrat_libelle: "",
+      lieu: e.ville ?? "",
+      description: [e.notes, ditsParEtudiants && `Ce que l'entreprise a dit aux étudiants :\n${ditsParEtudiants}`].filter(Boolean).join("\n\n").slice(0, 6000),
+      contact_nom: [e.contact_nom, e.contact_fonction].filter(Boolean).join(", "),
+      contact_email: e.contact_email ?? "", contact_tel: e.contact_tel ?? "",
+      attentes: e.attentes ?? null,
+      entreprise_id: e.id,
+      ouverte: true,
+      latitude: position?.latitude ?? null, longitude: position?.longitude ?? null,
+    }).select("*").single();
+    if (!o) redirect(`/admin/entreprises/${id}?onglet=candidats&erreur=base`);
+    ouvertes = [o as Offre];
+  }
+  for (const o of ouvertes) after(() => noterOffrePourTous(o.id));
+  redirect(`/admin/entreprises/${id}?onglet=candidats&recherche=1`);
 }
