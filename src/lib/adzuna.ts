@@ -102,7 +102,8 @@ export async function offresAdzunaPourCandidat(c: Candidat): Promise<OffreAdzuna
 
   const recherches: Record<string, string>[] = [];
   if (c.contrats.includes("alternance")) recherches.push({ ...base, what: `${motsCles} alternance` });
-  if (c.contrats.some((t) => t !== "alternance")) recherches.push({ ...base, what: motsCles });
+  if (c.contrats.some((t) => t !== "alternance" && t !== "job_etudiant")) recherches.push({ ...base, what: motsCles });
+  if (c.contrats.includes("job_etudiant")) recherches.push({ ...base, what: motsCles, part_time: "1" });
 
   const vues = new Map<string, OffreAdzunaImportee>();
   for (const p of recherches) {

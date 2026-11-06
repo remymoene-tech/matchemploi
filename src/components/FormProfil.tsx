@@ -4,6 +4,7 @@ import { startTransition, useActionState, useState } from "react";
 import { envoyerCV } from "@/lib/depot-cv-client";
 import { enregistrerProfil, type EtatProfil } from "@/app/espace/actions";
 import { CONTRATS, type Candidat } from "@/lib/types";
+import { anneeLabel, type Formation } from "@/lib/formations";
 
 const ANNEE = new Date().getFullYear();
 const ANNEES = Array.from({ length: 7 }, (_, i) => ANNEE - 1 + i);
@@ -18,10 +19,13 @@ function Champ({ id, label, hint, children }: { id: string; label: string; hint?
   );
 }
 
-export function FormProfil({ c, codeEcole, nomEcole }: { c: Partial<Candidat>; codeEcole?: string; nomEcole?: string }) {
+export function FormProfil({ c, codeEcole, nomEcole, formations = [] }: { c: Partial<Candidat>; codeEcole?: string; nomEcole?: string; formations?: Formation[] }) {
   const [etat, action, enCours] = useActionState<EtatProfil, FormData>(enregistrerProfil, {});
   const [alternance, setAlternance] = useState(c.contrats?.includes("alternance") ?? false);
   const [envoi, setEnvoi] = useState(false);
+  const formationConnue = formations.find((x) => x.nom === c.formation);
+  const [choix, setChoix] = useState(formations.length ? (formationConnue?.nom ?? (c.formation ? "autre" : "")) : "autre");
+  const fChoisie = formations.find((x) => x.nom === choix);
   const [erreurLocale, setErreurLocale] = useState("");
 
   return (
@@ -69,9 +73,32 @@ export function FormProfil({ c, codeEcole, nomEcole }: { c: Partial<Candidat>; c
           <Champ id="poste_vise" label="Poste visé"><input className="input" id="poste_vise" name="poste_vise" defaultValue={c.poste_vise} placeholder="Assistant commercial" required /></Champ>
         </div>
         <div className="grid gap-4 sm:grid-cols-[1fr_12rem]">
-          <Champ id="formation" label="🎓 Diplôme que tu prépares (nom complet)" hint="Écris le nom en entier, ex. « BTS NDRC – Négociation et digitalisation de la relation client »">
-            <input className="input" id="formation" name="formation" defaultValue={c.formation} placeholder="BTS NDRC – Négociation et digitalisation de la relation client" required />
-          </Champ>
+          <div className="flex flex-col gap-3">
+            {formations.length > 0 && (
+              <Champ id="formation_choix" label={`🎓 Ta formation${nomEcole ? ` à ${nomEcole}` : ""}`}>
+                <select className="input" id="formation_choix" name="formation_choix" value={choix} onChange={(e) => setChoix(e.target.value)} required>
+                  <option value="" disabled>Choisir…</option>
+                  {formations.map((x) => <option key={x.nom} value={x.nom}>{x.nom} · {x.duree} an{x.duree > 1 ? "s" : ""}</option>)}
+                  <option value="autre">Autre diplôme…</option>
+                </select>
+              </Champ>
+            )}
+            {choix === "autre" && (
+              <Champ id="formation" label="🎓 Diplôme que tu prépares (nom complet)" hint="Écris le nom en entier, ex. « BTS NDRC – Négociation et digitalisation de la relation client »">
+                <input className="input" id="formation" name="formation" defaultValue={formationConnue ? "" : c.formation} placeholder="BTS NDRC – Négociation et digitalisation de la relation client" required />
+              </Champ>
+            )}
+            {fChoisie && (
+              <Champ id="annee_cursus" label="📚 Ton année" hint="L'année de formation que tu fais à la rentrée">
+                <select className="input" id="annee_cursus" name="annee_cursus" defaultValue={c.annee_cursus ?? ""} required>
+                  <option value="" disabled>Choisir…</option>
+                  {Array.from({ length: fChoisie.duree }, (_, i) => i + 1).map((n) => (
+                    <option key={n} value={n}>{anneeLabel(n)} · {fChoisie.alternance.includes(n) ? "alternance" : "formation initiale"}</option>
+                  ))}
+                </select>
+              </Champ>
+            )}
+          </div>
           <Champ id="diplome_annee" label="📅 Année du diplôme" hint="L'année où tu l'obtiendras">
             <select className="input" id="diplome_annee" name="diplome_annee" defaultValue={c.diplome_annee ?? ""} required>
               <option value="" disabled>Choisir…</option>

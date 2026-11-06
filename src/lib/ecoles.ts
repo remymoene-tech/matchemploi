@@ -2,8 +2,9 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { exigerUtilisateur } from "@/lib/auth";
+import { lireFormations } from "@/lib/formations";
 
-export type Ecole = { id: string; nom: string; code: string };
+export type Ecole = { id: string; nom: string; code: string; formations?: unknown };
 
 /** École dont la personne est responsable (ou null). Ne plante pas si la table n'existe pas encore. */
 export async function ecoleDuResponsable(email: string | null | undefined): Promise<Ecole | null> {
@@ -38,4 +39,11 @@ export function genererCode(nom: string) {
     .normalize("NFD").replace(/[̀-ͯ]/g, "")
     .toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 16);
   return `${base || "ECOLE"}-${Math.floor(1000 + Math.random() * 9000)}`;
+}
+
+/** Formations d'une école (vide si la colonne n'existe pas encore). */
+export async function formationsDeLEcole(ecoleId: string | null | undefined) {
+  if (!ecoleId) return [];
+  const { data, error } = await createAdminClient().from("ecoles").select("formations").eq("id", ecoleId).maybeSingle();
+  return error || !data ? [] : lireFormations(data.formations);
 }

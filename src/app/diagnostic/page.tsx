@@ -74,7 +74,12 @@ update public.candidats set statut_admission = 'admis' where statut_admission is
 alter table public.candidats alter column statut_admission set default 'prospect';
 create or replace function public.proteger_admission() returns trigger language plpgsql as \$\$ begin if current_user in ('authenticated', 'anon') then if tg_op = 'INSERT' then new.statut_admission := 'prospect'; else new.statut_admission := old.statut_admission; end if; end if; return new; end \$\$;
 drop trigger if exists proteger_admission on public.candidats;
-create trigger proteger_admission before insert or update on public.candidats for each row execute function public.proteger_admission();`;
+create trigger proteger_admission before insert or update on public.candidats for each row execute function public.proteger_admission();
+alter table public.ecoles add column if not exists formations jsonb not null default '[]'::jsonb;
+alter table public.candidats add column if not exists annee_cursus integer;
+alter table public.candidats add column if not exists rythme_cursus text;
+insert into public.ecoles (nom, code, formations) select 'Magnus Campus', 'MAGNUS-CAMPUS', '[{"nom":"EGC","duree":3,"alternance":[2,3]},{"nom":"GUC","duree":2,"alternance":[1,2]},{"nom":"AMLHR","duree":2,"alternance":[1,2]}]'::jsonb where not exists (select 1 from public.ecoles where lower(nom) = 'magnus campus');
+update public.ecoles set formations = '[{"nom":"EGC","duree":3,"alternance":[2,3]},{"nom":"GUC","duree":2,"alternance":[1,2]},{"nom":"AMLHR","duree":2,"alternance":[1,2]}]'::jsonb where lower(nom) = 'magnus campus' and formations = '[]'::jsonb;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -110,6 +115,8 @@ async function verifierBase() {
     db.from("echanges").select("entreprise_id").limit(1),
     db.from("candidats").select("diplome_annee").limit(1),
     db.from("candidats").select("statut_admission").limit(1),
+    db.from("ecoles").select("formations").limit(1),
+    db.from("candidats").select("annee_cursus, rythme_cursus").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -143,6 +150,8 @@ async function verifierBase() {
     "Échanges et rappels des entreprises",
     "Année du diplôme des étudiants",
     "Admission des étudiants (prospect, admis…)",
+    "Formations des écoles (Magnus Campus : EGC, GUC, AMLHR)",
+    "Année de formation des étudiants",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

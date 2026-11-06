@@ -20,6 +20,7 @@ import { genererSynthese } from "@/lib/synthese";
 import { genererCvAmeliore } from "@/lib/cv-ameliore";
 import { ajouterEchange } from "@/lib/echanges";
 import { lireEntreprise } from "@/lib/entreprises";
+import { lireFormations } from "@/lib/formations";
 import { changerAdmission } from "@/lib/admission-serveur";
 import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
@@ -292,4 +293,29 @@ export async function changerAdmissionAdmin(f: FormData) {
   await changerAdmission(candidat, t(f, "statut_admission", 30));
   revalidatePath(`/admin/candidats/${candidat}`);
   revalidatePath("/admin");
+}
+
+/* ---------- Formations des écoles ---------- */
+export async function ajouterFormation(f: FormData) {
+  await exigerAdmin();
+  const id = t(f, "ecole_id", 60);
+  const nom = t(f, "nom", 120);
+  const duree = Math.max(1, Math.min(5, Number(f.get("duree")) || 1));
+  const alternance = f.getAll("alternance").map(Number).filter((n) => n >= 1 && n <= duree);
+  if (!id || !nom) redirect("/admin?vue=ecoles");
+  const db = createAdminClient();
+  const { data } = await db.from("ecoles").select("formations").eq("id", id).maybeSingle();
+  const liste = lireFormations(data?.formations).filter((x) => x.nom.toLowerCase() !== nom.toLowerCase());
+  await db.from("ecoles").update({ formations: [...liste, { nom, duree, alternance }] }).eq("id", id);
+  redirect("/admin?vue=ecoles&ok=1");
+}
+
+export async function retirerFormation(f: FormData) {
+  await exigerAdmin();
+  const id = t(f, "ecole_id", 60);
+  const nom = t(f, "nom", 120);
+  const db = createAdminClient();
+  const { data } = await db.from("ecoles").select("formations").eq("id", id).maybeSingle();
+  await db.from("ecoles").update({ formations: lireFormations(data?.formations).filter((x) => x.nom !== nom) }).eq("id", id);
+  redirect("/admin?vue=ecoles");
 }

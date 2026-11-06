@@ -23,10 +23,17 @@ async function parLots<T>(items: T[], concurrence: number, fn: (t: T) => Promise
 }
 
 /** Offre ouverte, du bon type de contrat, et pas trop loin de chez le candidat (si on connaît les deux positions). */
+/** Un « job étudiant » : CDD ou intérim à temps partiel, en week-end ou le soir, ou annoncé pour étudiant. */
+function jobEtudiant(c: Candidat, o: Offre) {
+  return c.contrats.includes("job_etudiant")
+    && ["cdd", "interim", "job_etudiant"].includes(o.contrat)
+    && /partiel|étudiant|etudiant|week-end|weekend|samedi|soir|saisonn/i.test(`${o.contrat_libelle} ${o.intitule}`);
+}
+
 function compatible(c: Candidat, o: Offre) {
   if (!o.ouverte) return false;
   if (o.ecole_id && o.ecole_id !== c.ecole_id) return false; // offre partenaire réservée aux étudiants de cette école
-  if (c.contrats.length && o.contrat && !c.contrats.includes(o.contrat)) return false;
+  if (c.contrats.length && o.contrat && !c.contrats.includes(o.contrat) && !jobEtudiant(c, o)) return false;
   if (c.latitude != null && c.longitude != null && o.latitude != null && o.longitude != null) {
     const km = distanceKm({ latitude: c.latitude, longitude: c.longitude }, { latitude: o.latitude, longitude: o.longitude });
     if (km > (c.mobilite_km || 20) + 15) return false; // marge de 15 km : l'IA juge le reste

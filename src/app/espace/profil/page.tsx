@@ -4,6 +4,7 @@ import { supprimerCompte } from "../actions";
 import type { Candidat } from "@/lib/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { OngletsProfil } from "@/components/OngletsProfil";
+import { ecoleParCode, formationsDeLEcole } from "@/lib/ecoles";
 
 export const metadata = { title: "Mon profil · MagnusMatch" };
 export const maxDuration = 300; // lecture du CV + recherche en arrière-plan
@@ -16,11 +17,15 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
     ? ((await createAdminClient().from("ecoles").select("nom, code").eq("id", data.ecole_id).maybeSingle()).data as { nom: string; code: string } | null)
     : null;
 
+  // Formations de l'école (choix de la formation et de l'année dans le profil)
+  const ecoleLien = !data?.ecole_id && codeLien ? await ecoleParCode(codeLien).catch(() => null) : null;
+  const formations = await formationsDeLEcole(data?.ecole_id ?? ecoleLien?.id);
+
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       {data ? <OngletsProfil actif="infos" /> : <h1 className="text-3xl font-extrabold">Complète ton profil</h1>}
       <p className="text-muted">Plus ton profil est précis, plus les notes sont justes.</p>
-      <FormProfil c={data ?? {}} codeEcole={codeLien ?? ecoleActuelle?.code ?? ""} nomEcole={ecoleActuelle?.nom} />
+      <FormProfil c={data ?? {}} codeEcole={codeLien ?? ecoleActuelle?.code ?? ""} nomEcole={ecoleActuelle?.nom} formations={formations} />
       {data && (
         <details className="rounded-xl border border-line p-4 text-sm">
           <summary className="cursor-pointer text-muted">Supprimer mon compte, mon CV et toutes mes données</summary>

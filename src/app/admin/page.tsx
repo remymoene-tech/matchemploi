@@ -12,11 +12,12 @@ import { ListeRelances } from "@/components/ListeRelances";
 import { Barres, Colonnes } from "@/components/Graphiques";
 import { OngletsCartes } from "@/components/OngletsCartes";
 import { ADMISSIONS, admission } from "@/lib/admission";
+import { anneeLabel, lireFormations } from "@/lib/formations";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe, statutEntreprise } from "@/lib/entreprises";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -46,7 +47,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const db = createAdminClient();
 
   const [{ data: ecolesData, error: ecolesErreur }, { data: respData }, { data: entData, error: entErreur }] = await Promise.all([
-    db.from("ecoles").select("id, nom, code").order("nom"),
+    db.from("ecoles").select("*").order("nom"),
     db.from("responsables").select("email, nom, ecole_id"),
     db.from("entretiens_conseil").select("id, candidat_id, date_entretien, conseiller, bilan, prochaine_etape, partage").order("date_entretien", { ascending: false }),
   ]);
@@ -54,7 +55,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const entretiens = (entData ?? []) as { id: string; candidat_id: string; date_entretien: string; conseiller: string; bilan: string; prochaine_etape: string; partage: boolean }[];
   const dernierEntretien = new Map<string, (typeof entretiens)[number]>();
   for (const e of entretiens) if (!dernierEntretien.has(e.candidat_id)) dernierEntretien.set(e.candidat_id, e);
-  const ecoles = (ecolesData ?? []) as { id: string; nom: string; code: string }[];
+  const ecoles = (ecolesData ?? []) as { id: string; nom: string; code: string; formations?: unknown }[];
   const responsables = (respData ?? []) as { email: string; nom: string; ecole_id: string }[];
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
 
@@ -530,6 +531,41 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                   <span className="chip chip-tag font-mono">{e.code}</span>
                 </div>
                 <p className="text-sm">Lien d&apos;inscription des étudiants : <code className="break-all font-mono text-xs">{site}/inscription?ecole={e.code}</code></p>
+                <div className="flex flex-col gap-2 border-t border-line pt-3">
+                  <span className="eyebrow">🎓 Formations</span>
+                  {!("formations" in e) && <p className="text-xs text-muted">Exécute la mise à jour SQL de /diagnostic pour ajouter des formations.</p>}
+                  <ul className="flex flex-col gap-1.5">
+                    {lireFormations(e.formations).map((fo) => (
+                      <li key={fo.nom} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2 text-sm">
+                        <span>
+                          <b>{fo.nom}</b> · {fo.duree} an{fo.duree > 1 ? "s" : ""} ·{" "}
+                          {Array.from({ length: fo.duree }, (_, i) => i + 1).map((n) => `${anneeLabel(n)} ${fo.alternance.includes(n) ? "alternance" : "initiale"}`).join(", ")}
+                        </span>
+                        <form action={retirerFormation}>
+                          <input type="hidden" name="ecole_id" value={e.id} />
+                          <input type="hidden" name="nom" value={fo.nom} />
+                          <button className="btn btn-sm btn-ghost text-bad">Retirer</button>
+                        </form>
+                      </li>
+                    ))}
+                  </ul>
+                  {"formations" in e && (
+                    <form action={ajouterFormation} className="flex flex-wrap items-end gap-2 text-sm">
+                      <input type="hidden" name="ecole_id" value={e.id} />
+                      <label className="flex flex-col gap-1"><span className="font-semibold">Nom</span><input className="input w-40" name="nom" placeholder="EGC" required /></label>
+                      <label className="flex flex-col gap-1"><span className="font-semibold">Durée</span>
+                        <select className="input" name="duree" defaultValue="2">{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n} an{n > 1 ? "s" : ""}</option>)}</select>
+                      </label>
+                      <fieldset className="flex flex-wrap items-center gap-2 pb-2">
+                        <legend className="mb-1 font-semibold">Années en alternance</legend>
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <label key={n} className="flex items-center gap-1"><input type="checkbox" name="alternance" value={n} className="accent-[var(--accent)]" />{anneeLabel(n)}</label>
+                        ))}
+                      </fieldset>
+                      <button className="btn btn-sm">➕ Ajouter la formation</button>
+                    </form>
+                  )}
+                </div>
                 <div className="flex flex-col gap-2 border-t border-line pt-3">
                   <span className="eyebrow">Responsables (accès à l&apos;espace École)</span>
                   {resp.map((r) => (

@@ -45,6 +45,7 @@ type OffreFT = {
   typeContratLibelle?: string;
   natureContrat?: string;
   alternance?: boolean;
+  dureeTravailLibelleConverti?: string;
   salaire?: { libelle?: string };
   origineOffre?: { urlOrigine?: string };
 };
@@ -80,7 +81,9 @@ function convertir(o: OffreFT, departement: string): OffreImportee {
     entreprise: o.entreprise?.nom ?? "",
     intitule: o.intitule ?? "",
     contrat,
-    contrat_libelle: alternance ? `Alternance · ${o.typeContratLibelle ?? ""}`.trim() : o.typeContratLibelle ?? "",
+    contrat_libelle: alternance
+      ? `Alternance · ${o.typeContratLibelle ?? ""}`.trim()
+      : [o.typeContratLibelle, /partiel/i.test(o.dureeTravailLibelleConverti ?? "") ? "Temps partiel" : ""].filter(Boolean).join(" · "),
     lieu: o.lieuTravail?.libelle ?? "",
     departement,
     salaire: o.salaire?.libelle ?? "",
@@ -130,6 +133,8 @@ export async function offresPourCandidat(c: Candidat): Promise<OffreImportee[]> 
     c.contrats.includes("interim") && "MIS",
   ].filter(Boolean) as string[];
   if (types.length) recherches.push({ ...base, typeContrat: types.join(",") });
+  // Job étudiant : CDD ou intérim à temps partiel
+  if (c.contrats.includes("job_etudiant")) recherches.push({ ...base, typeContrat: "CDD,MIS", dureeHebdo: "2" });
   if (!recherches.length) recherches.push(base);
 
   const vues = new Map<string, OffreImportee>();

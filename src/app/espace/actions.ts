@@ -9,7 +9,7 @@ import { analyserLinkedin, iaConfiguree, motsClesDepuisProfil } from "@/lib/ia";
 import { estAdmis } from "@/lib/admission";
 import { analyserCV, cheminCV, cvDepose, majCandidat, stockerCV, telechargerCV } from "@/lib/cv";
 import { localiserCommune } from "@/lib/geo";
-import { ecoleParCode } from "@/lib/ecoles";
+import { ecoleParCode, formationsDeLEcole } from "@/lib/ecoles";
 import { genererPreparation } from "@/lib/preparation";
 import { enregistrerTest } from "@/lib/tests-serveur";
 import { peutPasserTest } from "@/lib/synthese";
@@ -33,7 +33,9 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
     email: user.email!,
     nom: texte(f, "nom", 120),
     telephone: texte(f, "telephone", 30),
-    formation: texte(f, "formation", 200),
+    formation: (() => { const ch = texte(f, "formation_choix", 120); return ch && ch !== "autre" ? ch : texte(f, "formation", 200); })(),
+    annee_cursus: null as number | null,
+    rythme_cursus: null as string | null,
     diplome_annee: (() => { const a = Number(f.get("diplome_annee")); return Number.isInteger(a) && a >= 2000 && a <= 2100 ? a : null; })(),
     poste_vise: texte(f, "poste_vise", 200),
     contrats,
@@ -55,6 +57,16 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
   };
 
   if (!donnees.nom || !donnees.poste_vise) return { erreur: "Indique au moins ton nom et le poste que tu vises." };
+  // Formation de l'école : année du cursus et rythme (initial ou alternance) d'après le catalogue de l'école
+  const choixFormation = texte(f, "formation_choix", 120);
+  if (choixFormation && choixFormation !== "autre") {
+    const cat = (await formationsDeLEcole(avant?.ecole_id ?? (await ecoleParCode(texte(f, "code_ecole", 40)).catch(() => null))?.id)).find((x) => x.nom === choixFormation);
+    const an = Number(f.get("annee_cursus"));
+    if (cat && Number.isInteger(an) && an >= 1 && an <= cat.duree) {
+      donnees.annee_cursus = an;
+      donnees.rythme_cursus = cat.alternance.includes(an) ? "alternance" : "initial";
+    }
+  }
   if (!donnees.formation || !donnees.diplome_annee) return { erreur: "Indique le nom du diplôme que tu prépares et son année." };
   if (!contrats.length) return { erreur: "Choisis au moins un type de contrat." };
   if (!donnees.consentement) return { erreur: "Coche la case d'accord pour que l'on puisse chercher des offres pour toi." };
