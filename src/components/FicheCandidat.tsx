@@ -524,12 +524,17 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
                     <HistoriqueProspection echanges={ech} prospectionId={p.id} />
                     {ajouterAuxEntreprises && (
                       p.entreprise_id
-                        ? <Link href={`/admin/entreprises/${p.entreprise_id}?onglet=etudiants`} className="btn btn-sm w-fit">Voir la fiche entreprise →</Link>
+                        ? (
+                          <span className="flex flex-wrap gap-2">
+                            <Link href={`/admin/entreprises/${p.entreprise_id}?besoins=1#besoins`} className="btn btn-sm btn-primary">📋 Remplir la fiche besoin</Link>
+                            <Link href={`/admin/entreprises/${p.entreprise_id}?onglet=etudiants`} className="btn btn-sm">Voir la fiche entreprise →</Link>
+                          </span>
+                        )
                         : (
                           <form action={ajouterAuxEntreprises}>
                             <input type="hidden" name="prospection_id" value={p.id} />
                             <input type="hidden" name="candidat_id" value={candidatId} />
-                            <button className="btn btn-sm btn-primary">➕ Ajouter à mes entreprises</button>
+                            <button className="btn btn-sm btn-primary">{p.recrute === "oui" ? "📋 Ajouter à mes entreprises et remplir la fiche besoin" : "➕ Ajouter à mes entreprises"}</button>
                           </form>
                         )
                     )}

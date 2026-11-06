@@ -1,7 +1,7 @@
 import { QUESTIONS_ATTENTES, type Attentes, type CleAttente } from "@/lib/attentes";
 
 /** Questionnaire des attentes de l'entreprise (formulaire d'offre de l'équipe). */
-export function QuestionnaireAttentes({ a, titre = "Les attentes de l'entreprise", sousTitre = "(facultatif, 2 minutes : MagnusMatch rapproche mieux l'offre de vos étudiants)" }: { a?: Attentes | null; titre?: string; sousTitre?: string }) {
+export function QuestionnaireAttentes({ a, ouvert, titre = "Les attentes de l'entreprise", sousTitre = "(facultatif, 2 minutes : MagnusMatch rapproche mieux l'offre de vos étudiants)" }: { a?: Attentes | null; ouvert?: boolean; titre?: string; sousTitre?: string }) {
   const bloc = (cle: CleAttente, extra?: React.ReactNode) => {
     const q = QUESTIONS_ATTENTES[cle];
     const coches = a?.[cle] ?? [];
@@ -24,7 +24,7 @@ export function QuestionnaireAttentes({ a, titre = "Les attentes de l'entreprise
     <input className="input mt-1 max-w-sm text-sm" name={`att_${nom}`} defaultValue={valeur ?? ""} placeholder={placeholder} />
   );
   return (
-    <details className="rounded-xl border border-line bg-bg p-4" open={!!a}>
+    <details className="rounded-xl border border-line bg-bg p-4" open={ouvert || !!a}>
       <summary className="cursor-pointer">
         <span className="font-semibold">{titre}</span>{" "}
         <span className="text-sm text-muted">{sousTitre}</span>

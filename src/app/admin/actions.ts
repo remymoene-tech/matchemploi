@@ -366,5 +366,6 @@ export async function ajouterProspectionAuxEntreprises(f: FormData) {
   const ids = (memes ?? []).filter((x) => memeEntreprise(x.entreprise, p.entreprise)).map((x) => x.id);
   if (ids.length) await db.from("prospections").update({ entreprise_id: entrepriseId }).in("id", ids);
   revalidatePath(`/admin/candidats/${t(f, "candidat_id", 60)}`);
-  redirect(`/admin/entreprises/${entrepriseId}?onglet=etudiants`);
+  // On ouvre la fiche entreprise sur la fiche besoin, à remplir avec l'entreprise
+  redirect(`/admin/entreprises/${entrepriseId}?besoins=1#besoins`);
 }

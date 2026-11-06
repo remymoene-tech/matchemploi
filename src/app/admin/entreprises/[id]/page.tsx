@@ -18,7 +18,7 @@ export const metadata = { title: "Entreprise · MagnusMatch" };
 
 export default async function FicheEntreprise({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ onglet?: string; ok?: string; erreur?: string }>;
+  searchParams: Promise<{ onglet?: string; ok?: string; erreur?: string; besoins?: string }>;
 }) {
   await exigerAdmin();
   const { id } = await params;
@@ -62,6 +62,7 @@ export default async function FicheEntreprise({ params, searchParams }: {
         {e && (
           <div className="flex flex-wrap items-center gap-2">
             <span className={`chip ${statut.chip}`}>{statut.label}</span>
+            {!e.attentes && <Link href={`${base}?besoins=1#besoins`} className="chip chip-minus">📋 Fiche besoin à remplir</Link>}
             <Link href={`/admin/offres/nouvelle?entreprise=${e.id}`} className="btn btn-primary">➕ Ajouter une offre</Link>
           </div>
         )}
@@ -140,9 +141,19 @@ export default async function FicheEntreprise({ params, searchParams }: {
               <textarea className="input min-h-28 text-sm" id="notes" name="notes" defaultValue={e?.notes ?? ""} placeholder="Ce qu'ils recherchent, les périodes de recrutement, les métiers…" />
             </div>
           </section>
-          <section className="flex flex-col gap-2">
-            <h2 className="font-semibold">📋 Leurs besoins</h2>
-            <QuestionnaireAttentes a={e?.attentes} titre="Le questionnaire des besoins de l'entreprise"
+          <section id="besoins" className="flex scroll-mt-4 flex-col gap-2">
+            <h2 className="font-semibold">📋 Fiche besoin</h2>
+            {sp.besoins && e && (
+              <div className="flex flex-col gap-1 rounded-xl border-2 border-accent bg-accent-soft p-4 text-sm">
+                <b>📞 Remplis la fiche besoin avec {e.contact_nom || "l'entreprise"}</b>
+                <span>
+                  {e.contact_tel ? <>Téléphone : <a className="font-semibold text-accent underline" href={`tel:${e.contact_tel.replace(/\s/g, "")}`}>{e.contact_tel}</a></> : "Pas de téléphone noté"}
+                  {e.contact_email ? <> · Email : <a className="font-semibold text-accent underline" href={`mailto:${e.contact_email}`}>{e.contact_email}</a></> : null}
+                </span>
+                <span className="text-muted">Coche leurs réponses ci-dessous puis clique sur « Enregistrer ». Elles seront reprises dans chaque offre de cette entreprise.</span>
+              </div>
+            )}
+            <QuestionnaireAttentes a={e?.attentes} ouvert={!!sp.besoins} titre="Le questionnaire des besoins de l'entreprise"
               sousTitre="(facultatif : il sera repris automatiquement dans chaque nouvelle offre de cette entreprise)" />
           </section>
           <div className="flex justify-end"><button className="btn btn-primary">{e ? "Enregistrer" : "Ajouter l'entreprise"}</button></div>
