@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { TYPES_ECHANGE, echeance, type Relance } from "@/lib/echanges";
+import { TYPES_ECHANGE, echeance, lienRelance, type Relance } from "@/lib/echanges";
 
 /** Liste des relances groupées : en retard, aujourd'hui, à venir. */
 export function ListeRelances({ relances, base, voirAuteur }: { relances: Relance[]; base: string; voirAuteur?: boolean }) {
@@ -32,7 +32,7 @@ export function ListeRelances({ relances, base, voirAuteur }: { relances: Relanc
               return (
                 <li key={r.id} className={`flex flex-wrap items-center justify-between gap-2 rounded-xl px-4 py-3 text-sm ${fond}`}>
                   <div className="min-w-0">
-                    <Link href={`${base}/${r.candidat_id}?onglet=echanges`} className="font-semibold hover:text-accent hover:underline">{r.nom}</Link>
+                    <Link href={lienRelance(r, base)} className="font-semibold hover:text-accent hover:underline">{r.nom}</Link>
                     <span className="text-muted"> · {t?.icone} {r.action}</span>
                     <div className="text-xs text-muted">
                       {d ? d.toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Paris", ...(r.action_a ? { hour: "2-digit", minute: "2-digit" } : {}) }) : "Pas de date"}
@@ -41,7 +41,7 @@ export function ListeRelances({ relances, base, voirAuteur }: { relances: Relanc
                   </div>
                   <span className="flex items-center gap-3">
                     {d && <a href={`/api/relances/${r.id}/ics`} className="text-xs text-accent hover:underline">📅 Agenda</a>}
-                    <Link href={`${base}/${r.candidat_id}?onglet=echanges`} className="btn btn-sm">Ouvrir la fiche</Link>
+                    <Link href={lienRelance(r, base)} className="btn btn-sm">Ouvrir la fiche</Link>
                   </span>
                 </li>
               );

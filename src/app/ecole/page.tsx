@@ -231,7 +231,7 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
       {vue === "relances" && (
         <div className="flex flex-col gap-3">
           <p className="text-sm text-muted">Les relances que tu as prévues sur les fiches de tes étudiants. La cloche 🔔 en haut à droite te prévient à l&apos;heure prévue.</p>
-          <ListeRelances relances={(await relancesDe(user.email ?? "")).filter((r) => C.has(r.candidat_id))} base="/ecole/etudiants" />
+          <ListeRelances relances={(await relancesDe(user.email ?? "")).filter((r) => !!r.candidat_id && C.has(r.candidat_id))} base="/ecole/etudiants" />
         </div>
       )}
 

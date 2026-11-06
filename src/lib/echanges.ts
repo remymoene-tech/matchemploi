@@ -11,7 +11,8 @@ export const TYPES_ECHANGE = [
 
 export type Echange = {
   id: string;
-  candidat_id: string;
+  candidat_id: string | null;
+  entreprise_id?: string | null;
   type: string;
   date_echange: string;
   resume: string;
@@ -35,7 +36,8 @@ export function localVersISO(local: string, tz: number): string | null {
   return new Date(utc + (Number.isFinite(tz) ? tz : -60) * 60000).toISOString();
 }
 
-export async function ajouterEchange(candidatId: string, f: FormData, auteur: string): Promise<{ erreur?: string }> {
+/** Ajoute un échange pour un candidat, ou pour une entreprise ({ entreprise: id }). */
+export async function ajouterEchange(cible: string | { entreprise: string }, f: FormData, auteur: string): Promise<{ erreur?: string }> {
   const type = txt(f, "type", 20);
   const resume = txt(f, "resume");
   if (!resume) return { erreur: "Écris ce qui s'est dit." };
@@ -43,7 +45,7 @@ export async function ajouterEchange(candidatId: string, f: FormData, auteur: st
   const quand = localVersISO(txt(f, "date_echange", 30), tz);
   const relanceA = localVersISO(txt(f, "action_a", 30), tz);
   const { error } = await createAdminClient().from("echanges").insert({
-    candidat_id: candidatId,
+    ...(typeof cible === "string" ? { candidat_id: cible } : { entreprise_id: cible.entreprise }),
     type: TYPES_ECHANGE.some((t) => t.id === type) ? type : "autre",
     date_echange: quand ?? new Date().toISOString(),
     resume,
@@ -52,7 +54,7 @@ export async function ajouterEchange(candidatId: string, f: FormData, auteur: st
     action_a: relanceA,
     auteur,
   });
-  if (error) return { erreur: /echanges/.test(error.message) ? "La base n'est pas à jour : exécute la mise à jour SQL de la page /diagnostic." : "L'enregistrement a échoué." };
+  if (error) return { erreur: /echanges|entreprise|candidat_id/.test(error.message) ? "La base n'est pas à jour : exécute la mise à jour SQL de la page /diagnostic." : "L'enregistrement a échoué." };
   return {};
 }
 
@@ -75,23 +77,37 @@ export async function echangesDuCandidat(candidatId: string): Promise<Echange[]>
   return (data ?? []) as Echange[];
 }
 
-export type Relance = { id: string; candidat_id: string; nom: string; action: string; action_a: string | null; action_le: string | null; type: string; auteur: string };
+export async function echangesDeLEntreprise(entrepriseId: string): Promise<Echange[]> {
+  const { data } = await createAdminClient().from("echanges").select("*").eq("entreprise_id", entrepriseId).order("date_echange", { ascending: false }).limit(200);
+  return (data ?? []) as Echange[];
+}
+
+export type Relance = { id: string; candidat_id: string | null; entreprise_id: string | null; nom: string; action: string; action_a: string | null; action_le: string | null; type: string; auteur: string };
+
+/** Lien vers la fiche concernée (onglet Échanges). */
+export const lienRelance = (r: Pick<Relance, "candidat_id" | "entreprise_id">, baseCandidats = "/admin/candidats") =>
+  r.entreprise_id ? `/admin/entreprises/${r.entreprise_id}?onglet=echanges` : `${baseCandidats}/${r.candidat_id}?onglet=echanges`;
 
 /** Relances non faites d'un recruteur (les siennes), ou de toute l'équipe si auteur = null. */
 export async function relancesDe(auteur: string | null): Promise<Relance[]> {
-  let q = createAdminClient()
-    .from("echanges")
-    .select("id, candidat_id, action, action_a, action_le, type, auteur, candidats(nom, email)")
-    .eq("action_faite", false);
-  if (auteur) q = q.eq("auteur", auteur);
-  const { data, error } = await q
-    .neq("action", "")
-    .order("action_a", { ascending: true, nullsFirst: false })
-    .limit(300);
+  const lire = async (champs: string) => {
+    let q = createAdminClient().from("echanges").select(champs).eq("action_faite", false);
+    if (auteur) q = q.eq("auteur", auteur);
+    return q.neq("action", "").order("action_a", { ascending: true, nullsFirst: false }).limit(300);
+  };
+  // Avec les entreprises si la base est à jour, sinon seulement les candidats
+  let { data, error } = await lire("id, candidat_id, entreprise_id, action, action_a, action_le, type, auteur, candidats(nom, email), entreprises(nom)");
+  if (error) ({ data, error } = await lire("id, candidat_id, action, action_a, action_le, type, auteur, candidats(nom, email)"));
   if (error) return [];
-  return (data ?? []).filter((r) => r.action).map((r) => {
-    const c = r.candidats as unknown as { nom: string; email: string } | null;
-    return { id: r.id, candidat_id: r.candidat_id, nom: c?.nom || c?.email || "Candidat", action: r.action, action_a: r.action_a, action_le: r.action_le, type: r.type, auteur: r.auteur ?? "" };
+  return ((data ?? []) as unknown as Record<string, unknown>[]).filter((r) => r.action).map((r) => {
+    const c = r.candidats as { nom: string; email: string } | null;
+    const e = r.entreprises as { nom: string } | null | undefined;
+    const entreprise_id = (r.entreprise_id as string | null | undefined) ?? null;
+    return {
+      id: r.id as string, candidat_id: (r.candidat_id as string | null) ?? null, entreprise_id,
+      nom: entreprise_id ? `🏢 ${e?.nom || "Entreprise"}` : c?.nom || c?.email || "Candidat",
+      action: r.action as string, action_a: r.action_a as string | null, action_le: r.action_le as string | null, type: r.type as string, auteur: (r.auteur as string) ?? "",
+    };
   });
 }
 

@@ -61,7 +61,13 @@ create index if not exists echanges_relances_idx on public.echanges(auteur, acti
 alter table public.candidats add column if not exists linkedin_url text not null default '';
 alter table public.candidats add column if not exists linkedin_analyse jsonb;
 alter table public.candidats add column if not exists linkedin_le timestamptz;
-alter table public.offres add column if not exists attentes jsonb;`;
+alter table public.offres add column if not exists attentes jsonb;
+create table if not exists public.entreprises (id uuid primary key default gen_random_uuid(), nom text not null, secteur text not null default '', ville text not null default '', site text not null default '', contact_nom text not null default '', contact_fonction text not null default '', contact_email text not null default '', contact_tel text not null default '', statut text not null default 'rencontree', origine text not null default '', rencontre_le date, notes text not null default '', auteur text not null default '', created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+alter table public.entreprises enable row level security;
+alter table public.offres add column if not exists entreprise_id uuid references public.entreprises(id) on delete set null;
+alter table public.echanges alter column candidat_id drop not null;
+alter table public.echanges add column if not exists entreprise_id uuid references public.entreprises(id) on delete cascade;
+create index if not exists echanges_entreprise_idx on public.echanges(entreprise_id, date_echange desc);`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -93,6 +99,8 @@ async function verifierBase() {
     db.from("echanges").select("action_a").limit(1),
     db.from("candidats").select("linkedin_url, linkedin_analyse, linkedin_le").limit(1),
     db.from("offres").select("attentes").limit(1),
+    db.from("entreprises").select("id").limit(1),
+    db.from("echanges").select("entreprise_id").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -122,6 +130,8 @@ async function verifierBase() {
     "Relances avec date et heure",
     "Réseau : profil LinkedIn",
     "Attentes de l'entreprise (offres)",
+    "Mes entreprises",
+    "Échanges et rappels des entreprises",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

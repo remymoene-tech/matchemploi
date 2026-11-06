@@ -19,6 +19,7 @@ import { enregistrerTest } from "@/lib/tests-serveur";
 import { genererSynthese } from "@/lib/synthese";
 import { genererCvAmeliore } from "@/lib/cv-ameliore";
 import { ajouterEchange } from "@/lib/echanges";
+import { lireEntreprise } from "@/lib/entreprises";
 import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
 import type { EtatEntretien } from "@/components/FormEntretienConseil";
@@ -61,6 +62,7 @@ export async function enregistrerOffre(f: FormData) {
     contact_email: t(f, "contact_email", 150),
     contact_tel: t(f, "contact_tel", 30),
     attentes: lireAttentes(f),
+    entreprise_id: t(f, "entreprise_id", 60) || null,
     ouverte: f.get("ouverte") === "on",
     updated_at: new Date().toISOString(),
   };
@@ -78,20 +80,20 @@ export async function enregistrerOffre(f: FormData) {
           return error;
         });
   let erreur = await ecrire(avecGPS);
-  if (erreur && /latitude|longitude|contact_tel|attentes/.test(erreur.message)) {
+  if (erreur && /latitude|longitude|contact_tel|attentes|entreprise_id/.test(erreur.message)) {
     // Base pas encore à jour : on enregistre sans les colonnes récentes
-    const { contact_tel: _t, attentes: _a, ...ancien } = donnees;
-    void _t; void _a;
+    const { contact_tel: _t, attentes: _a, entreprise_id: _e, ...ancien } = donnees;
+    void _t; void _a; void _e;
     erreur = await ecrire(ancien as typeof donnees);
   }
   if (donnees.ouverte) after(() => noterOffrePourTous(offreId));
-  redirect("/admin?vue=offres&ok=1");
+  redirect(donnees.entreprise_id ? `/admin/entreprises/${donnees.entreprise_id}?onglet=offres&ok=1` : "/admin?vue=entreprises&sous=offres&ok=1");
 }
 
 export async function supprimerOffre(f: FormData) {
   await exigerAdmin();
   await createAdminClient().from("offres").delete().eq("id", t(f, "id"));
-  redirect("/admin?vue=offres");
+  redirect("/admin?vue=entreprises&sous=offres");
 }
 
 export type EtatAnnonce = { erreur?: string };
@@ -235,4 +237,50 @@ export async function actionFaiteAdmin(f: FormData) {
   const candidat = t(f, "candidat_id", 60);
   await createAdminClient().from("echanges").update({ action_faite: true }).eq("id", t(f, "id", 60)).eq("candidat_id", candidat);
   revalidatePath(`/admin/candidats/${candidat}`);
+}
+
+/* ---------- Mes entreprises ---------- */
+export async function enregistrerEntreprise(f: FormData) {
+  const { user } = await exigerAdmin();
+  const id = t(f, "id", 60);
+  const donnees = lireEntreprise(f);
+  if (!donnees.nom) redirect(`/admin/entreprises/${id || "nouvelle"}?erreur=nom`);
+  const db = createAdminClient();
+  if (id) {
+    const { error } = await db.from("entreprises").update(donnees).eq("id", id);
+    if (error) redirect(`/admin/entreprises/${id}?erreur=base`);
+    redirect(`/admin/entreprises/${id}?ok=1`);
+  }
+  const { data, error } = await db.from("entreprises").insert({ ...donnees, auteur: user.email ?? "" }).select("id").single();
+  if (error || !data) redirect("/admin/entreprises/nouvelle?erreur=base");
+  redirect(`/admin/entreprises/${data.id}?ok=1`);
+}
+
+export async function supprimerEntreprise(f: FormData) {
+  await exigerAdmin();
+  await createAdminClient().from("entreprises").delete().eq("id", t(f, "id", 60));
+  redirect("/admin?vue=entreprises");
+}
+
+export async function ajouterEchangeEntreprise(_: { erreur?: string; ok?: boolean }, f: FormData): Promise<{ erreur?: string; ok?: boolean }> {
+  const { user } = await exigerAdmin();
+  const id = t(f, "entreprise_id", 60);
+  const r = await ajouterEchange({ entreprise: id }, f, user.email ?? "");
+  if (r.erreur) return r;
+  revalidatePath(`/admin/entreprises/${id}`);
+  return { ok: true };
+}
+
+export async function supprimerEchangeEntreprise(f: FormData) {
+  await exigerAdmin();
+  const id = t(f, "entreprise_id", 60);
+  await createAdminClient().from("echanges").delete().eq("id", t(f, "id", 60)).eq("entreprise_id", id);
+  revalidatePath(`/admin/entreprises/${id}`);
+}
+
+export async function actionFaiteEntreprise(f: FormData) {
+  await exigerAdmin();
+  const id = t(f, "entreprise_id", 60);
+  await createAdminClient().from("echanges").update({ action_faite: true }).eq("id", t(f, "id", 60)).eq("entreprise_id", id);
+  revalidatePath(`/admin/entreprises/${id}`);
 }

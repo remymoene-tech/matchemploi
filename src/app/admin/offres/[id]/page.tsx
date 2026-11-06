@@ -5,13 +5,14 @@ import { exigerAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enregistrerOffre, supprimerOffre } from "../../actions";
 import { CONTRATS, SOURCES_AUTO, type Offre } from "@/lib/types";
+import { listeEntreprises } from "@/lib/entreprises";
 
 export const metadata = { title: "Offre · MagnusMatch" };
 export const maxDuration = 300;
 
 export default async function Page({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ verifier?: string; erreur?: string }>;
+  searchParams: Promise<{ verifier?: string; erreur?: string; entreprise?: string }>;
 }) {
   await exigerAdmin();
   const { id } = await params;
@@ -22,6 +23,13 @@ export default async function Page({ params, searchParams }: {
     if (!data || SOURCES_AUTO.includes(data.source)) notFound();
     o = data;
   }
+  // Rattachement à une fiche de « Mes entreprises » (pré-remplit le nom et le contact)
+  const entreprises = (await listeEntreprises()) ?? [];
+  const entrepriseId = (o as { entreprise_id?: string | null }).entreprise_id ?? sp.entreprise ?? "";
+  const ent = entreprises.find((x) => x.id === entrepriseId);
+  if (ent && !o.id) {
+    o = { ...o, entreprise: ent.nom, lieu: ent.ville, contact_nom: [ent.contact_nom, ent.contact_fonction].filter(Boolean).join(", "), contact_email: ent.contact_email, contact_tel: ent.contact_tel };
+  }
   const champ = (name: keyof Offre, label: string, ph = "", type = "text", requis = false) => (
     <div className="flex min-w-0 flex-col gap-1">
       <label className="label" htmlFor={name}>{label}{requis && <span className="text-bad"> *</span>}</label>
@@ -31,7 +39,7 @@ export default async function Page({ params, searchParams }: {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
-      <Link href="/admin?vue=offres" className="text-sm text-muted">← Retour aux offres</Link>
+      <Link href={ent ? `/admin/entreprises/${ent.id}?onglet=offres` : "/admin?vue=entreprises&sous=offres"} className="text-sm text-muted">← {ent ? ent.nom : "Retour aux offres"}</Link>
       <h1 className="text-3xl font-extrabold">{o.id ? "Modifier l'offre" : "Nouvelle offre"}</h1>
       {sp.verifier && <p className="rounded-xl bg-accent-soft p-4 text-sm">Fiche remplie automatiquement à partir de l&apos;annonce. Vérifie-la, coche « Offre ouverte » puis enregistre.</p>}
       <p className="rounded-xl bg-accent-soft p-4 text-sm">
@@ -43,6 +51,16 @@ export default async function Page({ params, searchParams }: {
 
       <form action={enregistrerOffre} className="card flex flex-col gap-4 p-5">
         <input type="hidden" name="id" value={o.id ?? ""} />
+        {entreprises.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <label className="label" htmlFor="entreprise_id">🏢 Fiche entreprise (Mes entreprises)</label>
+            <select className="input" id="entreprise_id" name="entreprise_id" defaultValue={entrepriseId}>
+              <option value="">— Aucune —</option>
+              {entreprises.map((x) => <option key={x.id} value={x.id}>{x.nom}{x.ville ? ` · ${x.ville}` : ""}</option>)}
+            </select>
+            <span className="hint">L&apos;offre apparaîtra sur la fiche de l&apos;entreprise.</span>
+          </div>
+        )}
         <div className="grid gap-4 sm:grid-cols-2">
           {champ("entreprise", "Entreprise", "Transports Delorme", "text", true)}
           {champ("intitule", "Intitulé du poste", "Assistant(e) RH en alternance", "text", true)}

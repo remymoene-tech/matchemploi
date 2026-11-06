@@ -314,3 +314,12 @@ alter table public.candidats add column if not exists linkedin_le timestamptz;
 
 -- Questionnaire « Les attentes de l'entreprise » sur les offres de l'équipe
 alter table public.offres add column if not exists attentes jsonb;
+
+-- Mes entreprises : entreprises rencontrées (avec ou sans offre), suivi et échanges. Serveur uniquement.
+create table if not exists public.entreprises (
+  id uuid primary key default gen_random_uuid(), nom text not null, secteur text not null default '', ville text not null default '', site text not null default '', contact_nom text not null default '', contact_fonction text not null default '', contact_email text not null default '', contact_tel text not null default '', statut text not null default 'rencontree', origine text not null default '', rencontre_le date, notes text not null default '', auteur text not null default '', created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+alter table public.entreprises enable row level security;
+alter table public.offres add column if not exists entreprise_id uuid references public.entreprises(id) on delete set null;
+alter table public.echanges alter column candidat_id drop not null;
+alter table public.echanges add column if not exists entreprise_id uuid references public.entreprises(id) on delete cascade;
+create index if not exists echanges_entreprise_idx on public.echanges(entreprise_id, date_echange desc);

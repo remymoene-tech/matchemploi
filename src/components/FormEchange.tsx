@@ -11,8 +11,11 @@ const TYPES = [
 ];
 
 /** Formulaire « Noter un échange » : type, date, ce qui s'est dit, prochaine action facultative. */
-export function FormEchange({ candidatId, action }: {
+export function FormEchange({ candidatId, action, champ = "candidat_id", exemple }: {
   candidatId: string;
+  /** Champ caché : « candidat_id » (fiche candidat) ou « entreprise_id » (fiche entreprise). */
+  champ?: string;
+  exemple?: string;
   action: (e: { erreur?: string; ok?: boolean }, f: FormData) => Promise<{ erreur?: string; ok?: boolean }>;
 }) {
   const form = useRef<HTMLFormElement>(null);
@@ -29,7 +32,7 @@ export function FormEchange({ candidatId, action }: {
   };
   return (
     <form ref={form} action={envoyer} className="flex flex-col gap-3">
-      <input type="hidden" name="candidat_id" value={candidatId} />
+      <input type="hidden" name={champ} value={candidatId} />
       <input type="hidden" name="tz" value={new Date().getTimezoneOffset()} suppressHydrationWarning />
       <fieldset className="flex flex-wrap gap-2">
         <legend className="sr-only">Type d&apos;échange</legend>
@@ -46,7 +49,7 @@ export function FormEchange({ candidatId, action }: {
       </div>
       <div className="flex flex-col gap-1">
         <label className="label" htmlFor="resume">Ce qui s&apos;est dit</label>
-        <textarea className="input min-h-24 text-sm" id="resume" name="resume" required placeholder="Ex. A envoyé 3 candidatures cette semaine, entretien chez Leclerc jeudi. Hésite encore entre vente et accueil." />
+        <textarea className="input min-h-24 text-sm" id="resume" name="resume" required placeholder={exemple ?? "Ex. A envoyé 3 candidatures cette semaine, entretien chez Leclerc jeudi. Hésite encore entre vente et accueil."} />
       </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={relance} onChange={(e) => setRelance(e.target.checked)} className="accent-[var(--accent)]" />

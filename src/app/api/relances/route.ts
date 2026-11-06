@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { estAdmin } from "@/lib/auth";
 import { ecoleDuResponsable } from "@/lib/ecoles";
-import { echeance, relancesDe } from "@/lib/echanges";
+import { echeance, lienRelance, relancesDe } from "@/lib/echanges";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +20,7 @@ export async function GET() {
   const r = await recruteur();
   if (!r) return NextResponse.json({ dues: [], prochaines: [] }, { status: 401 });
   const maintenant = Date.now();
-  const toutes = (await relancesDe(r.email)).map((x) => ({ ...x, quand: echeance(x)?.toISOString() ?? null, lien: `${r.base}/${x.candidat_id}?onglet=echanges` }));
+  const toutes = (await relancesDe(r.email)).map((x) => ({ ...x, quand: echeance(x)?.toISOString() ?? null, lien: lienRelance(x, r.base) }));
   const dues = toutes.filter((x) => x.quand && new Date(x.quand).getTime() <= maintenant);
   const prochaines = toutes.filter((x) => x.quand && new Date(x.quand).getTime() > maintenant).slice(0, 5);
   return NextResponse.json({ dues, prochaines });

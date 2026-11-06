@@ -11,33 +11,37 @@ import { MessageEnvoyable } from "@/components/MessageEnvoyable";
 import { ListeRelances } from "@/components/ListeRelances";
 import { Barres, Colonnes } from "@/components/Graphiques";
 import { OngletsCartes } from "@/components/OngletsCartes";
-import { echeance, maintenantMs, relancesDe } from "@/lib/echanges";
+import { STATUTS_ENTREPRISE, listeEntreprises, offresDe, statutEntreprise } from "@/lib/entreprises";
+import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
 import { ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
-export const metadata = { title: "Admin · MagnusMatch" };
+export const metadata = { title: "Tableau de bord · MagnusMatch" };
 export const maxDuration = 300;
 
 const VUES = [
   { id: "accueil", label: "Accueil" },
-  { id: "offres", label: "Mes offres" },
+  { id: "entreprises", label: "Mes entreprises" },
   { id: "candidats", label: "Mes candidats" },
 ] as const;
 /** Pages secondaires, en petit à droite des onglets. */
 const AUTRES = [
-  { id: "relances", label: "Relances" },
-  { id: "entretiens", label: "Entretiens" },
-  { id: "ecoles", label: "Écoles" },
-  { id: "reglages", label: "Réglages" },
+  { id: "relances", label: "🔔 Relances" },
+  { id: "entretiens", label: "🗣️ Entretiens" },
+  { id: "ecoles", label: "🏫 Écoles" },
+  { id: "reglages", label: "⚙️ Réglages" },
 ] as const;
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
-  const vue = sp.vue === "correspondances" ? "offres" : [...VUES, ...AUTRES].some((v) => v.id === sp.vue) ? sp.vue! : "accueil";
+  // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
+  const vue = sp.vue === "offres" || sp.vue === "correspondances" ? "entreprises" : [...VUES, ...AUTRES].some((v) => v.id === sp.vue) ? sp.vue! : "accueil";
+  const sous = sp.sous === "offres" || sp.sous === "candidats" ? sp.sous
+    : sp.vue === "offres" ? (sp.suivi ? "candidats" : "offres") : sp.vue === "correspondances" ? "candidats" : "entreprises";
   const db = createAdminClient();
 
   const [{ data: ecolesData, error: ecolesErreur }, { data: respData }, { data: entData, error: entErreur }] = await Promise.all([
@@ -93,7 +97,23 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       href: `/admin?vue=candidats&du=${new Date(debut).toISOString()}&au=${new Date(fin).toISOString()}`,
     };
   });
-  const pipeline = SUIVIS.map((x) => ({ label: x.label, valeur: equipe.filter((m) => m.suivi === x.id).length, href: `/admin?vue=offres&suivi=${x.id}#a-traiter` }));
+  // Mes entreprises : rencontrées, avec ou sans offre
+  const entreprises = await listeEntreprises();
+  const offresEquipe = (offres ?? []) as Offre[];
+  const parEntreprise = new Map((entreprises ?? []).map((e) => [e.id, offresDe(e, offresEquipe)]));
+  const avecOffre = (entreprises ?? []).filter((e) => parEntreprise.get(e.id)!.some((o) => o.ouverte));
+  const nbEntreprises = entreprises?.length ?? 0;
+  const { data: echEnt } = vue === "entreprises" && sous === "entreprises" && entreprises?.length
+    ? await db.from("echanges").select("entreprise_id, date_echange, action, action_a, action_le, action_faite").not("entreprise_id", "is", null).order("date_echange", { ascending: false }).limit(1000)
+    : { data: [] };
+  const echangesEnt = (echEnt ?? []) as { entreprise_id: string; date_echange: string; action: string; action_a: string | null; action_le: string | null; action_faite: boolean }[];
+  const filtreEnt = sp.filtre === "avec" || sp.filtre === "sans" || STATUTS_ENTREPRISE.some((x) => x.id === sp.filtre) ? sp.filtre! : "";
+  const entreprisesAffichees = (entreprises ?? []).filter((e) =>
+    !filtreEnt ? true
+      : filtreEnt === "avec" ? avecOffre.includes(e)
+      : filtreEnt === "sans" ? !avecOffre.includes(e)
+      : e.statut === filtreEnt);
+  const pipeline = SUIVIS.map((x) => ({ label: x.label, valeur: equipe.filter((m) => m.suivi === x.id).length, href: `/admin?vue=entreprises&sous=candidats&suivi=${x.id}#a-traiter` }));
   const [mesRelances, { data: placesData }] = vue === "accueil"
     ? await Promise.all([
         relancesDe(moi.user.email ?? ""),
@@ -140,7 +160,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       <div className="flex flex-col gap-2">
         <OngletsCartes label="Espace équipe" onglets={[
           { href: "/admin", icone: "🏠", label: "Accueil", sous: "Mes chiffres", actif: vue === "accueil" },
-          { href: "/admin?vue=offres", icone: "💼", label: "Mes offres", sous: `${mesOffresOuvertes} ouverte${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "offres" },
+          { href: "/admin?vue=entreprises", icone: "🏢", label: "Mes entreprises", sous: entreprises ? `${nbEntreprises} rencontrée${nbEntreprises > 1 ? "s" : ""}` : `${mesOffresOuvertes} offre${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "entreprises" },
           { href: "/admin?vue=candidats", icone: "👥", label: "Mes candidats", sous: `${C.size} inscrit${C.size > 1 ? "s" : ""}`, actif: vue === "candidats" },
         ]} />
         <nav className="flex flex-wrap justify-end gap-3 text-sm" aria-label="Autres pages">
@@ -154,10 +174,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
         <div className="flex flex-col gap-6">
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Chiffres clés">
             {([
-              ["Candidats", C.size, nouveaux ? `+${nouveaux} cette semaine` : "inscrits", "/admin?vue=candidats"],
-              ["Mes offres", mesOffresOuvertes, "offres ouvertes", "/admin?vue=offres"],
-              ["À traiter", aTraiter, `candidats à ${SEUIL} % ou plus`, "/admin?vue=offres&suivi=a_traiter#a-traiter"],
-              ["Candidats placés", places.length, "candidats embauchés", "/admin?vue=offres&suivi=embauche#a-traiter"],
+              ["👥 Candidats", C.size, nouveaux ? `+${nouveaux} cette semaine` : "inscrits", "/admin?vue=candidats"],
+              ["🏢 Entreprises", nbEntreprises, `${avecOffre.length} avec une offre`, "/admin?vue=entreprises"],
+              ["📥 À traiter", aTraiter, `candidats à ${SEUIL} % ou plus`, "/admin?vue=entreprises&sous=candidats&suivi=a_traiter#a-traiter"],
+              ["🎉 Candidats placés", places.length, "candidats embauchés", "/admin?vue=entreprises&sous=candidats&suivi=embauche#a-traiter"],
             ] as const).map(([l, v, sous, href]) => (
               <Link key={l} href={href} className="card group flex flex-col gap-0.5 p-5 transition-colors hover:border-accent">
                 <span className="eyebrow flex justify-between">{l}<span className="opacity-0 transition-opacity group-hover:opacity-100">→</span></span>
@@ -170,7 +190,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
             <section className="card flex flex-col gap-4 p-5">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold">Nouveaux candidats par semaine</h2>
+                <h2 className="text-lg font-semibold">📈 Nouveaux candidats par semaine</h2>
                 <Link href="/admin?vue=candidats" className="text-sm font-semibold text-accent">Détail →</Link>
               </div>
               <Colonnes donnees={semaines} resume={`Inscriptions des 8 dernières semaines : ${semaines.map((x) => x.valeur).join(", ")}`} />
@@ -179,15 +199,32 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
             <section className="card flex flex-col gap-4 p-5">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold">Suivi de mes offres</h2>
-                <Link href="/admin?vue=offres#a-traiter" className="text-sm font-semibold text-accent">Détail →</Link>
+                <h2 className="text-lg font-semibold">🏢 Mes entreprises</h2>
+                <Link href="/admin?vue=entreprises" className="text-sm font-semibold text-accent">Détail →</Link>
+              </div>
+              {entreprises === null ? (
+                <p className="text-sm text-muted">Exécute la mise à jour SQL de la page /diagnostic pour activer « Mes entreprises ».</p>
+              ) : (
+                <Barres resume="Entreprises rencontrées, avec ou sans offre" donnees={[
+                  { label: "🤝 Rencontrées", valeur: nbEntreprises, href: "/admin?vue=entreprises" },
+                  { label: "💼 Avec une offre", valeur: avecOffre.length, href: "/admin?vue=entreprises&filtre=avec" },
+                  { label: "🕓 Sans offre pour l'instant", valeur: nbEntreprises - avecOffre.length, href: "/admin?vue=entreprises&filtre=sans" },
+                  { label: "⭐ Partenaires", valeur: (entreprises ?? []).filter((e) => e.statut === "partenaire").length, href: "/admin?vue=entreprises&filtre=partenaire" },
+                ]} />
+              )}
+            </section>
+
+            <section className="card flex flex-col gap-4 p-5">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">🤝 Suivi des mises en relation</h2>
+                <Link href="/admin?vue=entreprises&sous=candidats#a-traiter" className="text-sm font-semibold text-accent">Détail →</Link>
               </div>
               <Barres donnees={pipeline} resume="Nombre de mises en relation à chaque étape" />
             </section>
 
             <section className="card flex flex-col gap-3 p-5">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold">Mes rappels</h2>
+                <h2 className="text-lg font-semibold">⏰ Mes rappels</h2>
                 <Link href="/admin?vue=relances" className="text-sm font-semibold text-accent">Tous mes rappels →</Link>
               </div>
               {!rappels.length && (
@@ -199,7 +236,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                   const retard = d.getTime() < maintenant;
                   return (
                     <li key={r.id}>
-                      <Link href={`/admin/candidats/${r.candidat_id}?onglet=echanges`} className="-mx-2 flex items-start justify-between gap-3 rounded-lg px-2 py-2 text-sm hover:bg-bg">
+                      <Link href={lienRelance(r)} className="-mx-2 flex items-start justify-between gap-3 rounded-lg px-2 py-2 text-sm hover:bg-bg">
                         <span className="min-w-0"><b>{r.nom}</b><span className="block text-muted">{r.action}</span></span>
                         <span className={`chip shrink-0 ${retard ? "chip-minus" : "chip-tag"}`}>
                           {retard ? "En retard" : d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}
@@ -211,12 +248,12 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               </ul>
             </section>
 
-            <section className="card flex flex-col gap-3 p-5">
+            <section className="card flex flex-col gap-3 p-5 lg:col-span-2">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold">Candidats placés</h2>
-                <Link href="/admin?vue=offres&suivi=embauche#a-traiter" className="text-sm font-semibold text-accent">Détail →</Link>
+                <h2 className="text-lg font-semibold">🎉 Candidats placés</h2>
+                <Link href="/admin?vue=entreprises&sous=candidats&suivi=embauche#a-traiter" className="text-sm font-semibold text-accent">Détail →</Link>
               </div>
-              {!places.length && <p className="text-sm text-muted">Pas encore de candidat placé. Passe une mise en relation en « Embauché » dans Mes offres quand c&apos;est signé 🎉</p>}
+              {!places.length && <p className="text-sm text-muted">Pas encore de candidat placé. Passe une mise en relation en « Embauché » (Mes entreprises → Candidats à traiter) quand c&apos;est signé 🎉</p>}
               <ul className="flex flex-col gap-1">
                 {places.slice(0, 6).map((p) => {
                   const c = C.get(p.candidat_id)!;
@@ -450,7 +487,68 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
         </form>
       )}
 
-      {vue === "offres" && (
+      {vue === "entreprises" && (
+        <nav className="flex flex-wrap gap-2" aria-label="Mes entreprises">
+          {([
+            ["entreprises", "🏢", "Entreprises", nbEntreprises],
+            ["offres", "💼", "Offres", offresEquipe.length],
+            ["candidats", "👥", "Candidats à traiter", aTraiter],
+          ] as const).map(([id, icone, label, n]) => (
+            <Link key={id} href={`/admin?vue=entreprises${id === "entreprises" ? "" : `&sous=${id}`}`} aria-current={sous === id ? "page" : undefined}
+              className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${sous === id ? "border-accent bg-accent-soft text-ink" : "border-line bg-surface text-muted hover:text-ink"}`}>
+              <span aria-hidden>{icone}</span>{label}<span className="rounded-full bg-bg px-2 text-xs tabular-nums">{n}</span>
+            </Link>
+          ))}
+        </nav>
+      )}
+
+      {vue === "entreprises" && sous === "entreprises" && (
+        <div className="flex flex-col gap-3">
+          {entreprises === null && (
+            <p className="rounded-xl bg-warn-soft p-4 text-sm">« Mes entreprises » n&apos;est pas encore activé : exécute la mise à jour SQL affichée sur la page /diagnostic.</p>
+          )}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2 text-sm">
+              {([["", "Toutes"], ["avec", "💼 Avec offre"], ["sans", "🕓 Sans offre"], ["partenaire", "⭐ Partenaires"], ["en_discussion", "💬 En discussion"]] as const).map(([id, label]) => (
+                <Link key={id} href={`/admin?vue=entreprises${id ? `&filtre=${id}` : ""}`} className={`chip ${filtreEnt === id ? "chip-plus" : ""}`}>{label}</Link>
+              ))}
+            </div>
+            <Link href="/admin/entreprises/nouvelle" className="btn btn-primary">➕ Ajouter une entreprise</Link>
+          </div>
+          {entreprises && !entreprisesAffichees.length && (
+            <p className="card border-dashed p-6 text-sm text-muted">
+              {nbEntreprises ? "Aucune entreprise dans ce filtre." : "Ajoute les entreprises que tu as rencontrées, même sans offre : tu pourras suivre tes échanges et programmer des rappels."}
+            </p>
+          )}
+          <div className="grid gap-3 md:grid-cols-2">
+            {entreprisesAffichees.map((e) => {
+              const st = statutEntreprise(e.statut);
+              const nOffres = parEntreprise.get(e.id)!.filter((o) => o.ouverte).length;
+              const ech = echangesEnt.filter((x) => x.entreprise_id === e.id);
+              const rappel = ech.filter((x) => x.action && !x.action_faite).map((x) => echeance(x)).filter((d): d is Date => !!d).sort((a, b) => +a - +b)[0];
+              return (
+                <Link key={e.id} href={`/admin/entreprises/${e.id}`} className="card flex flex-col gap-2 p-5 transition-colors hover:border-accent">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-lg font-semibold">🏢 {e.nom}</h3>
+                      <p className="text-sm text-muted">{[e.secteur, e.ville].filter(Boolean).join(" · ") || "—"}</p>
+                    </div>
+                    <span className={`chip shrink-0 ${st.chip}`}>{st.label}</span>
+                  </div>
+                  {e.contact_nom && <p className="text-sm">👤 {e.contact_nom}{e.contact_fonction ? `, ${e.contact_fonction}` : ""}</p>}
+                  <div className="flex flex-wrap gap-1.5 text-xs">
+                    <span className={`chip ${nOffres ? "chip-plus" : ""}`}>💼 {nOffres ? `${nOffres} offre${nOffres > 1 ? "s" : ""}` : "Pas d'offre"}</span>
+                    {ech[0] && <span className="chip">💬 {new Date(ech[0].date_echange).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" })}</span>}
+                    {rappel && <span className={`chip ${+rappel <= maintenant ? "chip-minus" : "chip-tag"}`}>⏰ {rappel.toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}</span>}
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {vue === "entreprises" && sous === "offres" && (
         <div className="grid gap-3 md:grid-cols-2">
           {((offres ?? []) as Offre[]).map((o) => (
             <article key={o.id} className="card flex flex-col gap-2 p-5">
@@ -474,13 +572,13 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
         </div>
       )}
 
-      {vue === "offres" && (
+      {vue === "entreprises" && sous === "candidats" && (
         <div id="a-traiter" className="flex flex-col gap-3">
-          <h2 className="mt-4 text-xl font-semibold">Candidats qui correspondent à mes offres</h2>
+          <h2 className="text-xl font-semibold">👥 Candidats qui correspondent à mes offres</h2>
           <nav className="flex flex-wrap gap-2 text-sm" aria-label="Filtrer par étape">
-            <Link href="/admin?vue=offres#a-traiter" className={`chip ${!filtreSuivi ? "chip-plus" : ""}`}>Toutes ({equipe.length})</Link>
+            <Link href="/admin?vue=entreprises&sous=candidats#a-traiter" className={`chip ${!filtreSuivi ? "chip-plus" : ""}`}>Toutes ({equipe.length})</Link>
             {SUIVIS.map((x) => (
-              <Link key={x.id} href={`/admin?vue=offres&suivi=${x.id}#a-traiter`} className={`chip ${filtreSuivi?.id === x.id ? "chip-plus" : ""}`}>
+              <Link key={x.id} href={`/admin?vue=entreprises&sous=candidats&suivi=${x.id}#a-traiter`} className={`chip ${filtreSuivi?.id === x.id ? "chip-plus" : ""}`}>
                 {x.label} ({equipe.filter((m) => m.suivi === x.id).length})
               </Link>
             ))}
