@@ -10,7 +10,7 @@ import { exigerAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, lireAnnonce } from "@/lib/ia";
 import { noterOffrePourTous, rechercheQuotidienne } from "@/lib/matching";
-import { CONTRATS, SOURCES_AUTO, SUIVIS, contactManquant, type Offre } from "@/lib/types";
+import { CONTRATS, SUIVIS, contactManquant } from "@/lib/types";
 import { localiserLieu } from "@/lib/geo";
 import { SUIVIS_PREPARATION, genererPreparation } from "@/lib/preparation";
 import { genererCode } from "@/lib/ecoles";
@@ -20,7 +20,8 @@ import { enregistrerTest } from "@/lib/tests-serveur";
 import { genererSynthese } from "@/lib/synthese";
 import { genererCvAmeliore } from "@/lib/cv-ameliore";
 import { ajouterEchange } from "@/lib/echanges";
-import { lireEntreprise, offresDe } from "@/lib/entreprises";
+import { lireEntreprise } from "@/lib/entreprises";
+import { entrepriseRecrute, lancerRechercheCandidats } from "@/lib/recherche-entreprise";
 import { lireFormations } from "@/lib/formations";
 import { changerAdmission } from "@/lib/admission-serveur";
 import { majDiplome } from "@/lib/diplome-serveur";
@@ -265,11 +266,20 @@ export async function enregistrerEntreprise(f: FormData) {
     let { error } = await db.from("entreprises").update(donnees).eq("id", id);
     if (error && /attentes/.test(error.message)) ({ error } = await db.from("entreprises").update(sansQuestionnaire()).eq("id", id));
     if (error) redirect(`/admin/entreprises/${id}?erreur=base`);
+    // Besoin rempli et l'entreprise recrute : MagnusMatch cherche les candidats tout de suite
+    if (donnees.attentes && (await entrepriseRecrute({ id, nom: donnees.nom, statut: donnees.statut }))) {
+      after(() => lancerRechercheCandidats(id).then(() => undefined));
+      redirect(`/admin/entreprises/${id}?onglet=candidats&recherche=1`);
+    }
     redirect(`/admin/entreprises/${id}?ok=1`);
   }
   let { data, error } = await db.from("entreprises").insert({ ...donnees, auteur: user.email ?? "" }).select("id").single();
   if (error && /attentes/.test(error.message)) ({ data, error } = await db.from("entreprises").insert({ ...sansQuestionnaire(), auteur: user.email ?? "" }).select("id").single());
   if (error || !data) redirect("/admin/entreprises/nouvelle?erreur=base");
+  if (donnees.attentes && (await entrepriseRecrute({ id: data.id, nom: donnees.nom, statut: donnees.statut }))) {
+    after(() => lancerRechercheCandidats(data.id).then(() => undefined));
+    redirect(`/admin/entreprises/${data.id}?onglet=candidats&recherche=1`);
+  }
   redirect(`/admin/entreprises/${data.id}?ok=1`);
 }
 
@@ -402,32 +412,6 @@ export async function envoyerFicheBesoin(f: FormData) {
 export async function chercherCandidatsEntreprise(f: FormData) {
   await exigerAdmin();
   const id = t(f, "id", 60);
-  const db = createAdminClient();
-  const { data: e } = await db.from("entreprises").select("*").eq("id", id).maybeSingle();
-  if (!e) redirect("/admin?vue=entreprises");
-  const { data: toutes } = await db.from("offres").select("*").not("source", "in", `(${SOURCES_AUTO.join(",")})`).eq("ouverte", true);
-  let ouvertes = offresDe(e, (toutes ?? []) as Offre[]);
-  if (!ouvertes.length) {
-    const { data: prosp } = await db.from("prospections").select("entreprise, recrute, justification").eq("recrute", "oui");
-    const ditsParEtudiants = (prosp ?? []).filter((p) => memeEntreprise(p.entreprise, e.nom)).map((p) => `- ${p.justification}`).join("\n");
-    const position = e.ville ? await localiserLieu(e.ville) : null;
-    const { data: o } = await db.from("offres").insert({
-      source: "partenaire",
-      entreprise: e.nom,
-      intitule: `Recrutement ${e.secteur ? `(${e.secteur}) ` : ""}— ${e.nom}`,
-      contrat: "", contrat_libelle: "",
-      lieu: e.ville ?? "",
-      description: [e.notes, ditsParEtudiants && `Ce que l'entreprise a dit aux étudiants :\n${ditsParEtudiants}`].filter(Boolean).join("\n\n").slice(0, 6000),
-      contact_nom: [e.contact_nom, e.contact_fonction].filter(Boolean).join(", "),
-      contact_email: e.contact_email ?? "", contact_tel: e.contact_tel ?? "",
-      attentes: e.attentes ?? null,
-      entreprise_id: e.id,
-      ouverte: true,
-      latitude: position?.latitude ?? null, longitude: position?.longitude ?? null,
-    }).select("*").single();
-    if (!o) redirect(`/admin/entreprises/${id}?onglet=candidats&erreur=base`);
-    ouvertes = [o as Offre];
-  }
-  for (const o of ouvertes) after(() => noterOffrePourTous(o.id));
+  after(() => lancerRechercheCandidats(id).then(() => undefined));
   redirect(`/admin/entreprises/${id}?onglet=candidats&recherche=1`);
 }

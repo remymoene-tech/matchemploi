@@ -7,6 +7,7 @@ import { lireAttentes, type Attentes } from "@/lib/attentes";
 export const STATUTS_ENTREPRISE = [
   { id: "rencontree", label: "Rencontrée", chip: "chip-tag" },
   { id: "en_discussion", label: "En discussion", chip: "chip-tag" },
+  { id: "recrute", label: "✅ Recrute", chip: "chip-plus" },
   { id: "partenaire", label: "Partenaire", chip: "chip-plus" },
   { id: "pas_maintenant", label: "Pas pour le moment", chip: "" },
 ] as const;

@@ -53,7 +53,7 @@ export default async function FicheEntreprise({ params, searchParams }: {
   const prospEtudiants = e ? await prospectionsDeLEntreprise(e).catch(() => []) : [];
   const echProsp = onglet === "echanges" ? await echangesDeProspections(prospEtudiants.map((p) => p.id)) : [];
   // L'onglet « Candidats » apparaît dès que l'entreprise recrute
-  const recrute = !!e && (prospEtudiants.some((p) => p.recrute === "oui") || offres.some((o) => o.ouverte) || e.statut === "partenaire" || e.statut === "en_discussion" || !!e.attentes);
+  const recrute = !!e && (e.statut === "recrute" || prospEtudiants.some((p) => p.recrute === "oui") || offres.some((o) => o.ouverte));
 
   const champ = (nom: keyof Entreprise, label: string, placeholder = "", type = "text") => (
     <div className="flex flex-col gap-1">
@@ -262,7 +262,11 @@ export default async function FicheEntreprise({ params, searchParams }: {
           {!offres.some((o) => o.ouverte) && !sp.recherche && (
             <p className="rounded-lg bg-bg px-3 py-2 text-sm">Pas encore d&apos;offre ouverte pour cette entreprise : « Chercher les candidats » crée un besoin de recrutement à partir de sa fiche besoin et de tes notes, puis MagnusMatch note tous les étudiants admis.</p>
           )}
-          {!e.attentes && <p className="text-xs text-muted">💡 Remplis d&apos;abord la <Link href={`${base}?besoins=1#besoins`} className="underline">fiche besoin</Link> : les % seront bien plus justes.</p>}
+          {!e.attentes && (
+            <p className="rounded-lg border-2 border-accent bg-accent-soft px-3 py-2 text-sm">
+              📋 Remplis la <Link href={`${base}?besoins=1#besoins`} className="font-semibold underline">fiche besoin</Link> avec l&apos;entreprise, ou envoie-la-lui : dès qu&apos;elle est remplie, MagnusMatch cherche les candidats tout seul.
+            </p>
+          )}
           {!candidatsProposes.length && offres.some((o) => o.ouverte) && !sp.recherche && <p className="text-sm text-muted">Aucun étudiant à {SCORE_VERT} % ou plus pour l&apos;instant.</p>}
           <ul className="flex flex-col gap-3">
             {candidatsProposes.map((m) => {
