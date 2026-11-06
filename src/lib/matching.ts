@@ -4,6 +4,7 @@ import { iaConfiguree, noterOffres, proposerPistes, type Note, type Refus } from
 import { franceTravailConfigure, offresPourCandidat } from "@/lib/france-travail";
 import { adzunaConfigure, offresAdzunaPourCandidat } from "@/lib/adzuna";
 import { lbaConfigure, offresLBAPourCandidat } from "@/lib/la-bonne-alternance";
+import { estAdmis } from "@/lib/admission";
 import { envoyerEmail, echapper } from "@/lib/email";
 import { distanceKm, localiserLieu } from "@/lib/geo";
 import { avecDisc } from "@/lib/tests-serveur";
@@ -170,6 +171,11 @@ export async function rechercherPourCandidat(candidatId: string) {
   const db = createAdminClient();
   const { data: brut } = await db.from("candidats").select("*").eq("user_id", candidatId).single<Candidat>();
   if (!brut || !brut.consentement) return { notees: 0, erreur: null as string | null };
+  if (!estAdmis(brut)) {
+    // Pas encore admis : pas de recherche d'offres (ni de coût d'IA) tant que l'équipe n'a pas validé
+    await db.from("candidats").update({ recherche_en_cours: false }).eq("user_id", candidatId);
+    return { notees: 0, erreur: null as string | null };
+  }
   const c = await avecDisc(brut); // son profil DISC affine légèrement les notes
 
   await db.from("candidats").update({ recherche_en_cours: true }).eq("user_id", candidatId);
@@ -302,7 +308,7 @@ export async function noterOffrePourTous(offreId: string) {
   let requete = db.from("candidats").select("*").eq("consentement", true);
   if (o.ecole_id) requete = requete.eq("ecole_id", o.ecole_id);
   const { data: candidats } = await requete;
-  const cibles = ((candidats ?? []) as Candidat[]).filter((c) => compatible(c, o));
+  const cibles = ((candidats ?? []) as Candidat[]).filter((c) => estAdmis(c) && compatible(c, o));
   await parLots(cibles, 4, async (sansDisc) => {
     const c = await avecDisc(sansDisc);
     try {

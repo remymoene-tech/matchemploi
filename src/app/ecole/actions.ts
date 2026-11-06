@@ -1,6 +1,7 @@
 "use server";
 
 import { lireAttentes } from "@/lib/attentes";
+import { changerAdmission } from "@/lib/admission-serveur";
 
 import { after } from "next/server";
 import { redirect } from "next/navigation";
@@ -212,5 +213,13 @@ export async function actionFaiteEcole(f: FormData) {
   const candidat = t(f, "candidat_id", 60);
   if (!(await etudiantDeLEcole(candidat, ecole.id))) return;
   await createAdminClient().from("echanges").update({ action_faite: true }).eq("id", t(f, "id", 60)).eq("candidat_id", candidat);
+  revalidatePath(`/ecole/etudiants/${candidat}`);
+}
+
+export async function changerAdmissionEcole(f: FormData) {
+  const { ecole } = await exigerResponsable();
+  const candidat = t(f, "candidat_id", 60);
+  if (!(await etudiantDeLEcole(candidat, ecole.id))) return;
+  await changerAdmission(candidat, t(f, "statut_admission", 30));
   revalidatePath(`/ecole/etudiants/${candidat}`);
 }

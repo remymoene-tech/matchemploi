@@ -326,3 +326,11 @@ create index if not exists echanges_entreprise_idx on public.echanges(entreprise
 
 -- Année d'obtention du diplôme préparé
 alter table public.candidats add column if not exists diplome_annee integer;
+
+-- Admission : seuls les étudiants « admis » ont accès à leurs offres. L'étudiant ne peut pas changer son statut lui-même.
+alter table public.candidats add column if not exists statut_admission text;
+update public.candidats set statut_admission = 'admis' where statut_admission is null;
+alter table public.candidats alter column statut_admission set default 'prospect';
+create or replace function public.proteger_admission() returns trigger language plpgsql as $$ begin if current_user in ('authenticated', 'anon') then if tg_op = 'INSERT' then new.statut_admission := 'prospect'; else new.statut_admission := old.statut_admission; end if; end if; return new; end $$;
+drop trigger if exists proteger_admission on public.candidats;
+create trigger proteger_admission before insert or update on public.candidats for each row execute function public.proteger_admission();

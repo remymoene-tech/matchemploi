@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { exigerUtilisateur } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { analyserLinkedin, iaConfiguree, motsClesDepuisProfil } from "@/lib/ia";
+import { estAdmis } from "@/lib/admission";
 import { analyserCV, cheminCV, cvDepose, majCandidat, stockerCV, telechargerCV } from "@/lib/cv";
 import { localiserCommune } from "@/lib/geo";
 import { ecoleParCode } from "@/lib/ecoles";
@@ -111,6 +112,8 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
 
 export async function relancerRecherche() {
   const { user, supabase } = await exigerUtilisateur();
+  const { data: adm } = await supabase.from("candidats").select("*").eq("user_id", user.id).maybeSingle<Candidat>();
+  if (adm && !estAdmis(adm)) redirect("/espace");
   await supabase.from("candidats").update({ recherche_en_cours: true }).eq("user_id", user.id);
   after(() => rechercherPourCandidat(user.id));
   revalidatePath("/espace");

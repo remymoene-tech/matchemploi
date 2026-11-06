@@ -2,6 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { exigerUtilisateur } from "@/lib/auth";
 import { Rafraichir } from "@/components/Rafraichir";
+import { AttenteAdmission } from "@/components/AttenteAdmission";
+import { estAdmis } from "@/lib/admission";
 import { OffresEspace, type LigneOffre } from "@/components/OffresEspace";
 import { relancerRecherche } from "./actions";
 import { SCORE_ORANGE, SCORE_VERT, SEUIL, contratLabel, estOffreEquipe, sourceLabel, type Candidat, type Piste } from "@/lib/types";
@@ -37,6 +39,7 @@ export default async function Espace() {
   const { user, supabase } = await exigerUtilisateur();
   const { data: c } = await supabase.from("candidats").select("*").eq("user_id", user.id).maybeSingle<Candidat>();
   if (!c) redirect("/espace/profil");
+  if (!estAdmis(c)) return <AttenteAdmission c={c} />;
 
   const champs = "offre_id, score, forts, manques, resume, avis_candidat, calcule_le";
   const champsOffre = "source, entreprise, intitule, contrat, contrat_libelle, lieu, salaire, lien, ouverte";

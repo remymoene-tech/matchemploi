@@ -68,7 +68,13 @@ alter table public.offres add column if not exists entreprise_id uuid references
 alter table public.echanges alter column candidat_id drop not null;
 alter table public.echanges add column if not exists entreprise_id uuid references public.entreprises(id) on delete cascade;
 create index if not exists echanges_entreprise_idx on public.echanges(entreprise_id, date_echange desc);
-alter table public.candidats add column if not exists diplome_annee integer;`;
+alter table public.candidats add column if not exists diplome_annee integer;
+alter table public.candidats add column if not exists statut_admission text;
+update public.candidats set statut_admission = 'admis' where statut_admission is null;
+alter table public.candidats alter column statut_admission set default 'prospect';
+create or replace function public.proteger_admission() returns trigger language plpgsql as \$\$ begin if current_user in ('authenticated', 'anon') then if tg_op = 'INSERT' then new.statut_admission := 'prospect'; else new.statut_admission := old.statut_admission; end if; end if; return new; end \$\$;
+drop trigger if exists proteger_admission on public.candidats;
+create trigger proteger_admission before insert or update on public.candidats for each row execute function public.proteger_admission();`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -103,6 +109,7 @@ async function verifierBase() {
     db.from("entreprises").select("id").limit(1),
     db.from("echanges").select("entreprise_id").limit(1),
     db.from("candidats").select("diplome_annee").limit(1),
+    db.from("candidats").select("statut_admission").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -135,6 +142,7 @@ async function verifierBase() {
     "Mes entreprises",
     "Échanges et rappels des entreprises",
     "Année du diplôme des étudiants",
+    "Admission des étudiants (prospect, admis…)",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

@@ -20,6 +20,7 @@ import { genererSynthese } from "@/lib/synthese";
 import { genererCvAmeliore } from "@/lib/cv-ameliore";
 import { ajouterEchange } from "@/lib/echanges";
 import { lireEntreprise } from "@/lib/entreprises";
+import { changerAdmission } from "@/lib/admission-serveur";
 import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
 import type { EtatEntretien } from "@/components/FormEntretienConseil";
@@ -283,4 +284,11 @@ export async function actionFaiteEntreprise(f: FormData) {
   const id = t(f, "entreprise_id", 60);
   await createAdminClient().from("echanges").update({ action_faite: true }).eq("id", t(f, "id", 60)).eq("entreprise_id", id);
   revalidatePath(`/admin/entreprises/${id}`);
+}
+
+export async function changerAdmissionAdmin(f: FormData) {
+  await exigerAdmin();
+  const candidat = t(f, "candidat_id", 60);
+  await changerAdmission(candidat, t(f, "statut_admission", 30));
+  revalidatePath(`/admin/candidats/${candidat}`);
 }

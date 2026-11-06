@@ -1,3 +1,4 @@
+import { estAdmis } from "@/lib/admission";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { exigerUtilisateur } from "@/lib/auth";
@@ -11,6 +12,7 @@ export const maxDuration = 300;
 export default async function MesRecherches() {
   const { user, supabase } = await exigerUtilisateur();
   const { data: c } = await supabase.from("candidats").select("*").eq("user_id", user.id).maybeSingle<Candidat>();
+  if (c && !estAdmis(c)) redirect("/espace");
   if (!c) redirect("/espace/profil");
   const { data, error } = await supabase.from("recherches").select("*").eq("candidat_id", user.id).order("created_at");
   const recherches = (data ?? []) as Recherche[];

@@ -44,6 +44,8 @@ export type Candidat = {
   formation: string;
   /** Année d'obtention du diplôme préparé. */
   diplome_annee?: number | null;
+  /** prospect | admis | admis_condition | liste_attente (choisi par l'équipe). */
+  statut_admission?: string | null;
   poste_vise: string;
   contrats: string[];
   code_postal: string;

@@ -11,6 +11,7 @@ import { MessageEnvoyable } from "@/components/MessageEnvoyable";
 import { ListeRelances } from "@/components/ListeRelances";
 import { Barres, Colonnes } from "@/components/Graphiques";
 import { OngletsCartes } from "@/components/OngletsCartes";
+import { ADMISSIONS, admission } from "@/lib/admission";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe, statutEntreprise } from "@/lib/entreprises";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
@@ -35,7 +36,7 @@ const AUTRES = [
   { id: "reglages", label: "⚙️ Réglages" },
 ] as const;
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; q?: string; annee?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; q?: string; annee?: string; admission?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -145,9 +146,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     if (sp.entretien && (sp.entretien === "fait") !== dernierEntretien.has(c.user_id)) return false;
     if (sp.bilan && bilanDe(c.user_id) !== sp.bilan) return false;
     if (sp.annee && String(c.diplome_annee ?? "") !== sp.annee) return false;
+    if (sp.admission && admission(c.statut_admission).id !== sp.admission) return false;
     return true;
   });
-  const filtresCandActifs = !!(qc || sp.annee || sp.ecole || sp.cv || sp.entretien || sp.bilan || filtreDates);
+  const filtresCandActifs = !!(qc || sp.admission || sp.annee || sp.ecole || sp.cv || sp.entretien || sp.bilan || filtreDates);
   const meilleure = new Map<string, number>();
   for (const m of toutes) meilleure.set(m.candidat_id, Math.max(meilleure.get(m.candidat_id) ?? 0, m.score));
 
@@ -194,7 +196,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
         <div className="flex flex-col gap-6">
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Chiffres clés">
             {([
-              ["👥 Candidats", C.size, nouveaux ? `+${nouveaux} cette semaine` : "inscrits", "/admin?vue=candidats"],
+              ["👥 Candidats", C.size, (() => { const p = tousCandidats.filter((c) => c.statut_admission === "prospect").length; return p ? `🌱 ${p} prospect${p > 1 ? "s" : ""} à étudier` : nouveaux ? `+${nouveaux} cette semaine` : "inscrits"; })(), tousCandidats.some((c) => c.statut_admission === "prospect") ? "/admin?vue=candidats&admission=prospect" : "/admin?vue=candidats"],
               ["🏢 Entreprises", nbEntreprises, `${avecOffre.length} avec une offre`, "/admin?vue=entreprises"],
               ["📥 À traiter", aTraiter, `candidats à ${SEUIL} % ou plus`, "/admin?vue=entreprises&sous=candidats&suivi=a_traiter#a-traiter"],
               ["🎉 Candidats placés", places.length, "candidats embauchés", "/admin?vue=entreprises&sous=candidats&suivi=embauche#a-traiter"],
@@ -301,6 +303,13 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               <input className="input" name="q" defaultValue={sp.q ?? ""} placeholder="Nom, email, poste, diplôme, ville…" />
             </label>
             <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">🎓 Admission</span>
+              <select className="input" name="admission" defaultValue={sp.admission ?? ""}>
+                <option value="">Toutes</option>
+                {ADMISSIONS.map((a) => <option key={a.id} value={a.id}>{a.icone} {a.label}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
               <span className="font-semibold">🏫 École</span>
               <select className="input" name="ecole" defaultValue={sp.ecole ?? ""}>
                 <option value="">Toutes</option>
@@ -350,10 +359,11 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-            <table className="w-full min-w-[1000px] text-left text-sm">
+            <table className="w-full min-w-[1120px] text-left text-sm">
               <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="p-3 font-semibold">Candidat</th>
+                  <th className="p-3 font-semibold">Admission</th>
                   <th className="p-3 font-semibold">Diplôme préparé</th>
                   <th className="p-3 font-semibold">École</th>
                   <th className="p-3 font-semibold">CV</th>
@@ -376,6 +386,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                         <div className="text-xs text-muted">{[c.poste_vise, c.ville].filter(Boolean).join(" · ") || "Profil à compléter"}</div>
                         {!c.consentement && <span className="chip chip-minus mt-1">Accord RGPD manquant</span>}
                       </td>
+                      <td className="p-3">{(() => { const a = admission(c.statut_admission); return <span className={`chip whitespace-nowrap ${a.chip}`}>{a.icone} {a.label}</span>; })()}</td>
                       <td className="p-3">{c.formation ? <>{c.formation}{c.diplome_annee ? <div className="text-xs text-muted">📅 {c.diplome_annee}</div> : null}</> : <span className="chip chip-minus">À compléter</span>}</td>
                       <td className="p-3 text-muted">{ecoles.find((x) => x.id === c.ecole_id)?.nom ?? "—"}</td>
                       <td className="p-3">{c.cv_chemin ? <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">📄 Ouvrir</a> : <span className="chip chip-minus">Sans CV</span>}</td>

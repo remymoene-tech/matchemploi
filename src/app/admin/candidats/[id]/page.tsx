@@ -1,6 +1,6 @@
 import { exigerAdmin } from "@/lib/auth";
 import { FicheCandidat } from "@/components/FicheCandidat";
-import { autoriserTestAdmin, changerSuivi, ajouterEchangeAdmin, actionFaiteAdmin, genererCvAmelioreAdmin, supprimerEchangeAdmin, genererSyntheseAdmin } from "../../actions";
+import { changerAdmissionAdmin, autoriserTestAdmin, changerSuivi, ajouterEchangeAdmin, actionFaiteAdmin, genererCvAmelioreAdmin, supprimerEchangeAdmin, genererSyntheseAdmin } from "../../actions";
 
 export const metadata = { title: "Fiche candidat · MagnusMatch" };
 
@@ -16,6 +16,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       genererCvAmeliore={genererCvAmelioreAdmin}
       ajouterEchange={ajouterEchangeAdmin}
       supprimerEchange={supprimerEchangeAdmin}
+      changerAdmission={changerAdmissionAdmin}
       actionFaite={actionFaiteAdmin}
       onglet={onglet === "suivi" || onglet === "cv" || onglet === "offres" || onglet === "echanges" ? onglet : "profil"}
       baseFiche={`/admin/candidats/${id}`}

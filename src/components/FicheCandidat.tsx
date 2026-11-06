@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { OngletsCartes } from "@/components/OngletsCartes";
+import { ADMISSIONS, admission } from "@/lib/admission";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
@@ -42,7 +43,8 @@ const Ligne = ({ l, v }: { l: string; v: React.ReactNode }) => (
  * Fiche complète d'un candidat pour l'équipe : profil, CV, recherches, offres.
  * Les droits sont vérifiés par la page qui l'affiche.
  */
-export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite }: {
+export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite, changerAdmission }: {
+  changerAdmission?: (f: FormData) => Promise<void>;
   candidatId: string;
   autoriserTest: (f: FormData) => Promise<void>;
   genererSynthese: (e: { erreur?: string }, f: FormData) => Promise<{ erreur?: string }>;
@@ -126,6 +128,26 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
   return (
     <div className="flex flex-col gap-5">
       <Link href={retour.href} className="text-sm text-muted">← {retour.libelle}</Link>
+
+      {changerAdmission && (() => {
+        const actuel = admission(c.statut_admission);
+        return (
+          <form action={changerAdmission} className={`flex flex-wrap items-center gap-3 rounded-2xl border-2 p-3 ${c.statut_admission === "admis" || c.statut_admission == null ? "border-accent bg-accent-soft" : "border-line bg-surface"}`}>
+            <input type="hidden" name="candidat_id" value={candidatId} />
+            <span className="text-sm font-semibold">🎓 Admission :</span>
+            <div className="flex flex-wrap gap-2">
+              {ADMISSIONS.map((a) => (
+                <label key={a.id} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-sm has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
+                  <input type="radio" name="statut_admission" value={a.id} defaultChecked={actuel.id === a.id} className="sr-only" />
+                  <span aria-hidden>{a.icone}</span>{a.label}
+                </label>
+              ))}
+            </div>
+            <button className="btn btn-sm btn-primary">Enregistrer</button>
+            <span className="text-xs text-muted">{actuel.id === "admis" ? "L'étudiant a accès à ses offres." : "Tant qu'il n'est pas « Admis », l'étudiant ne voit pas d'offres (il peut remplir son profil, son CV et ses tests)."}</span>
+          </form>
+        );
+      })()}
 
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
