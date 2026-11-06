@@ -527,7 +527,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
                         ? (
                           <span className="flex flex-wrap gap-2">
                             <Link href={`/admin/entreprises/${p.entreprise_id}?besoins=1#besoins`} className="btn btn-sm btn-primary">📋 Remplir la fiche besoin</Link>
-                            <Link href={`/admin/entreprises/${p.entreprise_id}?onglet=etudiants`} className="btn btn-sm">Voir la fiche entreprise →</Link>
+                            <Link href={`/admin/entreprises/${p.entreprise_id}?onglet=echanges`} className="btn btn-sm">Voir la fiche entreprise →</Link>
                           </span>
                         )
                         : (

@@ -29,7 +29,7 @@ export default async function FicheEntreprise({ params, searchParams }: {
   const nouvelle = id === "nouvelle";
   const e = nouvelle ? null : await entrepriseParId(id);
   if (!nouvelle && !e) notFound();
-  const onglet = nouvelle ? "infos" : sp.onglet === "offres" || sp.onglet === "echanges" || sp.onglet === "etudiants" || sp.onglet === "candidats" ? sp.onglet : "infos";
+  const onglet = nouvelle ? "infos" : sp.onglet === "etudiants" ? "echanges" : sp.onglet === "offres" || sp.onglet === "echanges" || sp.onglet === "candidats" ? sp.onglet : "infos";
   const base = `/admin/entreprises/${id}`;
 
   const db = createAdminClient();
@@ -51,7 +51,7 @@ export default async function FicheEntreprise({ params, searchParams }: {
   const candidatsProposes = [...meilleurs.values()].sort((a, b) => b.score - a.score);
   // Prospections des étudiants pour cette entreprise : leurs contacts et relances
   const prospEtudiants = e ? await prospectionsDeLEntreprise(e).catch(() => []) : [];
-  const echProsp = onglet === "etudiants" ? await echangesDeProspections(prospEtudiants.map((p) => p.id)) : [];
+  const echProsp = onglet === "echanges" ? await echangesDeProspections(prospEtudiants.map((p) => p.id)) : [];
   // L'onglet « Candidats » apparaît dès que l'entreprise recrute
   const recrute = !!e && (prospEtudiants.some((p) => p.recrute === "oui") || offres.some((o) => o.ouverte) || e.statut === "partenaire" || e.statut === "en_discussion" || !!e.attentes);
 
@@ -111,8 +111,7 @@ export default async function FicheEntreprise({ params, searchParams }: {
           { href: base, icone: "🪪", label: "Infos", sous: "Contact et suivi", actif: onglet === "infos" },
           { href: `${base}?onglet=offres`, icone: "💼", label: "Offres", sous: `${offres.length} offre${offres.length > 1 ? "s" : ""}`, actif: onglet === "offres" },
           ...(recrute ? [{ href: `${base}?onglet=candidats`, icone: "🎯", label: "Candidats", sous: `${candidatsProposes.length} à 70 % et +`, actif: onglet === "candidats" }] : []),
-          { href: `${base}?onglet=etudiants`, icone: "🎓", label: "Étudiants", sous: `${prospEtudiants.length} prospection${prospEtudiants.length > 1 ? "s" : ""}`, actif: onglet === "etudiants" },
-          { href: `${base}?onglet=echanges`, icone: "💬", label: "Échanges", sous: rappels.length ? `${rappels.length} rappel${rappels.length > 1 ? "s" : ""}` : `${echanges.length} noté${echanges.length > 1 ? "s" : ""}`, actif: onglet === "echanges" },
+          { href: `${base}?onglet=echanges`, icone: "💬", label: "Échanges", sous: rappels.length ? `${rappels.length} rappel${rappels.length > 1 ? "s" : ""}` : prospEtudiants.length ? `équipe et ${prospEtudiants.length} étudiant${prospEtudiants.length > 1 ? "s" : ""}` : `${echanges.length} noté${echanges.length > 1 ? "s" : ""}`, actif: onglet === "echanges" },
         ]} />
       )}
 
@@ -288,31 +287,6 @@ export default async function FicheEntreprise({ params, searchParams }: {
         </section>
       )}
 
-      {e && onglet === "etudiants" && (
-        <section className="card flex flex-col gap-4 p-5">
-          <h2 className="text-lg font-semibold">🎓 Les étudiants qui ont contacté {e.nom} ({prospEtudiants.length})</h2>
-          <p className="text-xs text-muted">Notés par les étudiants dans « Mes prospections ». Leurs contacts et leurs relances s&apos;ajoutent ici automatiquement.</p>
-          {!prospEtudiants.length && <p className="text-sm text-muted">Aucun étudiant n&apos;a encore noté cette entreprise.</p>}
-          {[...prospEtudiants].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((p, i) => {
-            const r = RECRUTE.find((x) => x.id === p.recrute);
-            return (
-              <article key={p.id} className="flex flex-col gap-3 rounded-xl border border-line p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Link href={`/admin/candidats/${p.candidat_id}?onglet=prospections`} className="font-semibold hover:text-accent hover:underline">👤 {p.candidats?.nom || p.candidats?.email || "Étudiant"}</Link>
-                  <span className="flex flex-wrap gap-2">
-                    {i === 0 && <span className="chip chip-plus">🥇 A trouvé l&apos;entreprise</span>}
-                    {r && <span className={`chip ${r.chip}`}>{r.icone} {r.label}</span>}
-                  </span>
-                </div>
-                {p.justification && <p className="rounded-lg bg-bg p-3 text-sm"><b>Pourquoi :</b> {p.justification}</p>}
-                <p className="text-sm text-muted">{[p.contact_nom && `👤 ${p.contact_nom}`, p.contact_tel && `📞 ${p.contact_tel}`, p.contact_email && `✉️ ${p.contact_email}`].filter(Boolean).join(" · ")}</p>
-                <HistoriqueProspection echanges={echProsp.filter((x) => x.prospection_id === p.id)} prospectionId={p.id} />
-              </article>
-            );
-          })}
-        </section>
-      )}
-
       {e && onglet === "echanges" && (
         <>
           <section className="card flex flex-col gap-3 p-5">
@@ -321,10 +295,33 @@ export default async function FicheEntreprise({ params, searchParams }: {
               exemple="Ex. Appel avec Mme Durand : 2 postes d'alternance en vente à la rentrée, veut recevoir 3 profils avant fin mai." />
           </section>
           <section className="card flex flex-col gap-3 p-5">
-            <h2 className="text-lg font-semibold">📜 Historique des échanges ({echanges.length})</h2>
+            <h2 className="text-lg font-semibold">📜 Mes échanges avec l&apos;entreprise ({echanges.length})</h2>
             <p className="text-xs text-muted">Visible uniquement par l&apos;équipe.</p>
             <JournalEchanges echanges={echanges} champ="entreprise_id" cibleId={e.id} actionFaite={actionFaiteEntreprise} supprimer={supprimerEchangeEntreprise} />
           </section>
+          {prospEtudiants.length > 0 && (
+          <section className="card flex flex-col gap-4 p-5">
+            <h2 className="text-lg font-semibold">🎓 Les échanges des étudiants avec {e.nom} ({prospEtudiants.length})</h2>
+            <p className="text-xs text-muted">Notés par les étudiants dans « Mes prospections ». Leurs contacts et leurs relances s&apos;ajoutent ici automatiquement.</p>
+            {[...prospEtudiants].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((p, i) => {
+              const r = RECRUTE.find((x) => x.id === p.recrute);
+              return (
+                <article key={p.id} className="flex flex-col gap-3 rounded-xl border border-line p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Link href={`/admin/candidats/${p.candidat_id}?onglet=prospections`} className="font-semibold hover:text-accent hover:underline">👤 {p.candidats?.nom || p.candidats?.email || "Étudiant"}</Link>
+                    <span className="flex flex-wrap gap-2">
+                      {i === 0 && <span className="chip chip-plus">🥇 A trouvé l&apos;entreprise</span>}
+                      {r && <span className={`chip ${r.chip}`}>{r.icone} {r.label}</span>}
+                    </span>
+                  </div>
+                  {p.justification && <p className="rounded-lg bg-bg p-3 text-sm"><b>Pourquoi :</b> {p.justification}</p>}
+                  <p className="text-sm text-muted">{[p.contact_nom && `👤 ${p.contact_nom}`, p.contact_tel && `📞 ${p.contact_tel}`, p.contact_email && `✉️ ${p.contact_email}`].filter(Boolean).join(" · ")}</p>
+                  <HistoriqueProspection echanges={echProsp.filter((x) => x.prospection_id === p.id)} prospectionId={p.id} />
+                </article>
+              );
+            })}
+          </section>
+          )}
         </>
       )}
 
