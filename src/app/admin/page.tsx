@@ -11,7 +11,7 @@ import { MessageEnvoyable } from "@/components/MessageEnvoyable";
 import { ListeRelances } from "@/components/ListeRelances";
 import { Barres, Colonnes } from "@/components/Graphiques";
 import { OngletsCartes } from "@/components/OngletsCartes";
-import { STATUTS_ENTREPRISE, listeEntreprises, offresDe, statutEntreprise } from "@/lib/entreprises";
+import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe, statutEntreprise } from "@/lib/entreprises";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
@@ -35,7 +35,7 @@ const AUTRES = [
   { id: "reglages", label: "⚙️ Réglages" },
 ] as const;
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; q?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -107,12 +107,19 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     ? await db.from("echanges").select("entreprise_id, date_echange, action, action_a, action_le, action_faite").not("entreprise_id", "is", null).order("date_echange", { ascending: false }).limit(1000)
     : { data: [] };
   const echangesEnt = (echEnt ?? []) as { entreprise_id: string; date_echange: string; action: string; action_a: string | null; action_le: string | null; action_faite: boolean }[];
-  const filtreEnt = sp.filtre === "avec" || sp.filtre === "sans" || STATUTS_ENTREPRISE.some((x) => x.id === sp.filtre) ? sp.filtre! : "";
+  // Filtres de « Mes entreprises » (les anciens liens ?filtre=… restent valables)
+  const fStatut = STATUTS_ENTREPRISE.some((x) => x.id === (sp.statut || sp.filtre)) ? (sp.statut || sp.filtre)! : "";
+  const fOffre = sp.offre === "avec" || sp.offre === "sans" ? sp.offre : sp.filtre === "avec" || sp.filtre === "sans" ? sp.filtre : "";
+  const fOrigine = sp.origine ?? "";
+  const q = (sp.q ?? "").trim().toLowerCase();
+  const contient = (...v: (string | null | undefined)[]) => !q || v.some((x) => (x ?? "").toLowerCase().includes(q));
   const entreprisesAffichees = (entreprises ?? []).filter((e) =>
-    !filtreEnt ? true
-      : filtreEnt === "avec" ? avecOffre.includes(e)
-      : filtreEnt === "sans" ? !avecOffre.includes(e)
-      : e.statut === filtreEnt);
+    contient(e.nom, e.secteur, e.ville, e.contact_nom, e.notes)
+    && (!fStatut || e.statut === fStatut)
+    && (!fOffre || (fOffre === "avec") === avecOffre.includes(e))
+    && (!fOrigine || e.origine === fOrigine));
+  const filtresEntActifs = !!(q || fStatut || fOffre || fOrigine);
+
   const pipeline = SUIVIS.map((x) => ({ label: x.label, valeur: equipe.filter((m) => m.suivi === x.id).length, href: `/admin?vue=entreprises&sous=candidats&suivi=${x.id}#a-traiter` }));
   const [mesRelances, { data: placesData }] = vue === "accueil"
     ? await Promise.all([
@@ -127,9 +134,21 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   // Filtre « Mes candidats » par semaine d'inscription (depuis le graphique)
   const du = sp.du ? new Date(sp.du) : null, au = sp.au ? new Date(sp.au) : null;
   const filtreDates = du && au && !isNaN(+du) && !isNaN(+au);
-  const candidatsAffiches = filtreDates
-    ? tousCandidats.filter((c) => { const t = c.created_at ? new Date(c.created_at).getTime() : 0; return t > +du! && t <= +au!; })
-    : tousCandidats;
+  const qc = (sp.q ?? "").trim().toLowerCase();
+  const bilanDe = (id: string) => dernierEntretien.get(id)?.bilan ?? "";
+  const candidatsAffiches = tousCandidats.filter((c) => {
+    const t = c.created_at ? new Date(c.created_at).getTime() : 0;
+    if (filtreDates && !(t > +du! && t <= +au!)) return false;
+    if (qc && ![c.nom, c.email, c.poste_vise, c.formation, c.ville].some((x) => (x ?? "").toLowerCase().includes(qc))) return false;
+    if (sp.ecole && (sp.ecole === "aucune" ? !!c.ecole_id : c.ecole_id !== sp.ecole)) return false;
+    if (sp.cv && (sp.cv === "avec") !== !!c.cv_chemin) return false;
+    if (sp.entretien && (sp.entretien === "fait") !== dernierEntretien.has(c.user_id)) return false;
+    if (sp.bilan && bilanDe(c.user_id) !== sp.bilan) return false;
+    return true;
+  });
+  const filtresCandActifs = !!(qc || sp.ecole || sp.cv || sp.entretien || sp.bilan || filtreDates);
+  const meilleure = new Map<string, number>();
+  for (const m of toutes) meilleure.set(m.candidat_id, Math.max(meilleure.get(m.candidat_id) ?? 0, m.score));
 
   return (
     <div className="flex flex-col gap-6">
@@ -207,9 +226,9 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               ) : (
                 <Barres resume="Entreprises rencontrées, avec ou sans offre" donnees={[
                   { label: "🤝 Rencontrées", valeur: nbEntreprises, href: "/admin?vue=entreprises" },
-                  { label: "💼 Avec une offre", valeur: avecOffre.length, href: "/admin?vue=entreprises&filtre=avec" },
-                  { label: "🕓 Sans offre pour l'instant", valeur: nbEntreprises - avecOffre.length, href: "/admin?vue=entreprises&filtre=sans" },
-                  { label: "⭐ Partenaires", valeur: (entreprises ?? []).filter((e) => e.statut === "partenaire").length, href: "/admin?vue=entreprises&filtre=partenaire" },
+                  { label: "💼 Avec une offre", valeur: avecOffre.length, href: "/admin?vue=entreprises&offre=avec" },
+                  { label: "🕓 Sans offre pour l'instant", valeur: nbEntreprises - avecOffre.length, href: "/admin?vue=entreprises&offre=sans" },
+                  { label: "⭐ Partenaires", valeur: (entreprises ?? []).filter((e) => e.statut === "partenaire").length, href: "/admin?vue=entreprises&statut=partenaire" },
                 ]} />
               )}
             </section>
@@ -274,52 +293,106 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
       {vue === "candidats" && (
         <div className="flex flex-col gap-3">
+          <form method="get" action="/admin" className="card flex flex-wrap items-end gap-3 p-4">
+            <input type="hidden" name="vue" value="candidats" />
+            <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm">
+              <span className="font-semibold">🔎 Rechercher</span>
+              <input className="input" name="q" defaultValue={sp.q ?? ""} placeholder="Nom, email, poste, formation, ville…" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">🏫 École</span>
+              <select className="input" name="ecole" defaultValue={sp.ecole ?? ""}>
+                <option value="">Toutes</option>
+                {ecoles.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
+                <option value="aucune">Sans école</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">📄 CV</span>
+              <select className="input" name="cv" defaultValue={sp.cv ?? ""}>
+                <option value="">Tous</option><option value="avec">Avec CV</option><option value="sans">Sans CV</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">🗣️ Entretien</span>
+              <select className="input" name="entretien" defaultValue={sp.entretien ?? ""}>
+                <option value="">Tous</option><option value="jamais">Jamais reçu</option><option value="fait">Déjà reçu</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">🧭 Bilan</span>
+              <select className="input" name="bilan" defaultValue={sp.bilan ?? ""}>
+                <option value="">Tous</option><option value="autonome">Autonome</option><option value="accompagner">À accompagner</option><option value="renforce">Renforcé</option>
+              </select>
+            </label>
+            <div className="flex gap-2">
+              <button className="btn btn-primary">Filtrer</button>
+              {filtresCandActifs && <Link href="/admin?vue=candidats" className="btn btn-ghost">Effacer</Link>}
+            </div>
+          </form>
+
           <div className="flex flex-wrap items-center justify-between gap-2">
-            {filtreDates ? (
-              <p className="text-sm">
-                <b>{candidatsAffiches.length}</b> candidat(s) inscrit(s) la semaine du {du!.toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" })} ·{" "}
-                <Link href="/admin?vue=candidats" className="font-semibold text-accent">Voir tous les candidats</Link>
-              </p>
-            ) : <p className="text-sm text-muted">{C.size} candidat(s), les plus récents en premier.</p>}
+            <p className="text-sm text-muted">
+              <b className="text-ink">{candidatsAffiches.length}</b> candidat{candidatsAffiches.length > 1 ? "s" : ""}
+              {filtreDates ? ` inscrit(s) la semaine du ${du!.toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" })}` : filtresCandActifs ? ` sur ${C.size}` : ", les plus récents en premier"}
+            </p>
             <form action={relancerTout}>
-              <button className="btn btn-sm">Relancer la recherche pour tous</button>
+              <button className="btn btn-sm">🔄 Relancer la recherche pour tous</button>
             </form>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {[...candidatsAffiches].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")).map((c) => {
-              // Toutes les sources (France Travail, Adzuna et vos offres), quel que soit le filtre des correspondances
-              const n = toutes.filter((m) => m.candidat_id === c.user_id).length;
-              const nEquipe = equipe.filter((m) => m.candidat_id === c.user_id).length;
-              return (
-                <article key={c.user_id} className="card flex flex-col gap-2 p-5">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h2 className="text-lg font-semibold"><Link href={`/admin/candidats/${c.user_id}`} className="hover:text-accent hover:underline">{c.nom || c.email}</Link></h2>
-                      <p className="text-sm text-muted">{c.formation || "Formation non précisée"}</p>
-                    </div>
-                    <span className="flex flex-col items-end text-right font-mono text-sm">
-                      <span>{n} offre{n > 1 ? "s" : ""} ≥ {SEUIL} %</span>
-                      {nEquipe > 0 && <span className="text-xs text-accent">dont {nEquipe} sur vos offres</span>}
-                    </span>
-                  </div>
-                  <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
-                    <dt className="text-muted">Vise</dt><dd>{c.poste_vise}</dd>
-                    <dt className="text-muted">Contrats</dt><dd>{c.contrats.map(contratLabel).join(", ")}</dd>
-                    <dt className="text-muted">Secteur</dt><dd>{c.ville} {c.code_postal} · {c.mobilite_km} km</dd>
-                    <dt className="text-muted">Contact</dt><dd className="break-all">{c.email}{c.telephone && ` · ${c.telephone}`}</dd>
-                  </dl>
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-2 text-sm">
-                    {c.cv_chemin ? <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">Ouvrir le CV</a> : <span className="text-muted">Pas de CV</span>}
-                    <span className="flex flex-wrap gap-2">
-                      <Link className="btn btn-sm" href={`/admin/candidats/${c.user_id}/entretien/nouveau`}>Entretien</Link>
-                      <Link className="btn btn-sm" href={`/admin/candidats/${c.user_id}`}>Voir la fiche complète →</Link>
-                    </span>
-                    {!c.consentement && <span className="chip chip-minus">Accord RGPD manquant</span>}
-                  </div>
-                </article>
-              );
-            })}
-            {!C.size && <p className="card border-dashed p-6 text-sm text-muted">Aucun candidat inscrit. Envoie le lien d&apos;inscription à tes étudiants.</p>}
+
+          <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+            <table className="w-full min-w-[860px] text-left text-sm">
+              <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
+                <tr>
+                  <th className="p-3 font-semibold">Candidat</th>
+                  <th className="p-3 font-semibold">École</th>
+                  <th className="p-3 font-semibold">CV</th>
+                  <th className="p-3 font-semibold">Meilleure offre</th>
+                  <th className="p-3 font-semibold">Dernier entretien</th>
+                  <th className="p-3 font-semibold">Bilan</th>
+                  <th className="p-3 font-semibold">Inscrit le</th>
+                  <th className="p-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {[...candidatsAffiches].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")).map((c) => {
+                  const e = dernierEntretien.get(c.user_id);
+                  const best = meilleure.get(c.user_id);
+                  const bilan = e?.bilan === "autonome" ? ["Autonome", "chip-plus"] : e?.bilan === "renforce" ? ["Renforcé", "chip-minus"] : e?.bilan === "accompagner" ? ["À accompagner", "chip-tag"] : null;
+                  return (
+                    <tr key={c.user_id} className="border-b border-line align-top last:border-0 hover:bg-bg">
+                      <td className="p-3">
+                        <Link href={`/admin/candidats/${c.user_id}`} className="font-semibold hover:text-accent hover:underline">{c.nom || c.email}</Link>
+                        <div className="text-xs text-muted">{[c.poste_vise, c.ville].filter(Boolean).join(" · ") || "Profil à compléter"}</div>
+                        {!c.consentement && <span className="chip chip-minus mt-1">Accord RGPD manquant</span>}
+                      </td>
+                      <td className="p-3 text-muted">{ecoles.find((x) => x.id === c.ecole_id)?.nom ?? "—"}</td>
+                      <td className="p-3">{c.cv_chemin ? <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">📄 Ouvrir</a> : <span className="chip chip-minus">Sans CV</span>}</td>
+                      <td className="p-3">{best != null ? <span className={`chip ${best >= 70 ? "chip-plus" : "chip-tag"}`}>{best} %</span> : <span className="text-muted">—</span>}</td>
+                      <td className="p-3">
+                        {e ? (
+                          <Link href={`/admin/candidats/${c.user_id}/entretien/${e.id}`} className="text-accent hover:underline">
+                            {new Date(e.date_entretien).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" })}
+                          </Link>
+                        ) : <span className="chip chip-minus">Jamais reçu</span>}
+                      </td>
+                      <td className="p-3">{bilan ? <span className={`chip ${bilan[1]}`}>{bilan[0]}</span> : "—"}</td>
+                      <td className="p-3 text-muted">{c.created_at ? new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" }) : "—"}</td>
+                      <td className="p-3 text-right">
+                        <span className="flex justify-end gap-2">
+                          <Link href={`/admin/candidats/${c.user_id}/entretien/nouveau`} className="btn btn-sm whitespace-nowrap">🗣️ Entretien</Link>
+                          <Link href={`/admin/candidats/${c.user_id}`} className="btn btn-sm btn-primary whitespace-nowrap">Fiche →</Link>
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            {!candidatsAffiches.length && (
+              <p className="p-6 text-sm text-muted">{C.size ? "Aucun candidat ne correspond à ces filtres." : "Aucun candidat inscrit. Envoie le lien d'inscription à tes étudiants."}</p>
+            )}
           </div>
         </div>
       )}
@@ -507,17 +580,44 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           {entreprises === null && (
             <p className="rounded-xl bg-warn-soft p-4 text-sm">« Mes entreprises » n&apos;est pas encore activé : exécute la mise à jour SQL affichée sur la page /diagnostic.</p>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap gap-2 text-sm">
-              {([["", "Toutes"], ["avec", "💼 Avec offre"], ["sans", "🕓 Sans offre"], ["partenaire", "⭐ Partenaires"], ["en_discussion", "💬 En discussion"]] as const).map(([id, label]) => (
-                <Link key={id} href={`/admin?vue=entreprises${id ? `&filtre=${id}` : ""}`} className={`chip ${filtreEnt === id ? "chip-plus" : ""}`}>{label}</Link>
-              ))}
+          <form method="get" action="/admin" className="card flex flex-wrap items-end gap-3 p-4">
+            <input type="hidden" name="vue" value="entreprises" />
+            <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm">
+              <span className="font-semibold">🔎 Rechercher</span>
+              <input className="input" name="q" defaultValue={sp.q ?? ""} placeholder="Nom, secteur, ville, contact…" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">🤝 Où on en est</span>
+              <select className="input" name="statut" defaultValue={fStatut}>
+                <option value="">Tous</option>
+                {STATUTS_ENTREPRISE.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">💼 Offres</span>
+              <select className="input" name="offre" defaultValue={fOffre}>
+                <option value="">Toutes</option><option value="avec">Avec une offre</option><option value="sans">Sans offre</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">📍 Rencontrée par</span>
+              <select className="input" name="origine" defaultValue={fOrigine}>
+                <option value="">Toutes</option>
+                {ORIGINES_ENTREPRISE.map((o) => <option key={o}>{o}</option>)}
+              </select>
+            </label>
+            <div className="flex gap-2">
+              <button className="btn btn-primary">Filtrer</button>
+              {filtresEntActifs && <Link href="/admin?vue=entreprises" className="btn btn-ghost">Effacer</Link>}
             </div>
+          </form>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted"><b className="text-ink">{entreprisesAffichees.length}</b> entreprise{entreprisesAffichees.length > 1 ? "s" : ""}{filtresEntActifs ? ` sur ${nbEntreprises}` : ""}</p>
             <Link href="/admin/entreprises/nouvelle" className="btn btn-primary">➕ Ajouter une entreprise</Link>
           </div>
           {entreprises && !entreprisesAffichees.length && (
             <p className="card border-dashed p-6 text-sm text-muted">
-              {nbEntreprises ? "Aucune entreprise dans ce filtre." : "Ajoute les entreprises que tu as rencontrées, même sans offre : tu pourras suivre tes échanges et programmer des rappels."}
+              {nbEntreprises ? "Aucune entreprise ne correspond à ces filtres." : "Ajoute les entreprises que tu as rencontrées, même sans offre : tu pourras suivre tes échanges et programmer des rappels."}
             </p>
           )}
           <div className="grid gap-3 md:grid-cols-2">
