@@ -33,6 +33,7 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
     nom: texte(f, "nom", 120),
     telephone: texte(f, "telephone", 30),
     formation: texte(f, "formation", 200),
+    diplome_annee: (() => { const a = Number(f.get("diplome_annee")); return Number.isInteger(a) && a >= 2000 && a <= 2100 ? a : null; })(),
     poste_vise: texte(f, "poste_vise", 200),
     contrats,
     code_postal: texte(f, "code_postal", 10),
@@ -53,6 +54,7 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
   };
 
   if (!donnees.nom || !donnees.poste_vise) return { erreur: "Indique au moins ton nom et le poste que tu vises." };
+  if (!donnees.formation || !donnees.diplome_annee) return { erreur: "Indique le nom du diplôme que tu prépares et son année." };
   if (!contrats.length) return { erreur: "Choisis au moins un type de contrat." };
   if (!donnees.consentement) return { erreur: "Coche la case d'accord pour que l'on puisse chercher des offres pour toi." };
 

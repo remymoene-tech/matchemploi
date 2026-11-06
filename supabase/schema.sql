@@ -323,3 +323,6 @@ alter table public.offres add column if not exists entreprise_id uuid references
 alter table public.echanges alter column candidat_id drop not null;
 alter table public.echanges add column if not exists entreprise_id uuid references public.entreprises(id) on delete cascade;
 create index if not exists echanges_entreprise_idx on public.echanges(entreprise_id, date_echange desc);
+
+-- Année d'obtention du diplôme préparé
+alter table public.candidats add column if not exists diplome_annee integer;

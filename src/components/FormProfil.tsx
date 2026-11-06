@@ -5,6 +5,9 @@ import { envoyerCV } from "@/lib/depot-cv-client";
 import { enregistrerProfil, type EtatProfil } from "@/app/espace/actions";
 import { CONTRATS, type Candidat } from "@/lib/types";
 
+const ANNEE = new Date().getFullYear();
+const ANNEES = Array.from({ length: 7 }, (_, i) => ANNEE - 1 + i);
+
 function Champ({ id, label, hint, children }: { id: string; label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
@@ -64,7 +67,17 @@ export function FormProfil({ c, codeEcole, nomEcole }: { c: Partial<Candidat>; c
         <h2 className="text-lg font-semibold">Ce que tu cherches</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <Champ id="poste_vise" label="Poste visé"><input className="input" id="poste_vise" name="poste_vise" defaultValue={c.poste_vise} placeholder="Assistant commercial" required /></Champ>
-          <Champ id="formation" label="Diplôme obtenu ou en préparation"><input className="input" id="formation" name="formation" defaultValue={c.formation} placeholder="BTS NDRC" /></Champ>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-[1fr_12rem]">
+          <Champ id="formation" label="🎓 Diplôme que tu prépares (nom complet)" hint="Écris le nom en entier, ex. « BTS NDRC – Négociation et digitalisation de la relation client »">
+            <input className="input" id="formation" name="formation" defaultValue={c.formation} placeholder="BTS NDRC – Négociation et digitalisation de la relation client" required />
+          </Champ>
+          <Champ id="diplome_annee" label="📅 Année du diplôme" hint="L'année où tu l'obtiendras">
+            <select className="input" id="diplome_annee" name="diplome_annee" defaultValue={c.diplome_annee ?? ""} required>
+              <option value="" disabled>Choisir…</option>
+              {ANNEES.map((a) => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </Champ>
         </div>
         <fieldset className="flex flex-col gap-2">
           <legend className="label mb-1">Types de contrat</legend>

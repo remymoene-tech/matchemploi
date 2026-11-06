@@ -42,6 +42,8 @@ export type Candidat = {
   nom: string;
   telephone: string;
   formation: string;
+  /** Année d'obtention du diplôme préparé. */
+  diplome_annee?: number | null;
   poste_vise: string;
   contrats: string[];
   code_postal: string;
@@ -173,3 +175,7 @@ export type CvConseils = {
   mise_en_page?: { avis: string; explication: string };
   description_proposee?: string;
 };
+
+/** « BTS NDRC (2027) » : diplôme préparé et son année. */
+export const diplomeLabel = (c: { formation?: string | null; diplome_annee?: number | null }) =>
+  [c.formation, c.diplome_annee ? `(${c.diplome_annee})` : ""].filter(Boolean).join(" ");

@@ -15,7 +15,7 @@ import { TYPES_ECHANGE, echangesDuCandidat, echeance, maintenantMs } from "@/lib
 import { ResultatDisc, ResultatManagement } from "@/components/ResultatsTests";
 import { COULEURS } from "@/lib/tests";
 import {
-  AVIS, SCORE_ORANGE, SEUIL, SUIVIS, contratLabel, estOffreEquipe, sourceLabel,
+  AVIS, SCORE_ORANGE, diplomeLabel, SEUIL, SUIVIS, contratLabel, estOffreEquipe, sourceLabel,
   type Candidat, type Correspondance, type Offre, type Piste, type Recherche,
 } from "@/lib/types";
 
@@ -131,7 +131,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         <div className="flex flex-col gap-1">
           <span className="eyebrow">Fiche candidat</span>
           <h1 className="text-3xl font-extrabold">{c.nom || c.email}</h1>
-          <p className="text-muted">{[c.formation, c.poste_vise && `vise ${c.poste_vise}`].filter(Boolean).join(" · ")}</p>
+          <p className="text-muted">{[c.formation && `🎓 ${diplomeLabel(c)}`, c.poste_vise && `vise ${c.poste_vise}`].filter(Boolean).join(" · ")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {tests.disc && (() => {
@@ -179,6 +179,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         <>
         <Bloc titre="Profil">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+            <Ligne l="Diplôme préparé" v={c.formation ? diplomeLabel(c) : <span className="text-bad">À compléter par l&apos;étudiant</span>} />
             <Ligne l="Email" v={<span className="select-all">{c.email}</span>} />
             <Ligne l="Téléphone" v={c.telephone && <span className="select-all">{c.telephone}</span>} />
             <Ligne l="Secteur" v={[c.ville, c.code_postal].filter(Boolean).join(" ") + ` · ${c.mobilite_km} km`} />

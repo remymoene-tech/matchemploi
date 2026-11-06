@@ -167,7 +167,7 @@ export type Note = { offre_id: string; score: number; forts: string[]; manques: 
 
 function profil(c: Candidat) {
   const permis = { permis_vehicule: "permis + véhicule", permis: "permis sans véhicule", non: "pas de permis" }[c.permis] ?? "non précisé";
-  return `Formation : ${c.formation || "?"}
+  return `Diplôme préparé : ${c.formation || "?"}${c.diplome_annee ? ` (obtention prévue en ${c.diplome_annee})` : ""}
 Poste visé : ${c.poste_vise || "?"}
 Contrats recherchés : ${c.contrats.join(", ") || "?"}
 Secteur : ${c.ville || "?"} ${c.code_postal} (mobilité ${c.mobilite_km} km) · ${permis}

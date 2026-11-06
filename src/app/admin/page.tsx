@@ -35,7 +35,7 @@ const AUTRES = [
   { id: "reglages", label: "⚙️ Réglages" },
 ] as const;
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; q?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; q?: string; annee?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -144,9 +144,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     if (sp.cv && (sp.cv === "avec") !== !!c.cv_chemin) return false;
     if (sp.entretien && (sp.entretien === "fait") !== dernierEntretien.has(c.user_id)) return false;
     if (sp.bilan && bilanDe(c.user_id) !== sp.bilan) return false;
+    if (sp.annee && String(c.diplome_annee ?? "") !== sp.annee) return false;
     return true;
   });
-  const filtresCandActifs = !!(qc || sp.ecole || sp.cv || sp.entretien || sp.bilan || filtreDates);
+  const filtresCandActifs = !!(qc || sp.annee || sp.ecole || sp.cv || sp.entretien || sp.bilan || filtreDates);
   const meilleure = new Map<string, number>();
   for (const m of toutes) meilleure.set(m.candidat_id, Math.max(meilleure.get(m.candidat_id) ?? 0, m.score));
 
@@ -297,7 +298,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             <input type="hidden" name="vue" value="candidats" />
             <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm">
               <span className="font-semibold">🔎 Rechercher</span>
-              <input className="input" name="q" defaultValue={sp.q ?? ""} placeholder="Nom, email, poste, formation, ville…" />
+              <input className="input" name="q" defaultValue={sp.q ?? ""} placeholder="Nom, email, poste, diplôme, ville…" />
             </label>
             <label className="flex flex-col gap-1 text-sm">
               <span className="font-semibold">🏫 École</span>
@@ -305,6 +306,13 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 <option value="">Toutes</option>
                 {ecoles.map((e) => <option key={e.id} value={e.id}>{e.nom}</option>)}
                 <option value="aucune">Sans école</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">📅 Année du diplôme</span>
+              <select className="input" name="annee" defaultValue={sp.annee ?? ""}>
+                <option value="">Toutes</option>
+                {[...new Set(tousCandidats.map((c) => c.diplome_annee).filter(Boolean))].sort().map((a) => <option key={a} value={String(a)}>{a}</option>)}
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
@@ -342,10 +350,11 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-            <table className="w-full min-w-[860px] text-left text-sm">
+            <table className="w-full min-w-[1000px] text-left text-sm">
               <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="p-3 font-semibold">Candidat</th>
+                  <th className="p-3 font-semibold">Diplôme préparé</th>
                   <th className="p-3 font-semibold">École</th>
                   <th className="p-3 font-semibold">CV</th>
                   <th className="p-3 font-semibold">Meilleure offre</th>
@@ -367,6 +376,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                         <div className="text-xs text-muted">{[c.poste_vise, c.ville].filter(Boolean).join(" · ") || "Profil à compléter"}</div>
                         {!c.consentement && <span className="chip chip-minus mt-1">Accord RGPD manquant</span>}
                       </td>
+                      <td className="p-3">{c.formation ? <>{c.formation}{c.diplome_annee ? <div className="text-xs text-muted">📅 {c.diplome_annee}</div> : null}</> : <span className="chip chip-minus">À compléter</span>}</td>
                       <td className="p-3 text-muted">{ecoles.find((x) => x.id === c.ecole_id)?.nom ?? "—"}</td>
                       <td className="p-3">{c.cv_chemin ? <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">📄 Ouvrir</a> : <span className="chip chip-minus">Sans CV</span>}</td>
                       <td className="p-3">{best != null ? <span className={`chip ${best >= 70 ? "chip-plus" : "chip-tag"}`}>{best} %</span> : <span className="text-muted">—</span>}</td>

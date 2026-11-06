@@ -67,7 +67,8 @@ alter table public.entreprises enable row level security;
 alter table public.offres add column if not exists entreprise_id uuid references public.entreprises(id) on delete set null;
 alter table public.echanges alter column candidat_id drop not null;
 alter table public.echanges add column if not exists entreprise_id uuid references public.entreprises(id) on delete cascade;
-create index if not exists echanges_entreprise_idx on public.echanges(entreprise_id, date_echange desc);`;
+create index if not exists echanges_entreprise_idx on public.echanges(entreprise_id, date_echange desc);
+alter table public.candidats add column if not exists diplome_annee integer;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -101,6 +102,7 @@ async function verifierBase() {
     db.from("offres").select("attentes").limit(1),
     db.from("entreprises").select("id").limit(1),
     db.from("echanges").select("entreprise_id").limit(1),
+    db.from("candidats").select("diplome_annee").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -132,6 +134,7 @@ async function verifierBase() {
     "Attentes de l'entreprise (offres)",
     "Mes entreprises",
     "Échanges et rappels des entreprises",
+    "Année du diplôme des étudiants",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }
