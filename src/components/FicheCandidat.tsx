@@ -235,14 +235,15 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
               <fieldset className="flex flex-col gap-2 text-sm">
                 <legend className="mb-1 font-semibold">Diplôme</legend>
                 <div className="flex flex-wrap gap-2">
-                  {[...formationsEcole.map((x) => ({ id: x.nom, label: `${x.nom} · ${x.duree} an${x.duree > 1 ? "s" : ""}` })), { id: "autre", label: "Autre" }].map((o) => (
+                  {formationsEcole.map((x) => ({ id: x.nom, label: `${x.nom} · ${x.duree} an${x.duree > 1 ? "s" : ""}` })).map((o) => (
                     <label key={o.id} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-4 py-2 has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
-                      <input type="radio" name="formation_choix" value={o.id} defaultChecked={o.id === "autre" ? !formationCatalogue : c.formation === o.id} className="sr-only" />
+                      <input type="radio" name="formation_choix" value={o.id} defaultChecked={c.formation === o.id} required className="sr-only" />
                       {o.label}
                     </label>
                   ))}
                 </div>
-                <input className="input sm:max-w-md" name="formation_autre" defaultValue={formationCatalogue ? "" : c.formation} placeholder="Si « Autre » : nom du diplôme" />
+                {!formationsEcole.length && <input className="input sm:max-w-md" name="formation_autre" defaultValue={c.formation} placeholder="Nom du diplôme (aucune formation enregistrée pour l'école)" required />}
+                {formationsEcole.length > 0 && !formationCatalogue && c.formation && <p className="text-xs text-warn">Diplôme actuel « {c.formation} » : choisis une formation de l&apos;école.</p>}
               </fieldset>
               <fieldset className="flex flex-col gap-2 text-sm">
                 <legend className="mb-1 font-semibold">Année de formation</legend>

@@ -9,10 +9,12 @@ export async function majDiplome(candidatId: string, f: FormData): Promise<{ err
   const db = createAdminClient();
   const { data: c } = await db.from("candidats").select("ecole_id").eq("user_id", candidatId).maybeSingle();
   if (!c) return { erreur: "Candidat introuvable." };
+  const catalogue = await formationsDeLEcole(c.ecole_id);
   const choix = txt(f, "formation_choix", 120);
-  const formation = choix && choix !== "autre" ? choix : txt(f, "formation_autre");
-  if (!formation) return { erreur: "Indique le diplôme." };
-  const cat = (await formationsDeLEcole(c.ecole_id)).find((x) => x.nom === formation);
+  // Uniquement une formation de l'école (texte libre seulement si l'école n'en a aucune)
+  const formation = catalogue.length ? (catalogue.some((x) => x.nom === choix) ? choix : "") : txt(f, "formation_autre");
+  if (!formation) return { erreur: "Choisis une formation de l'école." };
+  const cat = catalogue.find((x) => x.nom === formation);
   const an = Number(f.get("annee_cursus"));
   const annee_cursus = Number.isInteger(an) && an >= 1 && an <= (cat?.duree ?? 5) ? an : null;
   const d = Number(f.get("diplome_annee"));

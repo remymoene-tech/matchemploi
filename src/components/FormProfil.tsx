@@ -24,7 +24,8 @@ export function FormProfil({ c, codeEcole, nomEcole, formations = [] }: { c: Par
   const [alternance, setAlternance] = useState(c.contrats?.includes("alternance") ?? false);
   const [envoi, setEnvoi] = useState(false);
   const formationConnue = formations.find((x) => x.nom === c.formation);
-  const [choix, setChoix] = useState(formations.length ? (formationConnue?.nom ?? (c.formation ? "autre" : "")) : "autre");
+  // Choix uniquement parmi les formations de l'école (champ libre seulement si aucune formation n'existe)
+  const [choix, setChoix] = useState(formations.length ? (formationConnue?.nom ?? "") : "autre");
   const fChoisie = formations.find((x) => x.nom === choix);
   const [erreurLocale, setErreurLocale] = useState("");
 
@@ -78,7 +79,7 @@ export function FormProfil({ c, codeEcole, nomEcole, formations = [] }: { c: Par
               <fieldset className="flex flex-col gap-2">
                 <legend className="label mb-1">🎓 Ta formation{nomEcole ? ` à ${nomEcole}` : ""}</legend>
                 <div className="flex flex-wrap gap-2">
-                  {[...formations.map((x) => ({ id: x.nom, label: `${x.nom} · ${x.duree} an${x.duree > 1 ? "s" : ""}` })), { id: "autre", label: "Autre diplôme…" }].map((o) => (
+                  {formations.map((x) => ({ id: x.nom, label: `${x.nom} · ${x.duree} an${x.duree > 1 ? "s" : ""}` })).map((o) => (
                     <label key={o.id} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-4 py-2 text-sm has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
                       <input type="radio" name="formation_choix" value={o.id} checked={choix === o.id} onChange={() => setChoix(o.id)} required className="sr-only" />
                       {o.label}

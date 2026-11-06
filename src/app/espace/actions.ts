@@ -34,6 +34,7 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
     nom: texte(f, "nom", 120),
     telephone: texte(f, "telephone", 30),
     formation: (() => { const ch = texte(f, "formation_choix", 120); return ch && ch !== "autre" ? ch : texte(f, "formation", 200); })(),
+    // (vérifié plus bas : uniquement une formation de l'école quand l'école en a)
     annee_cursus: null as number | null,
     rythme_cursus: null as string | null,
     diplome_annee: (() => { const a = Number(f.get("diplome_annee")); return Number.isInteger(a) && a >= 2000 && a <= 2100 ? a : null; })(),
@@ -59,8 +60,10 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
   if (!donnees.nom || !donnees.poste_vise) return { erreur: "Indique au moins ton nom et le poste que tu vises." };
   // Formation de l'école : année du cursus et rythme (initial ou alternance) d'après le catalogue de l'école
   const choixFormation = texte(f, "formation_choix", 120);
+  const catalogue = await formationsDeLEcole(avant?.ecole_id ?? (await ecoleParCode(texte(f, "code_ecole", 40)).catch(() => null))?.id);
+  if (catalogue.length && !catalogue.some((x) => x.nom === donnees.formation)) return { erreur: "Choisis ta formation dans la liste." };
   if (choixFormation && choixFormation !== "autre") {
-    const cat = (await formationsDeLEcole(avant?.ecole_id ?? (await ecoleParCode(texte(f, "code_ecole", 40)).catch(() => null))?.id)).find((x) => x.nom === choixFormation);
+    const cat = catalogue.find((x) => x.nom === choixFormation);
     const an = Number(f.get("annee_cursus"));
     if (cat && Number.isInteger(an) && an >= 1 && an <= cat.duree) {
       donnees.annee_cursus = an;
