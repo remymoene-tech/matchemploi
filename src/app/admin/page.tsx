@@ -12,6 +12,8 @@ import { ListeRelances } from "@/components/ListeRelances";
 import { Barres, Colonnes } from "@/components/Graphiques";
 import { OngletsCartes } from "@/components/OngletsCartes";
 import { ADMISSIONS, admission } from "@/lib/admission";
+import { BriefingSemaine } from "@/components/BriefingSemaine";
+import { briefingEtudiants } from "@/lib/briefing";
 import { anneeLabel, lireFormations } from "@/lib/formations";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe, statutEntreprise } from "@/lib/entreprises";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
@@ -31,6 +33,7 @@ const VUES = [
 ] as const;
 /** Pages secondaires, en petit à droite des onglets. */
 const AUTRES = [
+  { id: "briefing", label: "📋 Briefing" },
   { id: "relances", label: "🔔 Relances" },
   { id: "entretiens", label: "🗣️ Entretiens" },
   { id: "ecoles", label: "🏫 Écoles" },
@@ -482,6 +485,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
           {!C.size && <p className="card border-dashed p-6 text-sm text-muted">Aucun candidat inscrit pour l&apos;instant.</p>}
         </div>
+      )}
+
+      {vue === "briefing" && (
+        <BriefingSemaine base="/admin/candidats" lignes={await briefingEtudiants(tousCandidats, maintenant)} />
       )}
 
       {vue === "relances" && (

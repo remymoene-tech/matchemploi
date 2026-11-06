@@ -45,7 +45,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <>
                   <Link className="btn btn-ghost btn-sm" href="/espace">Mes offres</Link>
                   <Link className="btn btn-ghost btn-sm" href="/espace/profil">Mon profil</Link>
-                  {(monEcole || estAdmin(user.email)) && <Cloche lien={estAdmin(user.email) ? "/admin?vue=relances" : "/ecole?vue=relances"} />}
+                  {monEcole || estAdmin(user.email)
+                    ? <Cloche lien={estAdmin(user.email) ? "/admin?vue=relances" : "/ecole?vue=relances"} />
+                    : <Cloche lien="/espace/prospections" etudiant />}
                   {monEcole && <Link className="btn btn-ghost btn-sm" href="/ecole">Mon école</Link>}
                   {estAdmin(user.email) && <Link className="btn btn-ghost btn-sm" href="/admin">📊 Tableau de bord</Link>}
                   <form action={deconnexion}>

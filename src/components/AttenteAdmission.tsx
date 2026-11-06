@@ -15,6 +15,7 @@ export function AttenteAdmission({ c }: { c: Candidat }) {
     { fait: !!c.cv_chemin, icone: "📄", titre: "Déposer mon CV et lire les conseils", href: "/espace/cv" },
     { fait: !!c.linkedin_analyse, icone: "🔗", titre: "Améliorer mon LinkedIn", href: "/espace/reseau" },
     { fait: false, icone: "🧭", titre: "Passer mes tests (DISC et management)", href: "/espace/tests" },
+    { fait: false, icone: "🚪", titre: "Noter les entreprises que je prospecte", href: "/espace/prospections" },
   ];
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">

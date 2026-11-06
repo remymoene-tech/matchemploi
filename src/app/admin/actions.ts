@@ -23,6 +23,7 @@ import { lireEntreprise } from "@/lib/entreprises";
 import { lireFormations } from "@/lib/formations";
 import { changerAdmission } from "@/lib/admission-serveur";
 import { majDiplome } from "@/lib/diplome-serveur";
+import { memeEntreprise } from "@/lib/prospections";
 import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
 import type { EtatEntretien } from "@/components/FormEntretienConseil";
@@ -326,4 +327,30 @@ export async function changerDiplomeAdmin(f: FormData) {
   const candidat = t(f, "candidat_id", 60);
   await majDiplome(candidat, f);
   revalidatePath(`/admin/candidats/${candidat}`);
+}
+
+/** Entreprise prospectée par un étudiant → « Mes entreprises » (ou rattachée à la fiche existante du même nom). */
+export async function ajouterProspectionAuxEntreprises(f: FormData) {
+  const { user } = await exigerAdmin();
+  const db = createAdminClient();
+  const { data: p } = await db.from("prospections").select("*").eq("id", t(f, "prospection_id", 60)).maybeSingle();
+  if (!p) return;
+  const { data: toutes } = await db.from("entreprises").select("id, nom");
+  let entrepriseId = (toutes ?? []).find((e) => memeEntreprise(e.nom, p.entreprise))?.id as string | undefined;
+  if (!entrepriseId) {
+    const { data } = await db.from("entreprises").insert({
+      nom: p.entreprise, ville: p.ville ?? "", contact_nom: p.contact_nom ?? "", contact_tel: p.contact_tel ?? "", contact_email: p.contact_email ?? "",
+      statut: p.recrute === "oui" ? "en_discussion" : "rencontree", origine: "Autre",
+      notes: `Prospectée par un étudiant. ${p.recrute === "oui" ? "Recrute" : "Ne recrute pas"} : ${p.justification ?? ""}`.trim(),
+      auteur: user.email ?? "",
+    }).select("id").single();
+    entrepriseId = data?.id;
+  }
+  if (!entrepriseId) return;
+  // Toutes les prospections d'étudiants pour cette entreprise sont rattachées à la fiche
+  const { data: memes } = await db.from("prospections").select("id, entreprise").is("entreprise_id", null);
+  const ids = (memes ?? []).filter((x) => memeEntreprise(x.entreprise, p.entreprise)).map((x) => x.id);
+  if (ids.length) await db.from("prospections").update({ entreprise_id: entrepriseId }).in("id", ids);
+  revalidatePath(`/admin/candidats/${t(f, "candidat_id", 60)}`);
+  redirect(`/admin/entreprises/${entrepriseId}?onglet=etudiants`);
 }

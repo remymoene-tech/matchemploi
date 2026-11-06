@@ -11,11 +11,13 @@ const TYPES = [
 ];
 
 /** Formulaire « Noter un échange » : type, date, ce qui s'est dit, prochaine action facultative. */
-export function FormEchange({ candidatId, action, champ = "candidat_id", exemple }: {
+export function FormEchange({ candidatId, action, champ = "candidat_id", exemple, types = TYPES, exempleRelance }: {
   candidatId: string;
   /** Champ caché : « candidat_id » (fiche candidat) ou « entreprise_id » (fiche entreprise). */
   champ?: string;
   exemple?: string;
+  types?: readonly { id: string; label: string; icone: string }[];
+  exempleRelance?: string;
   action: (e: { erreur?: string; ok?: boolean }, f: FormData) => Promise<{ erreur?: string; ok?: boolean }>;
 }) {
   const form = useRef<HTMLFormElement>(null);
@@ -36,7 +38,7 @@ export function FormEchange({ candidatId, action, champ = "candidat_id", exemple
       <input type="hidden" name="tz" value={new Date().getTimezoneOffset()} suppressHydrationWarning />
       <fieldset className="flex flex-wrap gap-2">
         <legend className="sr-only">Type d&apos;échange</legend>
-        {TYPES.map((t, i) => (
+        {types.map((t, i) => (
           <label key={t.id} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent-soft has-[:checked]:text-accent has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-accent">
             <input type="radio" name="type" value={t.id} defaultChecked={i === 0} className="sr-only" />
             <span aria-hidden>{t.icone}</span>{t.label}
@@ -59,7 +61,7 @@ export function FormEchange({ candidatId, action, champ = "candidat_id", exemple
         <div className="grid gap-3 sm:grid-cols-[1fr_15rem]">
           <div className="flex flex-col gap-1">
             <label className="label" htmlFor="action">Prochaine action</label>
-            <input className="input" id="action" name="action" required placeholder="Ex. Le rappeler pour savoir comment s'est passé l'entretien" />
+            <input className="input" id="action" name="action" required placeholder={exempleRelance ?? "Ex. Le rappeler pour savoir comment s'est passé l'entretien"} />
           </div>
           <div className="flex flex-col gap-1">
             <label className="label" htmlFor="action_a">Le (date et heure)</label>

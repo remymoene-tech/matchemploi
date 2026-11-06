@@ -341,3 +341,12 @@ alter table public.candidats add column if not exists annee_cursus integer;
 alter table public.candidats add column if not exists rythme_cursus text;
 insert into public.ecoles (nom, code, formations) select 'Magnus Campus', 'MAGNUS-CAMPUS', '[{"nom":"EGC","duree":3,"alternance":[2,3]},{"nom":"GUC","duree":2,"alternance":[1,2]},{"nom":"AMLHR","duree":2,"alternance":[1,2]}]'::jsonb where not exists (select 1 from public.ecoles where lower(nom) = 'magnus campus');
 update public.ecoles set formations = '[{"nom":"EGC","duree":3,"alternance":[2,3]},{"nom":"GUC","duree":2,"alternance":[1,2]},{"nom":"AMLHR","duree":2,"alternance":[1,2]}]'::jsonb where lower(nom) = 'magnus campus' and formations = '[]'::jsonb;
+
+-- Prospections : entreprises contactées par l'étudiant lui-même (serveur uniquement)
+create table if not exists public.prospections (id uuid primary key default gen_random_uuid(), candidat_id uuid not null references public.candidats(user_id) on delete cascade, entreprise text not null, ville text not null default '', contact_nom text not null default '', contact_tel text not null default '', contact_email text not null default '', recrute text not null default '', justification text not null default '', entreprise_id uuid references public.entreprises(id) on delete set null, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+alter table public.prospections enable row level security;
+create index if not exists prospections_candidat_idx on public.prospections(candidat_id, updated_at desc);
+create table if not exists public.prospection_echanges (id uuid primary key default gen_random_uuid(), prospection_id uuid not null references public.prospections(id) on delete cascade, candidat_id uuid not null references public.candidats(user_id) on delete cascade, type text not null default 'telephone', date_echange timestamptz not null default now(), resume text not null default '', action text not null default '', action_a timestamptz, action_faite boolean not null default false, created_at timestamptz not null default now());
+alter table public.prospection_echanges enable row level security;
+create index if not exists prospection_echanges_idx on public.prospection_echanges(prospection_id, date_echange desc);
+create index if not exists prospection_relances_idx on public.prospection_echanges(candidat_id, action_faite, action_a);

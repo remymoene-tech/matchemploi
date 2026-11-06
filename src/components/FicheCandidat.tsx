@@ -2,6 +2,8 @@ import Link from "next/link";
 import { OngletsCartes } from "@/components/OngletsCartes";
 import { ADMISSIONS, admission } from "@/lib/admission";
 import { formationsDeLEcole } from "@/lib/ecoles";
+import { RECRUTE, echangesDeProspections, prospectionsDe } from "@/lib/prospections";
+import { HistoriqueProspection } from "@/components/HistoriqueProspection";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
@@ -44,13 +46,15 @@ const Ligne = ({ l, v }: { l: string; v: React.ReactNode }) => (
  * Fiche complète d'un candidat pour l'équipe : profil, CV, recherches, offres.
  * Les droits sont vérifiés par la page qui l'affiche.
  */
-export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite, changerAdmission, changerDiplome }: {
+export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite, changerAdmission, changerDiplome, ajouterAuxEntreprises }: {
   changerAdmission?: (f: FormData) => Promise<void>;
   changerDiplome?: (f: FormData) => Promise<void>;
   candidatId: string;
   autoriserTest: (f: FormData) => Promise<void>;
   genererSynthese: (e: { erreur?: string }, f: FormData) => Promise<{ erreur?: string }>;
-  onglet?: "profil" | "cv" | "offres" | "echanges" | "suivi";
+  onglet?: "profil" | "cv" | "offres" | "echanges" | "prospections" | "suivi";
+  /** Équipe : ajouter une entreprise prospectée par l'étudiant à « Mes entreprises ». */
+  ajouterAuxEntreprises?: (f: FormData) => Promise<void>;
   ajouterEchange: (e: { erreur?: string; ok?: boolean }, f: FormData) => Promise<{ erreur?: string; ok?: boolean }>;
   supprimerEchange: (f: FormData) => Promise<void>;
   actionFaite: (f: FormData) => Promise<void>;
@@ -86,6 +90,8 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
   const urlCV = c.cv_chemin && onglet === "cv" ? (await db.storage.from("cv").createSignedUrl(c.cv_chemin, 600)).data?.signedUrl ?? null : null;
   const etat = await etatSynthese(candidatId);
   const formationsEcole = await formationsDeLEcole(c.ecole_id);
+  const prospections = (await prospectionsDe(candidatId)) ?? [];
+  const echangesProsp = onglet === "prospections" ? await echangesDeProspections(prospections.map((p) => p.id)) : [];
   const formationCatalogue = formationsEcole.find((x) => x.nom === c.formation);
   const anneeMax = Math.max(formationCatalogue?.duree ?? 0, ...formationsEcole.map((x) => x.duree), 3);
   const anMaintenant = new Date().getFullYear();
@@ -198,6 +204,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         ["cv", "📄", "CV", "CV et LinkedIn"],
         ["offres", "💼", "Offres", `${lignes.length} proposée${lignes.length > 1 ? "s" : ""}`],
         ["echanges", "💬", "Échanges", `${echanges.length} noté${echanges.length > 1 ? "s" : ""}`],
+        ["prospections", "🚪", "Prospections", `${prospections.length} entreprise${prospections.length > 1 ? "s" : ""}`],
         ["suivi", "🧭", "Tests et entretien", "DISC, bilan"],
       ] as const).map(([id, icone, label, sous]) => ({
         href: id === "profil" ? baseFiche : `${baseFiche}?onglet=${id}`, icone, label, sous, actif: onglet === id,
@@ -463,6 +470,49 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         </ol>
       </Bloc>
         </>
+      )}
+
+      {onglet === "prospections" && (
+        <Bloc titre={`🚪 Entreprises prospectées par l'étudiant (${prospections.length})`}>
+          <p className="text-xs text-muted">Notées par l&apos;étudiant lui-même dans « Mes prospections » : ses visites, appels, emails et relances.</p>
+          {!prospections.length && <p className="text-sm text-muted">L&apos;étudiant n&apos;a pas encore noté d&apos;entreprise.</p>}
+          <div className="flex flex-col gap-3">
+            {prospections.map((p) => {
+              const r = RECRUTE.find((x) => x.id === p.recrute);
+              const ech = echangesProsp.filter((e) => e.prospection_id === p.id);
+              return (
+                <details key={p.id} className="rounded-xl border border-line p-4">
+                  <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2">
+                    <span className="min-w-0">
+                      <b>🏢 {p.entreprise}</b>
+                      <span className="text-sm text-muted"> · {[p.ville, p.contact_nom].filter(Boolean).join(" · ") || "—"} · {ech.length} contact{ech.length > 1 ? "s" : ""}</span>
+                    </span>
+                    <span className="flex flex-wrap items-center gap-2">
+                      {r && <span className={`chip ${r.chip}`}>{r.icone} {r.label}</span>}
+                      {p.entreprise_id && <span className="chip chip-tag">🏢 Dans mes entreprises</span>}
+                    </span>
+                  </summary>
+                  <div className="mt-3 flex flex-col gap-3">
+                    <p className="text-sm">{[p.contact_tel && `📞 ${p.contact_tel}`, p.contact_email && `✉️ ${p.contact_email}`].filter(Boolean).join(" · ")}</p>
+                    {p.justification && <p className="rounded-lg bg-bg p-3 text-sm"><b>Pourquoi {p.recrute === "oui" ? "elle recrute" : "elle ne recrute pas"} :</b> {p.justification}</p>}
+                    <HistoriqueProspection echanges={ech} prospectionId={p.id} />
+                    {ajouterAuxEntreprises && (
+                      p.entreprise_id
+                        ? <Link href={`/admin/entreprises/${p.entreprise_id}?onglet=etudiants`} className="btn btn-sm w-fit">Voir la fiche entreprise →</Link>
+                        : (
+                          <form action={ajouterAuxEntreprises}>
+                            <input type="hidden" name="prospection_id" value={p.id} />
+                            <input type="hidden" name="candidat_id" value={candidatId} />
+                            <button className="btn btn-sm btn-primary">➕ Ajouter à mes entreprises</button>
+                          </form>
+                        )
+                    )}
+                  </div>
+                </details>
+              );
+            })}
+          </div>
+        </Bloc>
       )}
 
       {onglet === "suivi" && (

@@ -9,7 +9,8 @@ const heure = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }) : "";
 
 /** Cloche des relances (équipe) : badge, liste, notification à l'heure prévue. Vérifie chaque minute. */
-export function Cloche({ lien = "/admin?vue=relances" }: { lien?: string }) {
+export function Cloche({ lien = "/admin?vue=relances", etudiant = false }: { lien?: string; etudiant?: boolean }) {
+  const [briefing, setBriefing] = useState<{ cle: string; lien: string } | null>(null);
   const [dues, setDues] = useState<R[]>([]);
   const [prochaines, setProchaines] = useState<R[]>([]);
   const [ouvert, setOuvert] = useState(false);
@@ -22,7 +23,13 @@ export function Cloche({ lien = "/admin?vue=relances" }: { lien?: string }) {
     try {
       const res = await fetch("/api/relances", { cache: "no-store" });
       if (!res.ok) return;
-      const j = (await res.json()) as { dues: R[]; prochaines: R[] };
+      const j = (await res.json()) as { dues: R[]; prochaines: R[]; briefing?: { cle: string; lien: string } };
+      // Briefing hebdomadaire : notifié une fois par semaine (mémorisé sur cet appareil)
+      if (j.briefing) {
+        let vu = "";
+        try { vu = localStorage.getItem("briefing-vu") ?? ""; } catch { /* stockage indisponible */ }
+        setBriefing(vu === j.briefing.cle ? null : j.briefing);
+      }
       // Nouvelle relance arrivée à échéance depuis le dernier passage : petite notification
       if (vues.current) {
         const nouvelle = j.dues.find((d) => !vues.current!.has(d.id));
@@ -63,6 +70,13 @@ export function Cloche({ lien = "/admin?vue=relances" }: { lien?: string }) {
     return () => document.removeEventListener("mousedown", fermer);
   }, [ouvert]);
 
+  const briefingVu = () => {
+    if (briefing) { try { localStorage.setItem("briefing-vu", briefing.cle); } catch { /* stockage indisponible */ } }
+    setBriefing(null);
+    setOuvert(false);
+  };
+  const total = dues.length + (briefing ? 1 : 0);
+
   const faite = async (id: string) => {
     setDues((d) => d.filter((x) => x.id !== id));
     await fetch("/api/relances", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) }).catch(() => {});
@@ -70,16 +84,22 @@ export function Cloche({ lien = "/admin?vue=relances" }: { lien?: string }) {
 
   return (
     <div className="relative" ref={panneau}>
-      <button type="button" className="btn btn-ghost btn-sm relative px-2" aria-label={`Relances : ${dues.length} à faire`} aria-expanded={ouvert} onClick={() => setOuvert((o) => !o)}>
+      <button type="button" className="btn btn-ghost btn-sm relative px-2" aria-label={`Notifications : ${total}`} aria-expanded={ouvert} onClick={() => setOuvert((o) => !o)}>
         <span aria-hidden className="text-lg leading-none">🔔</span>
-        {dues.length > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-bad px-1 font-mono text-[11px] font-bold text-white">{dues.length}</span>
+        {total > 0 && (
+          <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-bad px-1 font-mono text-[11px] font-bold text-white">{total}</span>
         )}
       </button>
 
       {ouvert && (
         <div className="absolute right-0 top-full z-50 mt-2 flex w-[min(92vw,380px)] flex-col gap-2 rounded-xl border border-line bg-surface p-3 shadow-xl">
-          <p className="text-sm font-semibold">Mes relances</p>
+          {briefing && (
+            <Link href={briefing.lien} onClick={briefingVu} className="flex flex-col gap-0.5 rounded-lg bg-accent-soft p-2.5 text-sm hover:underline">
+              <b>📋 Ton briefing de la semaine est prêt</b>
+              <span className="text-xs text-muted">Ce que chaque étudiant a fait ces 7 derniers jours</span>
+            </Link>
+          )}
+          <p className="text-sm font-semibold">{etudiant ? "⏰ Mes relances entreprises" : "Mes relances"}</p>
           {!dues.length && <p className="text-sm text-muted">Rien à faire pour l&apos;instant 👍</p>}
           {dues.map((d) => (
             <div key={d.id} className="flex flex-col gap-1 rounded-lg bg-bad-soft p-2.5 text-sm">
@@ -108,7 +128,7 @@ export function Cloche({ lien = "/admin?vue=relances" }: { lien?: string }) {
               Recevoir aussi les notifications du navigateur
             </button>
           )}
-          <Link href={lien} className="text-center text-xs font-semibold text-accent" onClick={() => setOuvert(false)}>Voir toutes les relances →</Link>
+          <Link href={lien} className="text-center text-xs font-semibold text-accent" onClick={() => setOuvert(false)}>{etudiant ? "Voir mes prospections →" : "Voir toutes les relances →"}</Link>
         </div>
       )}
 
@@ -118,7 +138,7 @@ export function Cloche({ lien = "/admin?vue=relances" }: { lien?: string }) {
           <p className="text-sm">{toast.action}</p>
           <div className="mt-1 flex justify-end gap-2">
             <button type="button" className="btn btn-sm btn-ghost" onClick={() => setToast(null)}>Plus tard</button>
-            <Link href={toast.lien} className="btn btn-sm btn-primary" onClick={() => setToast(null)}>Ouvrir la fiche</Link>
+            <Link href={toast.lien} className="btn btn-sm btn-primary" onClick={() => setToast(null)}>{etudiant ? "Ouvrir" : "Ouvrir la fiche"}</Link>
           </div>
         </div>
       )}

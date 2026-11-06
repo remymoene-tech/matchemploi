@@ -7,7 +7,9 @@ import { SelectAuto } from "@/components/SelectAuto";
 import { Copier } from "@/components/Copier";
 import { MessageEnvoyable } from "@/components/MessageEnvoyable";
 import { ListeRelances } from "@/components/ListeRelances";
-import { relancesDe } from "@/lib/echanges";
+import { maintenantMs, relancesDe } from "@/lib/echanges";
+import { BriefingSemaine } from "@/components/BriefingSemaine";
+import { briefingEtudiants } from "@/lib/briefing";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
 import { changerSuiviEcole, envoyerMessageEcole, relancerEcole } from "./actions";
@@ -20,6 +22,7 @@ const VUES = [
   { id: "correspondances", label: "Correspondances", icone: "🤝", sous: "Étudiants × offres" },
   { id: "etudiants", label: "Étudiants", icone: "👥", sous: "" },
   { id: "entreprises", label: "Entreprises & offres", icone: "💼", sous: "Mes offres" },
+  { id: "briefing", label: "Briefing", icone: "📋", sous: "Cette semaine" },
   { id: "relances", label: "Mes relances", icone: "🔔", sous: "À rappeler" },
   { id: "inviter", label: "Inviter", icone: "✉️", sous: "Lien et code" },
 ] as const;
@@ -226,6 +229,10 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
             </p>
           )}
         </div>
+      )}
+
+      {vue === "briefing" && (
+        <BriefingSemaine base="/ecole/etudiants" lignes={await briefingEtudiants(etudiants, maintenantMs())} />
       )}
 
       {vue === "relances" && (

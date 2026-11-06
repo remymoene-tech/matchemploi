@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { exigerUtilisateur } from "@/lib/auth";
 import { Rafraichir } from "@/components/Rafraichir";
 import { AttenteAdmission } from "@/components/AttenteAdmission";
+import { OngletsCartes } from "@/components/OngletsCartes";
 import { estAdmis } from "@/lib/admission";
 import { OffresEspace, type LigneOffre } from "@/components/OffresEspace";
 import { relancerRecherche } from "./actions";
@@ -123,6 +124,10 @@ export default async function Espace() {
   return (
     <div className="flex flex-col gap-5">
       {c.recherche_en_cours && <Rafraichir />}
+      <OngletsCartes label="Mes recherches" onglets={[
+        { href: "/espace", icone: "💼", label: "Mes offres", sous: "Proposées par MagnusMatch", actif: true },
+        { href: "/espace/prospections", icone: "🚪", label: "Mes prospections", sous: "Entreprises contactées", actif: false },
+      ]} />
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div className="flex flex-col gap-1">
           <h1 className="text-3xl font-extrabold">Bonjour {c.nom.split(" ")[0]}</h1>

@@ -24,7 +24,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       changerAdmission={changerAdmissionEcole}
       changerDiplome={changerDiplomeEcole}
       actionFaite={actionFaiteEcole}
-      onglet={onglet === "suivi" || onglet === "cv" || onglet === "offres" || onglet === "echanges" ? onglet : "profil"}
+      onglet={onglet === "suivi" || onglet === "cv" || onglet === "offres" || onglet === "echanges" || onglet === "prospections" ? onglet : "profil"}
       baseFiche={`/ecole/etudiants/${id}`}
       cheminCV={`/ecole/cv/${id}`}
       retour={{ href: "/ecole?vue=etudiants", libelle: "Tous mes étudiants" }}
