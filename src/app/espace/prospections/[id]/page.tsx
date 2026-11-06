@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { exigerUtilisateur } from "@/lib/auth";
-import { RECRUTE, TYPES_PROSPECTION, echangesDeProspections, prospection } from "@/lib/prospections";
+import { RECRUTE, TYPES_PROSPECTION, dateEntretien, echangesDeProspections, prospection } from "@/lib/prospections";
 import { FormProspection } from "@/components/FormProspection";
 import { FormEchange } from "@/components/FormEchange";
 import { HistoriqueProspection } from "@/components/HistoriqueProspection";
@@ -30,6 +30,12 @@ export default async function FicheProspection({ params, searchParams }: { param
         </div>
         {r && <span className={`chip ${r.chip}`}>{r.icone} {r.label}</span>}
       </header>
+      {p.entretien_a && (
+        <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border-2 border-accent bg-accent-soft p-4">
+          <p><b>🤝 Entretien {dateEntretien(p.entretien_a)}</b><br /><span className="text-sm text-muted">Tu recevras une notification 🔔 la veille.</span></p>
+          <Link href={`/espace/prospections/${p.id}?modifier=1`} className="btn btn-sm">Changer la date</Link>
+        </div>
+      )}
       {p.justification && <p className="rounded-xl bg-bg p-4 text-sm"><b>Pourquoi :</b> {p.justification}</p>}
 
       <section className="card flex flex-col gap-3 p-5">

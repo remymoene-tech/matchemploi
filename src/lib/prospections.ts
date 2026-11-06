@@ -26,6 +26,9 @@ export type Prospection = {
   recrute: string;
   justification: string;
   entreprise_id: string | null;
+  /** Entretien prévu (date et heure) ; notifié la veille. */
+  entretien_a?: string | null;
+  entretien_vu?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -60,21 +63,40 @@ export async function echangesDeProspections(ids: string[]): Promise<EchangePros
   return (data ?? []) as EchangeProspection[];
 }
 
-/** Relances de l'étudiant (non faites), avec le nom de l'entreprise. */
+export const dateEntretien = (iso: string) =>
+  new Date(iso).toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+
+/** Entretiens à venir de l'étudiant : notification la veille (24 h avant). */
+async function entretiensEtudiant(candidatId: string) {
+  const { data, error } = await db().from("prospections").select("id, entreprise, entretien_a, entretien_vu")
+    .eq("candidat_id", candidatId).not("entretien_a", "is", null).eq("entretien_vu", false)
+    .gte("entretien_a", new Date(Date.now() - 3 * 3600e3).toISOString());
+  if (error) return [];
+  return (data ?? []).map((p) => ({
+    id: `ent:${p.id}`,
+    nom: `🤝 Entretien · ${p.entreprise}`,
+    action: `Ton entretien est ${dateEntretien(p.entretien_a as string)}. Prépare-toi !`,
+    quand: new Date(new Date(p.entretien_a as string).getTime() - 24 * 3600e3).toISOString(),
+    lien: `/espace/prospections/${p.id}`,
+  }));
+}
+
+/** Relances de l'étudiant (non faites) et ses entretiens, avec le nom de l'entreprise. */
 export async function relancesEtudiant(candidatId: string) {
+  const entretiens = await entretiensEtudiant(candidatId);
   const { data, error } = await db()
     .from("prospection_echanges")
     .select("id, prospection_id, action, action_a, prospections(entreprise)")
     .eq("candidat_id", candidatId).eq("action_faite", false).neq("action", "")
     .order("action_a", { ascending: true, nullsFirst: false }).limit(100);
-  if (error) return [];
-  return (data ?? []).map((r) => ({
+  if (error) return entretiens;
+  return [...entretiens, ...(data ?? []).map((r) => ({
     id: r.id as string,
     nom: `🏢 ${(r.prospections as unknown as { entreprise: string } | null)?.entreprise ?? "Entreprise"}`,
     action: r.action as string,
     quand: echeance({ action_a: r.action_a as string | null })?.toISOString() ?? null,
     lien: `/espace/prospections/${r.prospection_id}`,
-  }));
+  }))].sort((a, b) => (a.quand ?? "9").localeCompare(b.quand ?? "9"));
 }
 
 const norme = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();

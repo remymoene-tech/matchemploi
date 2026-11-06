@@ -350,3 +350,7 @@ create table if not exists public.prospection_echanges (id uuid primary key defa
 alter table public.prospection_echanges enable row level security;
 create index if not exists prospection_echanges_idx on public.prospection_echanges(prospection_id, date_echange desc);
 create index if not exists prospection_relances_idx on public.prospection_echanges(candidat_id, action_faite, action_a);
+
+-- Entretien prévu avec une entreprise prospectée (notification la veille)
+alter table public.prospections add column if not exists entretien_a timestamptz;
+alter table public.prospections add column if not exists entretien_vu boolean not null default false;

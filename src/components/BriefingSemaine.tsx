@@ -3,8 +3,8 @@ import type { LigneBriefing } from "@/lib/briefing";
 
 /** Briefing hebdomadaire : une carte par étudiant, les inactifs à part. */
 export function BriefingSemaine({ lignes, base }: { lignes: LigneBriefing[]; base: string }) {
-  const actifs = lignes.filter((l) => l.contacts || l.nouvelles.length);
-  const calmes = lignes.filter((l) => !l.contacts && !l.nouvelles.length);
+  const actifs = lignes.filter((l) => l.contacts || l.nouvelles.length || l.entretiens.length);
+  const calmes = lignes.filter((l) => !l.contacts && !l.nouvelles.length && !l.entretiens.length);
   const total = (k: "contacts" | "recrutent" | "enRetard") => lignes.reduce((s, l) => s + l[k], 0);
   const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" }) : "jamais");
   return (
@@ -14,7 +14,7 @@ export function BriefingSemaine({ lignes, base }: { lignes: LigneBriefing[]; bas
         <h2 className="text-2xl font-extrabold">Ce que tes étudiants ont fait ces 7 derniers jours</h2>
       </div>
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {([["🔥 Actifs", `${actifs.length}/${lignes.length}`], ["🚪 Nouvelles entreprises", lignes.reduce((s, l) => s + l.nouvelles.length, 0)], ["💬 Contacts notés", total("contacts")], ["⏰ Relances en retard", total("enRetard")]] as const).map(([l, v]) => (
+        {([["🔥 Actifs", `${actifs.length}/${lignes.length}`], ["🚪 Nouvelles entreprises", lignes.reduce((s, l) => s + l.nouvelles.length, 0)], ["💬 Contacts notés", total("contacts")], ["🤝 Entretiens à venir", lignes.reduce((s, l) => s + l.entretiens.length, 0)]] as const).map(([l, v]) => (
           <div key={l} className="card flex flex-col p-4"><span className="eyebrow">{l}</span><b className="text-3xl font-semibold tabular-nums">{v}</b></div>
         ))}
       </section>
@@ -31,6 +31,9 @@ export function BriefingSemaine({ lignes, base }: { lignes: LigneBriefing[]; bas
               {" · "}💬 <b>{l.contacts}</b> contact{l.contacts > 1 ? "s" : ""}
             </p>
             {!!l.nouvelles.length && <p className="truncate text-xs text-muted">{l.nouvelles.join(" · ")}</p>}
+            {l.entretiens.map((x) => (
+              <p key={x.entreprise + x.date} className="rounded-lg bg-good-soft px-2 py-1 text-sm">🤝 Entretien chez <b>{x.entreprise}</b> le {new Date(x.date).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}</p>
+            ))}
             <p className="text-xs text-muted">💼 {l.interesses} offre{l.interesses > 1 ? "s" : ""} « ça m&apos;intéresse » · {l.postules} candidature{l.postules > 1 ? "s" : ""} · {l.totalProspections} entreprise{l.totalProspections > 1 ? "s" : ""} prospectée{l.totalProspections > 1 ? "s" : ""} au total</p>
           </Link>
         ))}

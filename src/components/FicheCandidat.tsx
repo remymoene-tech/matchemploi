@@ -489,6 +489,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
                     </span>
                     <span className="flex flex-wrap items-center gap-2">
                       {r && <span className={`chip ${r.chip}`}>{r.icone} {r.label}</span>}
+                      {p.entretien_a && <span className="chip chip-plus">🤝 Entretien {new Date(p.entretien_a).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}</span>}
                       {p.entreprise_id && <span className="chip chip-tag">🏢 Dans mes entreprises</span>}
                     </span>
                   </summary>

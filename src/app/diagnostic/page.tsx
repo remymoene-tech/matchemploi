@@ -86,7 +86,9 @@ create index if not exists prospections_candidat_idx on public.prospections(cand
 create table if not exists public.prospection_echanges (id uuid primary key default gen_random_uuid(), prospection_id uuid not null references public.prospections(id) on delete cascade, candidat_id uuid not null references public.candidats(user_id) on delete cascade, type text not null default 'telephone', date_echange timestamptz not null default now(), resume text not null default '', action text not null default '', action_a timestamptz, action_faite boolean not null default false, created_at timestamptz not null default now());
 alter table public.prospection_echanges enable row level security;
 create index if not exists prospection_echanges_idx on public.prospection_echanges(prospection_id, date_echange desc);
-create index if not exists prospection_relances_idx on public.prospection_echanges(candidat_id, action_faite, action_a);`;
+create index if not exists prospection_relances_idx on public.prospection_echanges(candidat_id, action_faite, action_a);
+alter table public.prospections add column if not exists entretien_a timestamptz;
+alter table public.prospections add column if not exists entretien_vu boolean not null default false;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -126,6 +128,7 @@ async function verifierBase() {
     db.from("candidats").select("annee_cursus, rythme_cursus").limit(1),
     db.from("prospections").select("id").limit(1),
     db.from("prospection_echanges").select("id").limit(1),
+    db.from("prospections").select("entretien_a, entretien_vu").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -163,6 +166,7 @@ async function verifierBase() {
     "Année de formation des étudiants",
     "Prospections des étudiants",
     "Historique et relances des prospections",
+    "Entretiens des étudiants (notification la veille)",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

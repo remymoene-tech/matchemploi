@@ -10,7 +10,7 @@ const TYPES = [
   { id: "autre", label: "Autre", icone: "📝" },
 ];
 
-type Valeurs = { id?: string; entreprise?: string; ville?: string; contact_nom?: string; contact_tel?: string; contact_email?: string; recrute?: string; justification?: string };
+type Valeurs = { entretien_a?: string | null; id?: string; entreprise?: string; ville?: string; contact_nom?: string; contact_tel?: string; contact_email?: string; recrute?: string; justification?: string };
 
 const maintenant = () => {
   const d = new Date();
@@ -23,6 +23,14 @@ export function FormProspection({ v }: { v?: Valeurs }) {
   const edition = !!v?.id;
   const [etat, action, enCours] = useActionState<EtatProspection, FormData>(edition ? majProspection : creerProspection, {});
   const [relance, setRelance] = useState(false);
+  const [entretien, setEntretien] = useState(!!v?.entretien_a);
+  // Date de l'entretien au format du champ (heure locale du navigateur)
+  const entretienLocal = (() => {
+    if (!v?.entretien_a) return "";
+    const d = new Date(v.entretien_a);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  })();
   const champ = (nom: keyof Valeurs, label: string, ph: string, type = "text", requis = false) => (
     <label className="flex min-w-0 flex-col gap-1 text-sm">
       <span className="font-semibold">{label}{requis && <span className="text-bad"> *</span>}</span>
@@ -76,6 +84,20 @@ export function FormProspection({ v }: { v?: Valeurs }) {
           <textarea className="input min-h-20" name="justification" required minLength={5} defaultValue={v?.justification ?? ""}
             placeholder="Ex. Le gérant cherche un apprenti vendeur pour septembre, il veut mon CV par mail. / Ils ont déjà leur alternant jusqu'en 2027." />
         </label>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-2 rounded-xl border border-line p-3">
+        <label className="flex items-center gap-2 text-sm font-semibold">
+          <input type="checkbox" name="entretien" checked={entretien} onChange={(e) => setEntretien(e.target.checked)} className="accent-[var(--accent)]" />
+          🤝 J&apos;ai un entretien avec cette entreprise
+        </label>
+        {entretien && (
+          <label className="flex flex-col gap-1 text-sm sm:w-72">
+            <span>Date et heure de l&apos;entretien <span className="text-bad">*</span></span>
+            <input className="input" name="entretien_a" type="datetime-local" required defaultValue={entretienLocal} suppressHydrationWarning />
+            <span className="hint">🔔 Tu recevras une notification la veille.</span>
+          </label>
+        )}
       </fieldset>
 
       {!edition && (

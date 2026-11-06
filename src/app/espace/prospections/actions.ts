@@ -25,6 +25,12 @@ function lireEchange(f: FormData) {
   };
 }
 
+/** Entretien prévu : case cochée + date et heure. */
+function lireEntretien(f: FormData) {
+  if (f.get("entretien") !== "on") return { entretien_a: null };
+  return { entretien_a: localVersISO(txt(f, "entretien_a", 30), Number(f.get("tz") ?? -60)) };
+}
+
 async function maProspection(id: string, userId: string) {
   const { data } = await createAdminClient().from("prospections").select("id").eq("id", id).eq("candidat_id", userId).maybeSingle();
   return !!data;
@@ -46,8 +52,11 @@ export async function creerProspection(_: EtatProspection, f: FormData): Promise
   if (!p.entreprise) return { erreur: "Indique le nom de l'entreprise." };
   if (!p.recrute) return { erreur: "Indique si l'entreprise recrute : oui ou non." };
   if (p.justification.length < 5) return { erreur: "Explique pourquoi elle recrute ou pas (ce qu'on t'a dit)." };
+  const ent = lireEntretien(f);
+  if (f.get("entretien") === "on" && !ent.entretien_a) return { erreur: "Indique la date et l'heure de l'entretien." };
   const db = createAdminClient();
-  const { data, error } = await db.from("prospections").insert(p).select("id").single();
+  let { data, error } = await db.from("prospections").insert({ ...p, ...ent }).select("id").single();
+  if (error && /entretien/.test(error.message)) ({ data, error } = await db.from("prospections").insert(p).select("id").single());
   if (error || !data) return { erreur: ERREUR_BASE };
   const e = lireEchange(f);
   await db.from("prospection_echanges").insert({
@@ -64,7 +73,13 @@ export async function majProspection(_: EtatProspection, f: FormData): Promise<E
   const justification = txt(f, "justification", 1500);
   if (!RECRUTE.some((r) => r.id === recrute)) return { erreur: "Indique si l'entreprise recrute : oui ou non." };
   if (justification.length < 5) return { erreur: "Explique pourquoi elle recrute ou pas." };
-  const { error } = await createAdminClient().from("prospections").update({
+  const ent = lireEntretien(f);
+  if (f.get("entretien") === "on" && !ent.entretien_a) return { erreur: "Indique la date et l'heure de l'entretien." };
+  const db = createAdminClient();
+  const { data: avant } = await db.from("prospections").select("*").eq("id", id).eq("candidat_id", user.id).maybeSingle();
+  const entretienChange = avant && "entretien_a" in avant && avant.entretien_a !== ent.entretien_a;
+  const { error } = await db.from("prospections").update({
+    ...(avant && "entretien_a" in avant ? { ...ent, ...(entretienChange ? { entretien_vu: false } : {}) } : {}),
     entreprise: txt(f, "entreprise", 150) || undefined,
     ville: txt(f, "ville", 120),
     contact_nom: txt(f, "contact_nom", 150),

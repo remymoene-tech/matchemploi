@@ -73,6 +73,9 @@ export default async function MesProspections({ searchParams }: { searchParams: 
               <div className="flex flex-wrap gap-1.5 text-xs">
                 {dernier && <span className="chip">{t?.icone} {new Date(dernier.date_echange).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" })}</span>}
                 <span className="chip">💬 {ech.length} contact{ech.length > 1 ? "s" : ""}</span>
+                {p.entretien_a && +new Date(p.entretien_a) > maintenant - 3 * 3600e3 && (
+                  <span className="chip chip-plus">🤝 Entretien {new Date(p.entretien_a).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}</span>
+                )}
                 {rappel && <span className={`chip ${+rappel <= maintenant ? "chip-minus" : "chip-tag"}`}>⏰ {rappel.toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}</span>}
               </div>
             </Link>

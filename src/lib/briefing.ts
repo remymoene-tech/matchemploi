@@ -11,6 +11,7 @@ export type LigneBriefing = {
   interesses: number;
   postules: number;
   totalProspections: number;
+  entretiens: { entreprise: string; date: string }[];
   derniere: string | null;
 };
 
@@ -21,11 +22,11 @@ export async function briefingEtudiants(etudiants: { user_id: string; nom: strin
   const depuis = new Date(maintenant - 7 * 864e5).toISOString();
   const db = createAdminClient();
   const [{ data: pData }, { data: eData }, { data: mData }] = await Promise.all([
-    db.from("prospections").select("id, candidat_id, entreprise, recrute, created_at, updated_at").in("candidat_id", ids),
+    db.from("prospections").select("*").in("candidat_id", ids),
     db.from("prospection_echanges").select("candidat_id, date_echange, action, action_a, action_faite").in("candidat_id", ids),
     db.from("correspondances").select("candidat_id, avis_candidat").in("candidat_id", ids).in("avis_candidat", ["interesse", "postule"]),
   ]);
-  const prosp = (pData ?? []) as { id: string; candidat_id: string; entreprise: string; recrute: string; created_at: string; updated_at: string }[];
+  const prosp = (pData ?? []) as { id: string; candidat_id: string; entreprise: string; recrute: string; created_at: string; updated_at: string; entretien_a?: string | null }[];
   const ech = (eData ?? []) as { candidat_id: string; date_echange: string; action: string; action_a: string | null; action_faite: boolean }[];
   const avis = (mData ?? []) as { candidat_id: string; avis_candidat: string }[];
   return etudiants.map((e) => {
@@ -43,7 +44,8 @@ export async function briefingEtudiants(etudiants: { user_id: string; nom: strin
       interesses: avis.filter((y) => y.candidat_id === e.user_id && y.avis_candidat === "interesse").length,
       postules: avis.filter((y) => y.candidat_id === e.user_id && y.avis_candidat === "postule").length,
       totalProspections: p.length,
+      entretiens: p.filter((y) => y.entretien_a && new Date(y.entretien_a).getTime() > maintenant).map((y) => ({ entreprise: y.entreprise, date: y.entretien_a! })),
       derniere: dates.at(-1) ?? null,
     };
-  }).sort((a, b) => (b.contacts + b.nouvelles.length) - (a.contacts + a.nouvelles.length));
+  }).sort((a, b) => (b.contacts + b.nouvelles.length + b.entretiens.length) - (a.contacts + a.nouvelles.length + a.entretiens.length));
 }

@@ -52,7 +52,8 @@ export async function POST(request: NextRequest) {
   if (!r) {
     const { data: { user } } = await (await createClient()).auth.getUser();
     if (!user) return NextResponse.json({ ok: false }, { status: 401 });
-    await createAdminClient().from("prospection_echanges").update({ action_faite: true }).eq("id", id).eq("candidat_id", user.id);
+    if (id.startsWith("ent:")) await createAdminClient().from("prospections").update({ entretien_vu: true }).eq("id", id.slice(4)).eq("candidat_id", user.id);
+    else await createAdminClient().from("prospection_echanges").update({ action_faite: true }).eq("id", id).eq("candidat_id", user.id);
     return NextResponse.json({ ok: true });
   }
   await createAdminClient().from("echanges").update({ action_faite: true }).eq("id", id).eq("auteur", r.email);
