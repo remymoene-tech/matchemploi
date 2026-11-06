@@ -143,3 +143,26 @@ export async function notifierEntrepriseQuiRecrute(candidatId: string, entrepris
     /* la notification ne doit jamais bloquer l'étudiant */
   }
 }
+
+export type Decouvreur = { candidat_id: string; nom: string; recrute: string; date: string };
+
+/**
+ * Pour chaque entreprise de l'équipe : les étudiants qui l'ont prospectée, du premier au dernier.
+ * Le premier est celui qui « a trouvé » l'entreprise.
+ */
+export async function decouvreursDesEntreprises(entreprises: { id: string; nom: string }[]): Promise<Map<string, Decouvreur[]>> {
+  const res = new Map<string, Decouvreur[]>();
+  if (!entreprises.length) return res;
+  const { data, error } = await db().from("prospections").select("entreprise, entreprise_id, candidat_id, recrute, created_at, candidats(nom, email)").order("created_at");
+  if (error) return res;
+  for (const p of (data ?? []) as unknown as { entreprise: string; entreprise_id: string | null; candidat_id: string; recrute: string; created_at: string; candidats: { nom: string; email: string } | null }[]) {
+    const e = p.entreprise_id ? entreprises.find((x) => x.id === p.entreprise_id) : entreprises.find((x) => memeEntreprise(x.nom, p.entreprise));
+    if (!e) continue;
+    const liste = res.get(e.id) ?? [];
+    if (!liste.some((d) => d.candidat_id === p.candidat_id)) {
+      liste.push({ candidat_id: p.candidat_id, nom: p.candidats?.nom || p.candidats?.email || "Étudiant", recrute: p.recrute, date: p.created_at });
+    }
+    res.set(e.id, liste);
+  }
+  return res;
+}

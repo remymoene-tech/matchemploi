@@ -18,6 +18,7 @@ import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
 import { anneeLabel, lireFormations } from "@/lib/formations";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe, statutEntreprise } from "@/lib/entreprises";
+import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
@@ -42,7 +43,7 @@ const AUTRES = [
   { id: "reglages", label: "⚙️ Réglages" },
 ] as const;
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; q?: string; annee?: string; admission?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -119,14 +120,20 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const fStatut = STATUTS_ENTREPRISE.some((x) => x.id === (sp.statut || sp.filtre)) ? (sp.statut || sp.filtre)! : "";
   const fOffre = sp.offre === "avec" || sp.offre === "sans" ? sp.offre : sp.filtre === "avec" || sp.filtre === "sans" ? sp.filtre : "";
   const fOrigine = sp.origine ?? "";
+  const fTrouvee = sp.trouvee === "etudiant" || sp.trouvee === "equipe" || sp.trouvee === "recrute" ? sp.trouvee : "";
+  // Qui a trouvé chaque entreprise : le premier étudiant qui l'a notée dans ses prospections
+  const decouvreurs = vue === "entreprises" || vue === "accueil" ? await decouvreursDesEntreprises(entreprises ?? []) : new Map<string, Decouvreur[]>();
   const q = (sp.q ?? "").trim().toLowerCase();
   const contient = (...v: (string | null | undefined)[]) => !q || v.some((x) => (x ?? "").toLowerCase().includes(q));
   const entreprisesAffichees = (entreprises ?? []).filter((e) =>
     contient(e.nom, e.secteur, e.ville, e.contact_nom, e.notes)
     && (!fStatut || e.statut === fStatut)
     && (!fOffre || (fOffre === "avec") === avecOffre.includes(e))
-    && (!fOrigine || e.origine === fOrigine));
-  const filtresEntActifs = !!(q || fStatut || fOffre || fOrigine);
+    && (!fOrigine || e.origine === fOrigine)
+    && (!fTrouvee || (fTrouvee === "etudiant" ? !!decouvreurs.get(e.id)?.length
+      : fTrouvee === "equipe" ? !decouvreurs.get(e.id)?.length
+      : !!decouvreurs.get(e.id)?.some((d) => d.recrute === "oui"))));
+  const filtresEntActifs = !!(q || fStatut || fOffre || fOrigine || fTrouvee);
 
   const pipeline = SUIVIS.map((x) => ({ label: x.label, valeur: equipe.filter((m) => m.suivi === x.id).length, href: `/admin?vue=entreprises&sous=candidats&suivi=${x.id}#a-traiter` }));
   const [mesRelances, { data: placesData }] = vue === "accueil"
@@ -239,6 +246,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                   { label: "💼 Avec une offre", valeur: avecOffre.length, href: "/admin?vue=entreprises&offre=avec" },
                   { label: "🕓 Sans offre pour l'instant", valeur: nbEntreprises - avecOffre.length, href: "/admin?vue=entreprises&offre=sans" },
                   { label: "⭐ Partenaires", valeur: (entreprises ?? []).filter((e) => e.statut === "partenaire").length, href: "/admin?vue=entreprises&statut=partenaire" },
+                  { label: "🎓 Trouvées par les étudiants", valeur: (entreprises ?? []).filter((e) => decouvreurs.get(e.id)?.length).length, href: "/admin?vue=entreprises&trouvee=etudiant" },
                 ]} />
               )}
             </section>
@@ -674,6 +682,15 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">🎓 Trouvée par</span>
+              <select className="input" name="trouvee" defaultValue={fTrouvee}>
+                <option value="">Tous</option>
+                <option value="etudiant">Un étudiant</option>
+                <option value="recrute">Un étudiant · recrute ✅</option>
+                <option value="equipe">L&apos;équipe</option>
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
               <span className="font-semibold">📍 Rencontrée par</span>
               <select className="input" name="origine" defaultValue={fOrigine}>
                 <option value="">Toutes</option>
@@ -710,6 +727,17 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                     <span className={`chip shrink-0 ${st.chip}`}>{st.label}</span>
                   </div>
                   {e.contact_nom && <p className="text-sm">👤 {e.contact_nom}{e.contact_fonction ? `, ${e.contact_fonction}` : ""}</p>}
+                  {(() => {
+                    const d = decouvreurs.get(e.id) ?? [];
+                    if (!d.length) return e.auteur ? <p className="text-xs text-muted">Ajoutée par l&apos;équipe ({e.auteur})</p> : null;
+                    return (
+                      <p className="rounded-lg bg-accent-soft px-3 py-1.5 text-sm">
+                        🎓 Trouvée par <b>{d[0].nom}</b> le {new Date(d[0].date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" })}
+                        {d[0].recrute === "oui" ? " · ✅ recrute" : ""}
+                        {d.length > 1 ? <span className="text-muted"> (+{d.length - 1} autre{d.length > 2 ? "s" : ""} étudiant{d.length > 2 ? "s" : ""})</span> : null}
+                      </p>
+                    );
+                  })()}
                   <div className="flex flex-wrap gap-1.5 text-xs">
                     <span className={`chip ${nOffres ? "chip-plus" : ""}`}>💼 {nOffres ? `${nOffres} offre${nOffres > 1 ? "s" : ""}` : "Pas d'offre"}</span>
                     {ech[0] && <span className="chip">💬 {new Date(ech[0].date_echange).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" })}</span>}

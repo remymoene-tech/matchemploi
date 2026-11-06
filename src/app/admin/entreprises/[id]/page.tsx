@@ -59,6 +59,15 @@ export default async function FicheEntreprise({ params, searchParams }: {
           <span className="eyebrow">🏢 Fiche entreprise</span>
           <h1 className="text-3xl font-extrabold">{e?.nom ?? "Nouvelle entreprise"}</h1>
           {e && <p className="text-muted">{[e.secteur, e.ville].filter(Boolean).join(" · ") || "Secteur et ville à compléter"}</p>}
+          {e && (() => {
+            const premier = [...prospEtudiants].sort((a, b) => a.created_at.localeCompare(b.created_at))[0];
+            return premier ? (
+              <Link href={`/admin/candidats/${premier.candidat_id}?onglet=prospections`} className="mt-1 w-fit rounded-lg bg-accent-soft px-3 py-1.5 text-sm hover:underline">
+                🎓 Trouvée par <b>{premier.candidats?.nom || premier.candidats?.email || "un étudiant"}</b> le {new Date(premier.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" })}
+                {premier.recrute === "oui" ? " · ✅ recrute" : ""}
+              </Link>
+            ) : e.auteur ? <p className="text-xs text-muted">Ajoutée par l&apos;équipe ({e.auteur})</p> : null;
+          })()}
         </div>
         {e && (
           <div className="flex flex-wrap items-center gap-2">
@@ -230,13 +239,16 @@ export default async function FicheEntreprise({ params, searchParams }: {
           <h2 className="text-lg font-semibold">🎓 Les étudiants qui ont contacté {e.nom} ({prospEtudiants.length})</h2>
           <p className="text-xs text-muted">Notés par les étudiants dans « Mes prospections ». Leurs contacts et leurs relances s&apos;ajoutent ici automatiquement.</p>
           {!prospEtudiants.length && <p className="text-sm text-muted">Aucun étudiant n&apos;a encore noté cette entreprise.</p>}
-          {prospEtudiants.map((p) => {
+          {[...prospEtudiants].sort((a, b) => a.created_at.localeCompare(b.created_at)).map((p, i) => {
             const r = RECRUTE.find((x) => x.id === p.recrute);
             return (
               <article key={p.id} className="flex flex-col gap-3 rounded-xl border border-line p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Link href={`/admin/candidats/${p.candidat_id}?onglet=prospections`} className="font-semibold hover:text-accent hover:underline">👤 {p.candidats?.nom || p.candidats?.email || "Étudiant"}</Link>
-                  {r && <span className={`chip ${r.chip}`}>{r.icone} {r.label}</span>}
+                  <span className="flex flex-wrap gap-2">
+                    {i === 0 && <span className="chip chip-plus">🥇 A trouvé l&apos;entreprise</span>}
+                    {r && <span className={`chip ${r.chip}`}>{r.icone} {r.label}</span>}
+                  </span>
                 </div>
                 {p.justification && <p className="rounded-lg bg-bg p-3 text-sm"><b>Pourquoi :</b> {p.justification}</p>}
                 <p className="text-sm text-muted">{[p.contact_nom && `👤 ${p.contact_nom}`, p.contact_tel && `📞 ${p.contact_tel}`, p.contact_email && `✉️ ${p.contact_email}`].filter(Boolean).join(" · ")}</p>
