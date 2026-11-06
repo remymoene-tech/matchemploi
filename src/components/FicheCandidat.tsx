@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { OngletsCartes } from "@/components/OngletsCartes";
 import { ADMISSIONS, admission } from "@/lib/admission";
+import { formationsDeLEcole } from "@/lib/ecoles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
@@ -43,8 +44,9 @@ const Ligne = ({ l, v }: { l: string; v: React.ReactNode }) => (
  * Fiche complète d'un candidat pour l'équipe : profil, CV, recherches, offres.
  * Les droits sont vérifiés par la page qui l'affiche.
  */
-export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite, changerAdmission }: {
+export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite, changerAdmission, changerDiplome }: {
   changerAdmission?: (f: FormData) => Promise<void>;
+  changerDiplome?: (f: FormData) => Promise<void>;
   candidatId: string;
   autoriserTest: (f: FormData) => Promise<void>;
   genererSynthese: (e: { erreur?: string }, f: FormData) => Promise<{ erreur?: string }>;
@@ -83,6 +85,10 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
   // Lien temporaire (10 min) pour afficher le CV directement dans la page
   const urlCV = c.cv_chemin && onglet === "cv" ? (await db.storage.from("cv").createSignedUrl(c.cv_chemin, 600)).data?.signedUrl ?? null : null;
   const etat = await etatSynthese(candidatId);
+  const formationsEcole = await formationsDeLEcole(c.ecole_id);
+  const formationCatalogue = formationsEcole.find((x) => x.nom === c.formation);
+  const anneeMax = Math.max(formationCatalogue?.duree ?? 0, ...formationsEcole.map((x) => x.duree), 3);
+  const anMaintenant = new Date().getFullYear();
   const syn = etat.synthese?.contenu;
   const pret = etat.entretien && etat.disc && etat.management;
   const { data: autoData } = await db.from("tests_autorisations").select("test").eq("candidat_id", candidatId);
@@ -199,6 +205,40 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
 
       {onglet === "profil" && (
         <>
+        {changerDiplome && (
+          <Bloc titre="🎓 Diplôme préparé">
+            <form action={changerDiplome} className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_auto] lg:items-end">
+              <input type="hidden" name="candidat_id" value={candidatId} />
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-semibold">Diplôme</span>
+                {formationsEcole.length > 0 ? (
+                  <select className="input" name="formation_choix" defaultValue={formationCatalogue ? c.formation : "autre"}>
+                    {formationsEcole.map((x) => <option key={x.nom} value={x.nom}>{x.nom} · {x.duree} an{x.duree > 1 ? "s" : ""}</option>)}
+                    <option value="autre">Autre (préciser à côté)</option>
+                  </select>
+                ) : <input type="hidden" name="formation_choix" value="autre" />}
+                <input className="input" name="formation_autre" defaultValue={formationCatalogue ? "" : c.formation} placeholder={formationsEcole.length ? "Autre diplôme…" : "BTS NDRC – …"} />
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-semibold">Année de formation</span>
+                <select className="input" name="annee_cursus" defaultValue={c.annee_cursus ?? ""}>
+                  <option value="">—</option>
+                  {Array.from({ length: anneeMax }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n === 1 ? "1re" : `${n}e`} année</option>)}
+                </select>
+              </label>
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-semibold">Année du diplôme</span>
+                <select className="input" name="diplome_annee" defaultValue={c.diplome_annee ?? ""}>
+                  <option value="">—</option>
+                  {Array.from({ length: 8 }, (_, i) => anMaintenant - 1 + i).map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </label>
+              <button className="btn btn-primary">Enregistrer</button>
+            </form>
+            <p className="text-xs text-muted">Actuellement : {c.formation ? diplomeLabel(c) : "non renseigné"}. Le rythme (initial ou alternance) se met à jour selon la formation de l&apos;école.</p>
+          </Bloc>
+        )}
+
         <Bloc titre="Profil">
           <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
             <Ligne l="Diplôme préparé" v={c.formation ? diplomeLabel(c) : <span className="text-bad">À compléter par l&apos;étudiant</span>} />

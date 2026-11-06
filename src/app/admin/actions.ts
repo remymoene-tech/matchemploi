@@ -22,6 +22,7 @@ import { ajouterEchange } from "@/lib/echanges";
 import { lireEntreprise } from "@/lib/entreprises";
 import { lireFormations } from "@/lib/formations";
 import { changerAdmission } from "@/lib/admission-serveur";
+import { majDiplome } from "@/lib/diplome-serveur";
 import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
 import type { EtatEntretien } from "@/components/FormEntretienConseil";
@@ -318,4 +319,11 @@ export async function retirerFormation(f: FormData) {
   const { data } = await db.from("ecoles").select("formations").eq("id", id).maybeSingle();
   await db.from("ecoles").update({ formations: lireFormations(data?.formations).filter((x) => x.nom !== nom) }).eq("id", id);
   redirect("/admin?vue=ecoles");
+}
+
+export async function changerDiplomeAdmin(f: FormData) {
+  await exigerAdmin();
+  const candidat = t(f, "candidat_id", 60);
+  await majDiplome(candidat, f);
+  revalidatePath(`/admin/candidats/${candidat}`);
 }

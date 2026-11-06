@@ -2,6 +2,7 @@
 
 import { lireAttentes } from "@/lib/attentes";
 import { changerAdmission } from "@/lib/admission-serveur";
+import { majDiplome } from "@/lib/diplome-serveur";
 
 import { after } from "next/server";
 import { redirect } from "next/navigation";
@@ -221,5 +222,13 @@ export async function changerAdmissionEcole(f: FormData) {
   const candidat = t(f, "candidat_id", 60);
   if (!(await etudiantDeLEcole(candidat, ecole.id))) return;
   await changerAdmission(candidat, t(f, "statut_admission", 30));
+  revalidatePath(`/ecole/etudiants/${candidat}`);
+}
+
+export async function changerDiplomeEcole(f: FormData) {
+  const { ecole } = await exigerResponsable();
+  const candidat = t(f, "candidat_id", 60);
+  if (!(await etudiantDeLEcole(candidat, ecole.id))) return;
+  await majDiplome(candidat, f);
   revalidatePath(`/ecole/etudiants/${candidat}`);
 }

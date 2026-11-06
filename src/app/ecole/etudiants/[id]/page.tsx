@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { exigerResponsable } from "@/lib/ecoles";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { FicheCandidat } from "@/components/FicheCandidat";
-import { changerAdmissionEcole, autoriserTestEcole, changerSuiviEcole, ajouterEchangeEcole, actionFaiteEcole, genererCvAmelioreEcole, supprimerEchangeEcole, genererSyntheseEcole } from "../../actions";
+import { changerDiplomeEcole, changerAdmissionEcole, autoriserTestEcole, changerSuiviEcole, ajouterEchangeEcole, actionFaiteEcole, genererCvAmelioreEcole, supprimerEchangeEcole, genererSyntheseEcole } from "../../actions";
 
 export const metadata = { title: "Fiche étudiant · MagnusMatch" };
 
@@ -22,6 +22,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       ajouterEchange={ajouterEchangeEcole}
       supprimerEchange={supprimerEchangeEcole}
       changerAdmission={changerAdmissionEcole}
+      changerDiplome={changerDiplomeEcole}
       actionFaite={actionFaiteEcole}
       onglet={onglet === "suivi" || onglet === "cv" || onglet === "offres" || onglet === "echanges" ? onglet : "profil"}
       baseFiche={`/ecole/etudiants/${id}`}
