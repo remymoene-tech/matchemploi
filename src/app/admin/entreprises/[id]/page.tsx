@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, entrepriseParId, offresDe, statutEntreprise, type Entreprise } from "@/lib/entreprises";
 import { echangesDeLEntreprise, echeance, maintenantMs } from "@/lib/echanges";
 import { OngletsCartes } from "@/components/OngletsCartes";
+import { QuestionnaireAttentes } from "@/components/QuestionnaireAttentes";
 import { FormEchange } from "@/components/FormEchange";
 import { JournalEchanges } from "@/components/JournalEchanges";
 import { actionFaiteEntreprise, ajouterEchangeEntreprise, enregistrerEntreprise, supprimerEchangeEntreprise, supprimerEntreprise } from "../../actions";
@@ -137,6 +138,11 @@ export default async function FicheEntreprise({ params, searchParams }: {
               <label className="label" htmlFor="notes">Notes</label>
               <textarea className="input min-h-28 text-sm" id="notes" name="notes" defaultValue={e?.notes ?? ""} placeholder="Ce qu'ils recherchent, les périodes de recrutement, les métiers…" />
             </div>
+          </section>
+          <section className="flex flex-col gap-2">
+            <h2 className="font-semibold">📋 Leurs besoins</h2>
+            <QuestionnaireAttentes a={e?.attentes} titre="Le questionnaire des besoins de l'entreprise"
+              sousTitre="(facultatif : il sera repris automatiquement dans chaque nouvelle offre de cette entreprise)" />
           </section>
           <div className="flex justify-end"><button className="btn btn-primary">{e ? "Enregistrer" : "Ajouter l'entreprise"}</button></div>
         </form>

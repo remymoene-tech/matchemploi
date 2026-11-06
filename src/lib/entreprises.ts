@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Offre } from "@/lib/types";
+import { lireAttentes, type Attentes } from "@/lib/attentes";
 
 /** Entreprises rencontrées par l'équipe, avec ou sans offre. Données internes (jamais visibles des candidats). */
 export const STATUTS_ENTREPRISE = [
@@ -26,6 +27,8 @@ export type Entreprise = {
   origine: string;
   rencontre_le: string | null;
   notes: string;
+  /** Questionnaire des besoins (même format que les attentes d'une offre). */
+  attentes?: Attentes | null;
   auteur: string;
   created_at: string;
   updated_at: string;
@@ -50,6 +53,7 @@ export function lireEntreprise(f: FormData) {
     origine: (ORIGINES_ENTREPRISE as readonly string[]).includes(origine) ? origine : "",
     rencontre_le: /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null,
     notes: txt(f, "notes", 4000),
+    attentes: lireAttentes(f),
     updated_at: new Date().toISOString(),
   };
 }

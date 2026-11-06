@@ -250,12 +250,16 @@ export async function enregistrerEntreprise(f: FormData) {
   const donnees = lireEntreprise(f);
   if (!donnees.nom) redirect(`/admin/entreprises/${id || "nouvelle"}?erreur=nom`);
   const db = createAdminClient();
+  // Base pas encore à jour pour le questionnaire : on enregistre sans lui
+  const sansQuestionnaire = () => { const { attentes: _a, ...reste } = donnees; void _a; return reste; };
   if (id) {
-    const { error } = await db.from("entreprises").update(donnees).eq("id", id);
+    let { error } = await db.from("entreprises").update(donnees).eq("id", id);
+    if (error && /attentes/.test(error.message)) ({ error } = await db.from("entreprises").update(sansQuestionnaire()).eq("id", id));
     if (error) redirect(`/admin/entreprises/${id}?erreur=base`);
     redirect(`/admin/entreprises/${id}?ok=1`);
   }
-  const { data, error } = await db.from("entreprises").insert({ ...donnees, auteur: user.email ?? "" }).select("id").single();
+  let { data, error } = await db.from("entreprises").insert({ ...donnees, auteur: user.email ?? "" }).select("id").single();
+  if (error && /attentes/.test(error.message)) ({ data, error } = await db.from("entreprises").insert({ ...sansQuestionnaire(), auteur: user.email ?? "" }).select("id").single());
   if (error || !data) redirect("/admin/entreprises/nouvelle?erreur=base");
   redirect(`/admin/entreprises/${data.id}?ok=1`);
 }

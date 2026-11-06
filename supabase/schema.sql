@@ -357,3 +357,6 @@ alter table public.prospections add column if not exists entretien_vu boolean no
 
 -- Motif du refus ou de l'abandon
 alter table public.candidats add column if not exists motif_admission text not null default '';
+
+-- Questionnaire des besoins sur la fiche entreprise
+alter table public.entreprises add column if not exists attentes jsonb;

@@ -28,7 +28,7 @@ export default async function Page({ params, searchParams }: {
   const entrepriseId = (o as { entreprise_id?: string | null }).entreprise_id ?? sp.entreprise ?? "";
   const ent = entreprises.find((x) => x.id === entrepriseId);
   if (ent && !o.id) {
-    o = { ...o, entreprise: ent.nom, lieu: ent.ville, contact_nom: [ent.contact_nom, ent.contact_fonction].filter(Boolean).join(", "), contact_email: ent.contact_email, contact_tel: ent.contact_tel };
+    o = { ...o, entreprise: ent.nom, lieu: ent.ville, contact_nom: [ent.contact_nom, ent.contact_fonction].filter(Boolean).join(", "), contact_email: ent.contact_email, contact_tel: ent.contact_tel, attentes: ent.attentes ?? null };
   }
   const champ = (name: keyof Offre, label: string, ph = "", type = "text", requis = false) => (
     <div className="flex min-w-0 flex-col gap-1">
@@ -46,6 +46,7 @@ export default async function Page({ params, searchParams }: {
         Cette offre n&apos;est <b>pas visible par les candidats</b>. Elle est comparée à leurs profils, et c&apos;est toi qui reçois les correspondances
         pour faire le lien avec l&apos;étudiant et l&apos;entreprise. Les coordonnées de l&apos;entreprise sont donc obligatoires.
       </p>
+      {ent?.attentes && !o.id && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">📋 Le questionnaire des besoins de {ent.nom} est déjà rempli plus bas : adapte-le à cette offre si besoin.</p>}
       {sp.erreur === "1" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Indique au moins l&apos;entreprise et l&apos;intitulé du poste.</p>}
       {sp.erreur === "contact" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Indique les coordonnées de l&apos;entreprise : le nom du contact, et son email ou son téléphone.</p>}
 
