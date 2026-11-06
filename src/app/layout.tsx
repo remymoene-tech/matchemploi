@@ -16,6 +16,7 @@ const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["lati
 export const metadata: Metadata = {
   title: "MagnusMatch",
   description: "Dépose ton CV, on cherche pour toi les offres qui te correspondent à 75 % ou plus.",
+  appleWebApp: { capable: true, title: "MagnusMatch", statusBarStyle: "default" },
 };
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
