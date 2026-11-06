@@ -4,7 +4,12 @@ export const ADMISSIONS = [
   { id: "admis", label: "Admis", icone: "✅", chip: "chip-plus" },
   { id: "admis_condition", label: "Admis sous condition", icone: "🟡", chip: "chip-tag" },
   { id: "liste_attente", label: "Liste d'attente", icone: "⏳", chip: "" },
+  { id: "refus", label: "Refusé", icone: "❌", chip: "chip-minus" },
+  { id: "abandon", label: "Abandon", icone: "🚪", chip: "chip-minus" },
 ] as const;
+
+/** Statuts qui demandent un motif. */
+export const AVEC_MOTIF = ["refus", "abandon"];
 
 export type Admission = (typeof ADMISSIONS)[number]["id"];
 

@@ -4,8 +4,8 @@ import { ajouterProspectionAuxEntreprises, changerDiplomeAdmin, changerAdmission
 
 export const metadata = { title: "Fiche candidat · MagnusMatch" };
 
-export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string }> }) {
-  const { onglet } = await searchParams;
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string; admission?: string }> }) {
+  const { onglet, admission: admissionDemandee } = await searchParams;
   await exigerAdmin();
   const { id } = await params;
   return (
@@ -16,6 +16,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       genererCvAmeliore={genererCvAmelioreAdmin}
       ajouterEchange={ajouterEchangeAdmin}
       supprimerEchange={supprimerEchangeAdmin}
+      admissionDemandee={admissionDemandee}
       changerAdmission={changerAdmissionAdmin}
       changerDiplome={changerDiplomeAdmin}
       ajouterAuxEntreprises={ajouterProspectionAuxEntreprises}

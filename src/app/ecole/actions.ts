@@ -221,7 +221,9 @@ export async function changerAdmissionEcole(f: FormData) {
   const { ecole } = await exigerResponsable();
   const candidat = t(f, "candidat_id", 60);
   if (!(await etudiantDeLEcole(candidat, ecole.id))) return;
-  await changerAdmission(candidat, t(f, "statut_admission", 30));
+  const statut = t(f, "statut_admission", 30);
+  const r = await changerAdmission(candidat, statut, t(f, "motif_admission", 1000));
+  if (r.erreur === "motif") redirect(`/ecole/etudiants/${candidat}?admission=${statut}#admission`);
   revalidatePath(`/ecole/etudiants/${candidat}`);
 }
 

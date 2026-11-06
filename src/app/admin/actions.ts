@@ -292,7 +292,10 @@ export async function actionFaiteEntreprise(f: FormData) {
 export async function changerAdmissionAdmin(f: FormData) {
   await exigerAdmin();
   const candidat = t(f, "candidat_id", 60);
-  await changerAdmission(candidat, t(f, "statut_admission", 30));
+  const statut = t(f, "statut_admission", 30);
+  const r = await changerAdmission(candidat, statut, t(f, "motif_admission", 1000));
+  // Abandon sans motif (ex. depuis le tableau) : on ouvre la fiche pour saisir le motif
+  if (r.erreur === "motif") redirect(`/admin/candidats/${candidat}?admission=${statut}#admission`);
   revalidatePath(`/admin/candidats/${candidat}`);
   revalidatePath("/admin");
 }

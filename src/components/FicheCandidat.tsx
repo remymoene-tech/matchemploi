@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { OngletsCartes } from "@/components/OngletsCartes";
-import { ADMISSIONS, admission } from "@/lib/admission";
+import { ADMISSIONS, AVEC_MOTIF, admission } from "@/lib/admission";
 import { formationsDeLEcole } from "@/lib/ecoles";
 import { RECRUTE, echangesDeProspections, prospectionsDe } from "@/lib/prospections";
 import { HistoriqueProspection } from "@/components/HistoriqueProspection";
@@ -46,9 +46,11 @@ const Ligne = ({ l, v }: { l: string; v: React.ReactNode }) => (
  * Fiche complète d'un candidat pour l'équipe : profil, CV, recherches, offres.
  * Les droits sont vérifiés par la page qui l'affiche.
  */
-export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite, changerAdmission, changerDiplome, ajouterAuxEntreprises }: {
+export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite, changerAdmission, changerDiplome, ajouterAuxEntreprises, admissionDemandee }: {
   changerAdmission?: (f: FormData) => Promise<void>;
   changerDiplome?: (f: FormData) => Promise<void>;
+  /** Statut choisi depuis le tableau mais qui demande un motif. */
+  admissionDemandee?: string;
   candidatId: string;
   autoriserTest: (f: FormData) => Promise<void>;
   genererSynthese: (e: { erreur?: string }, f: FormData) => Promise<{ erreur?: string }>;
@@ -143,20 +145,34 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
 
       {changerAdmission && (() => {
         const actuel = admission(c.statut_admission);
+        const choisi = ADMISSIONS.find((a) => a.id === admissionDemandee) ?? actuel;
         return (
-          <form action={changerAdmission} className={`flex flex-wrap items-center gap-3 rounded-2xl border-2 p-3 ${c.statut_admission === "admis" || c.statut_admission == null ? "border-accent bg-accent-soft" : "border-line bg-surface"}`}>
+          <form id="admission" action={changerAdmission} className={`flex flex-col gap-3 rounded-2xl border-2 p-3 ${actuel.id === "admis" ? "border-accent bg-accent-soft" : AVEC_MOTIF.includes(actuel.id) ? "border-bad bg-bad-soft" : "border-line bg-surface"}`}>
             <input type="hidden" name="candidat_id" value={candidatId} />
-            <span className="text-sm font-semibold">🎓 Admission :</span>
-            <div className="flex flex-wrap gap-2">
-              {ADMISSIONS.map((a) => (
-                <label key={a.id} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-sm has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
-                  <input type="radio" name="statut_admission" value={a.id} defaultChecked={actuel.id === a.id} className="sr-only" />
-                  <span aria-hidden>{a.icone}</span>{a.label}
-                </label>
-              ))}
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm font-semibold">🎓 Admission :</span>
+              <div className="flex flex-wrap gap-2">
+                {ADMISSIONS.map((a) => (
+                  <label key={a.id} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-sm has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
+                    <input type="radio" name="statut_admission" value={a.id} defaultChecked={choisi.id === a.id} className="sr-only" />
+                    <span aria-hidden>{a.icone}</span>{a.label}
+                  </label>
+                ))}
+              </div>
+              <button className="btn btn-sm btn-primary">Enregistrer</button>
             </div>
-            <button className="btn btn-sm btn-primary">Enregistrer</button>
-            <span className="text-xs text-muted">{actuel.id === "admis" ? "L'étudiant a accès à ses offres." : "Tant qu'il n'est pas « Admis », l'étudiant ne voit pas d'offres (il peut remplir son profil, son CV et ses tests)."}</span>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">Motif <span className="font-normal text-muted">(obligatoire pour « Abandon », conseillé pour « Refusé »)</span></span>
+              <input className="input" name="motif_admission" defaultValue={c.motif_admission ?? ""} autoFocus={!!admissionDemandee}
+                placeholder="Ex. A trouvé une alternance dans une autre école / Déménagement / Raisons personnelles…" />
+            </label>
+            {admissionDemandee && AVEC_MOTIF.includes(admissionDemandee) && !c.motif_admission && (
+              <p className="rounded-lg bg-warn-soft px-3 py-2 text-sm">Indique le motif de « {choisi.label} » puis clique sur Enregistrer.</p>
+            )}
+            <span className="text-xs text-muted">
+              {actuel.id === "admis" ? "L'étudiant a accès à ses offres." : "Tant qu'il n'est pas « Admis », l'étudiant ne voit pas d'offres (il peut remplir son profil, son CV et ses tests)."}
+              {AVEC_MOTIF.includes(actuel.id) && c.motif_admission ? ` Motif enregistré : ${c.motif_admission}` : ""}
+            </span>
           </form>
         );
       })()}

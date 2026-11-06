@@ -9,6 +9,8 @@ export function AttenteAdmission({ c }: { c: Candidat }) {
     prospect: "Ton inscription est bien reçue 🙌 L'équipe étudie ton dossier. Dès que tu seras admis, tes offres apparaîtront ici et tu pourras lancer tes recherches.",
     admis_condition: "Tu es admis sous condition 🟡 Ton conseiller va revenir vers toi pour la suite. Tes offres s'ouvriront dès que ton admission sera confirmée.",
     liste_attente: "Tu es sur liste d'attente ⏳ On te prévient dès qu'une place se libère. Tes offres s'ouvriront dès que ton admission sera confirmée.",
+    refus: "Ta candidature n'a pas été retenue cette fois-ci. Ton conseiller reste disponible pour en parler avec toi et t'aider pour la suite.",
+    abandon: "Ton dossier est clôturé. Si tu veux reprendre ton parcours, contacte ton conseiller.",
   };
   const etapes = [
     { fait: !!(c.formation && c.diplome_annee && c.poste_vise), icone: "🪪", titre: "Compléter mon profil", href: "/espace/profil" },

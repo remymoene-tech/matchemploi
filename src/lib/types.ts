@@ -47,6 +47,8 @@ export type Candidat = {
   diplome_annee?: number | null;
   /** prospect | admis | admis_condition | liste_attente (choisi par l'équipe). */
   statut_admission?: string | null;
+  /** Motif du refus ou de l'abandon. */
+  motif_admission?: string | null;
   /** Année du cursus dans sa formation (1, 2, 3…) et rythme de cette année (initial | alternance). */
   annee_cursus?: number | null;
   rythme_cursus?: string | null;

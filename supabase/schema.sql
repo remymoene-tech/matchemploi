@@ -354,3 +354,6 @@ create index if not exists prospection_relances_idx on public.prospection_echang
 -- Entretien prévu avec une entreprise prospectée (notification la veille)
 alter table public.prospections add column if not exists entretien_a timestamptz;
 alter table public.prospections add column if not exists entretien_vu boolean not null default false;
+
+-- Motif du refus ou de l'abandon
+alter table public.candidats add column if not exists motif_admission text not null default '';

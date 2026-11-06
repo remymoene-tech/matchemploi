@@ -396,6 +396,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                           <SelectAuto name="statut_admission" label={`Admission de ${c.nom || c.email}`} defaultValue={admission(c.statut_admission).id}
                             options={ADMISSIONS.map((a) => ({ id: a.id, label: `${a.icone} ${a.label}` }))} />
                         </form>
+                        {c.motif_admission && ["refus", "abandon"].includes(c.statut_admission ?? "") && <div className="mt-1 max-w-[180px] truncate text-xs text-muted" title={c.motif_admission}>Motif : {c.motif_admission}</div>}
                       </td>
                       <td className="p-3">{c.formation ? <>{c.formation}{c.diplome_annee ? <div className="text-xs text-muted">📅 {c.diplome_annee}</div> : null}</> : <span className="chip chip-minus">À compléter</span>}</td>
                       <td className="p-3 text-muted">{ecoles.find((x) => x.id === c.ecole_id)?.nom ?? "—"}</td>

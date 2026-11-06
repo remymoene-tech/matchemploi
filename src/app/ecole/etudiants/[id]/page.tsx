@@ -6,8 +6,8 @@ import { changerDiplomeEcole, changerAdmissionEcole, autoriserTestEcole, changer
 
 export const metadata = { title: "Fiche étudiant · MagnusMatch" };
 
-export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string }> }) {
-  const { onglet } = await searchParams;
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string; admission?: string }> }) {
+  const { onglet, admission: admissionDemandee } = await searchParams;
   const { ecole } = await exigerResponsable();
   const { id } = await params;
   // Une école ne voit que ses propres étudiants
@@ -21,6 +21,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       genererCvAmeliore={genererCvAmelioreEcole}
       ajouterEchange={ajouterEchangeEcole}
       supprimerEchange={supprimerEchangeEcole}
+      admissionDemandee={admissionDemandee}
       changerAdmission={changerAdmissionEcole}
       changerDiplome={changerDiplomeEcole}
       actionFaite={actionFaiteEcole}

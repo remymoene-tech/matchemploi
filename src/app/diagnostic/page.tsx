@@ -88,7 +88,8 @@ alter table public.prospection_echanges enable row level security;
 create index if not exists prospection_echanges_idx on public.prospection_echanges(prospection_id, date_echange desc);
 create index if not exists prospection_relances_idx on public.prospection_echanges(candidat_id, action_faite, action_a);
 alter table public.prospections add column if not exists entretien_a timestamptz;
-alter table public.prospections add column if not exists entretien_vu boolean not null default false;`;
+alter table public.prospections add column if not exists entretien_vu boolean not null default false;
+alter table public.candidats add column if not exists motif_admission text not null default '';`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -129,6 +130,7 @@ async function verifierBase() {
     db.from("prospections").select("id").limit(1),
     db.from("prospection_echanges").select("id").limit(1),
     db.from("prospections").select("entretien_a, entretien_vu").limit(1),
+    db.from("candidats").select("motif_admission").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -167,6 +169,7 @@ async function verifierBase() {
     "Prospections des étudiants",
     "Historique et relances des prospections",
     "Entretiens des étudiants (notification la veille)",
+    "Refus et abandon (motif)",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }
