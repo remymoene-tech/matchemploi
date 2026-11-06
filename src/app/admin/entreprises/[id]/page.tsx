@@ -5,11 +5,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, entrepriseParId, offresDe, statutEntreprise, type Entreprise } from "@/lib/entreprises";
 import { echangesDeLEntreprise, echeance, maintenantMs } from "@/lib/echanges";
 import { OngletsCartes } from "@/components/OngletsCartes";
+import { Copier } from "@/components/Copier";
 import { QuestionnaireAttentes } from "@/components/QuestionnaireAttentes";
 import { texteExpiration } from "@/lib/expiration";
 import { FormEchange } from "@/components/FormEchange";
 import { JournalEchanges } from "@/components/JournalEchanges";
-import { actionFaiteEntreprise, ajouterEchangeEntreprise, enregistrerEntreprise, supprimerEchangeEntreprise, supprimerEntreprise } from "../../actions";
+import { envoyerFicheBesoin, actionFaiteEntreprise, ajouterEchangeEntreprise, enregistrerEntreprise, supprimerEchangeEntreprise, supprimerEntreprise } from "../../actions";
 import { SOURCES_AUTO, contratLabel, type Offre } from "@/lib/types";
 import { RECRUTE, echangesDeProspections, prospectionsDeLEntreprise } from "@/lib/prospections";
 import { HistoriqueProspection } from "@/components/HistoriqueProspection";
@@ -18,7 +19,7 @@ export const metadata = { title: "Entreprise · MagnusMatch" };
 
 export default async function FicheEntreprise({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ onglet?: string; ok?: string; erreur?: string; besoins?: string }>;
+  searchParams: Promise<{ onglet?: string; ok?: string; erreur?: string; besoins?: string; besoin?: string }>;
 }) {
   await exigerAdmin();
   const { id } = await params;
@@ -93,6 +94,43 @@ export default async function FicheEntreprise({ params, searchParams }: {
           { href: `${base}?onglet=echanges`, icone: "💬", label: "Échanges", sous: rappels.length ? `${rappels.length} rappel${rappels.length > 1 ? "s" : ""}` : `${echanges.length} noté${echanges.length > 1 ? "s" : ""}`, actif: onglet === "echanges" },
         ]} />
       )}
+
+      {e && onglet === "infos" && (() => {
+        const x = e as typeof e & { jeton_besoin?: string | null; besoin_envoye_le?: string | null; besoin_rempli_le?: string | null };
+        const lien = x.jeton_besoin ? `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/besoin/${x.jeton_besoin}` : "";
+        const date = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" }) : "");
+        return (
+          <section className="card flex flex-col gap-3 p-5">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-semibold">✉️ Faire remplir la fiche besoin par l&apos;entreprise</h2>
+              {x.besoin_rempli_le ? <span className="chip chip-plus">✅ Remplie par l&apos;entreprise le {date(x.besoin_rempli_le)}</span>
+                : x.besoin_envoye_le ? <span className="chip chip-tag">✉️ Envoyée le {date(x.besoin_envoye_le)}, en attente</span> : null}
+            </div>
+            {sp.besoin === "envoye" && <p className="rounded-lg bg-good-soft px-3 py-2 text-sm text-good">Email envoyé à {e.contact_email} ✓ Tu recevras une notification 🔔 quand l&apos;entreprise aura répondu.</p>}
+            {sp.besoin === "lien" && <p className="rounded-lg bg-accent-soft px-3 py-2 text-sm">Lien créé ✓ Copie-le et envoie-le à l&apos;entreprise (email, SMS, WhatsApp…).</p>}
+            <p className="text-sm text-muted">L&apos;entreprise reçoit un lien personnel, sans compte ni mot de passe, valable 60 jours. Ses réponses arrivent directement dans la fiche besoin ci-dessous.</p>
+            <div className="flex flex-wrap items-center gap-2">
+              {e.contact_email && (
+                <form action={envoyerFicheBesoin}>
+                  <input type="hidden" name="id" value={e.id} />
+                  <input type="hidden" name="par_email" value="1" />
+                  <button className="btn btn-primary">✉️ Envoyer par email à {e.contact_email}</button>
+                </form>
+              )}
+              <form action={envoyerFicheBesoin}>
+                <input type="hidden" name="id" value={e.id} />
+                <button className="btn">{lien ? "🔄 Créer un nouveau lien" : "🔗 Créer le lien à envoyer moi-même"}</button>
+              </form>
+            </div>
+            {lien && (
+              <div className="flex flex-wrap items-center gap-2">
+                <code className="break-all rounded-lg bg-bg px-3 py-2 font-mono text-xs">{lien}</code>
+                <Copier texte={lien} />
+              </div>
+            )}
+          </section>
+        );
+      })()}
 
       {onglet === "infos" && (
         <form action={enregistrerEntreprise} className="card flex flex-col gap-5 p-5">

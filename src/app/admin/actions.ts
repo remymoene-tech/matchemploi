@@ -25,6 +25,8 @@ import { lireFormations } from "@/lib/formations";
 import { changerAdmission } from "@/lib/admission-serveur";
 import { majDiplome } from "@/lib/diplome-serveur";
 import { memeEntreprise } from "@/lib/prospections";
+import { VALIDITE_JOURS, nouveauJeton } from "@/lib/fiche-besoin";
+import { envoyerEmail, moyenEnvoi, texteEnHtml } from "@/lib/email";
 import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
 import type { EtatEntretien } from "@/components/FormEntretienConseil";
@@ -368,4 +370,26 @@ export async function ajouterProspectionAuxEntreprises(f: FormData) {
   revalidatePath(`/admin/candidats/${t(f, "candidat_id", 60)}`);
   // On ouvre la fiche entreprise sur la fiche besoin, à remplir avec l'entreprise
   redirect(`/admin/entreprises/${entrepriseId}?besoins=1#besoins`);
+}
+
+/** Envoie à l'entreprise un lien personnel pour remplir sa fiche besoin elle-même. */
+export async function envoyerFicheBesoin(f: FormData) {
+  const { user } = await exigerAdmin();
+  const id = t(f, "id", 60);
+  const db = createAdminClient();
+  const { data: e } = await db.from("entreprises").select("*").eq("id", id).maybeSingle();
+  if (!e) redirect("/admin?vue=entreprises");
+  const jeton = nouveauJeton();
+  const { error } = await db.from("entreprises").update({ jeton_besoin: jeton, besoin_envoye_le: new Date().toISOString() }).eq("id", id);
+  if (error) redirect(`/admin/entreprises/${id}?erreur=base`);
+  const lien = `${process.env.NEXT_PUBLIC_SITE_URL ?? ""}/besoin/${jeton}`;
+  let envoye = false;
+  if (e.contact_email && moyenEnvoi() && f.get("par_email") === "1") {
+    envoye = await envoyerEmail(e.contact_email, `${e.nom} : vos besoins en alternance (2 minutes)`, texteEnHtml(
+      `Bonjour ${e.contact_nom || ""},\n\nPour vous présenter les étudiants de Magnus Campus qui correspondent vraiment à vos besoins, pouvez-vous remplir cette courte fiche (2 minutes, quelques cases à cocher) ?\n\n${lien}\n\nCe lien est personnel et valable ${VALIDITE_JOURS} jours.\n\nMerci beaucoup,\n${user.email ?? "L'équipe Magnus Campus"}`,
+    ), { repondreA: user.email ?? undefined });
+    if (envoye) await db.from("echanges").insert({ entreprise_id: id, type: "email", resume: `Fiche besoin envoyée par email à ${e.contact_email}.`, auteur: user.email ?? "" });
+  }
+  revalidatePath(`/admin/entreprises/${id}`);
+  redirect(`/admin/entreprises/${id}?besoin=${envoye ? "envoye" : "lien"}#besoins`);
 }

@@ -86,7 +86,7 @@ export type Relance = { id: string; candidat_id: string | null; entreprise_id: s
 
 /** Lien vers la fiche concernée (onglet Échanges). */
 export const lienRelance = (r: Pick<Relance, "candidat_id" | "entreprise_id"> & { action?: string }, baseCandidats = "/admin/candidats") =>
-  r.entreprise_id ? `/admin/entreprises/${r.entreprise_id}?onglet=echanges`
+  r.entreprise_id ? (r.action?.startsWith("📋") ? `/admin/entreprises/${r.entreprise_id}#besoins` : `/admin/entreprises/${r.entreprise_id}?onglet=echanges`)
     : `${baseCandidats}/${r.candidat_id}?onglet=${r.action?.startsWith("🎯") ? "prospections" : "echanges"}`;
 
 /** Relances non faites d'un recruteur (les siennes), ou de toute l'équipe si auteur = null. */

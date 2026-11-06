@@ -363,3 +363,8 @@ alter table public.entreprises add column if not exists attentes jsonb;
 
 -- Date d'expiration des offres de l'équipe (fermées automatiquement)
 alter table public.offres add column if not exists expire_le timestamptz;
+
+-- Fiche besoin remplie par l'entreprise via un lien personnel
+alter table public.entreprises add column if not exists jeton_besoin text unique;
+alter table public.entreprises add column if not exists besoin_envoye_le timestamptz;
+alter table public.entreprises add column if not exists besoin_rempli_le timestamptz;
