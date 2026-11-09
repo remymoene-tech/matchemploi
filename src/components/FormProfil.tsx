@@ -5,6 +5,7 @@ import { envoyerCV } from "@/lib/depot-cv-client";
 import { enregistrerProfil, type EtatProfil } from "@/app/espace/actions";
 import { CONTRATS, type Candidat } from "@/lib/types";
 import { anneeLabel, type Formation } from "@/lib/formations";
+import { PREFERENCES_ETUDIANT, type CleePreference } from "@/lib/attentes";
 
 const ANNEE = new Date().getFullYear();
 const ANNEES = Array.from({ length: 7 }, (_, i) => ANNEE - 1 + i);
@@ -140,6 +141,29 @@ export function FormProfil({ c, codeEcole, nomEcole, formations = [] }: { c: Par
         <Champ id="projet" label="Ton projet" hint="Ce que tu veux faire, le type d'entreprise qui t'attire, ce que tu veux éviter.">
           <textarea className="input min-h-28" id="projet" name="projet" defaultValue={c.projet} />
         </Champ>
+      </section>
+
+      <section className="card flex flex-col gap-4 p-5">
+        <div>
+          <h2 className="text-lg font-semibold">✨ Mes préférences</h2>
+          <p className="text-sm text-muted">1 minute : ces réponses sont comparées à celles des entreprises pour te proposer les offres qui te ressemblent.</p>
+        </div>
+        {(Object.keys(PREFERENCES_ETUDIANT) as CleePreference[]).map((cle) => {
+          const q = PREFERENCES_ETUDIANT[cle];
+          return (
+            <fieldset key={cle} className="flex flex-col gap-1.5">
+              <legend className="label mb-1">{q.label}</legend>
+              <div className="flex flex-wrap gap-2">
+                {q.options.map((o) => (
+                  <label key={o} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-sm has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
+                    <input type={q.type === "choix" ? "radio" : "checkbox"} name={`pref_${cle}`} value={o} defaultChecked={c.preferences?.[cle]?.includes(o)} className="sr-only" />
+                    {o}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          );
+        })}
       </section>
 
       <section className="card flex flex-col gap-3 p-5">

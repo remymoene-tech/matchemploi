@@ -368,3 +368,7 @@ alter table public.offres add column if not exists expire_le timestamptz;
 alter table public.entreprises add column if not exists jeton_besoin text unique;
 alter table public.entreprises add column if not exists besoin_envoye_le timestamptz;
 alter table public.entreprises add column if not exists besoin_rempli_le timestamptz;
+
+-- Préférences des étudiants (questions communes) et fiches de poste rédigées automatiquement
+alter table public.candidats add column if not exists preferences jsonb;
+alter table public.offres add column if not exists redigee_ia boolean not null default false;

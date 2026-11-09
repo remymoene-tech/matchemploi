@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
 import type { Candidat, Offre, Piste } from "@/lib/types";
-import { attentesTexte } from "@/lib/attentes";
+import { attentesTexte, preferencesTexte } from "@/lib/attentes";
 
 /**
  * Modèle léger et économique par défaut (≈ 40 fois moins cher que le plus puissant).
@@ -176,7 +176,10 @@ Projet : ${c.projet || "?"}
 Compétences : ${c.competences.join(", ") || "?"}
 CV : ${(c.cv_texte || "non fourni").slice(0, 4000)}${c.disc ? `
 Profil DISC (test de personnalité passé avec son école) : dominante ${c.disc.dominante}, secondaire ${c.disc.secondaire} (rouge = décidé et orienté action, jaune = communicant et enthousiaste, vert = à l'écoute et stable, bleu = rigoureux et précis).
-Utilise ce profil UNIQUEMENT pour ajuster de 5 points au maximum le savoir-être attendu par l'offre (relationnel, rigueur, autonomie, rythme). Ne baisse jamais fortement une note à cause de lui seul, et cite-le dans les points forts s'il aide.` : ""}`;
+Utilise ce profil UNIQUEMENT pour ajuster de 5 points au maximum le savoir-être attendu par l'offre (relationnel, rigueur, autonomie, rythme). Ne baisse jamais fortement une note à cause de lui seul, et cite-le dans les points forts s'il aide.` : ""}${c.management ? `
+Style de management préféré (test) : ${c.management} (diriger = a besoin de consignes claires, entrainer = aime être conseillé, epauler = a besoin d'encouragements, deleguer = aime l'autonomie). Compare-le au style du tuteur indiqué par l'entreprise : accord = jusqu'à +3 points, désaccord = jusqu'à -3 points.` : ""}${c.preferences ? `
+Ses préférences (à comparer aux réponses de l'entreprise sur les mêmes thèmes) :
+${preferencesTexte(c.preferences)}` : ""}`;
 }
 
 function offreTexte(o: Offre) {
@@ -202,6 +205,7 @@ Barème sur 100 :
 Une information manquante compte pour la moitié des points du critère.
 N'utilise jamais l'âge, le sexe, l'origine, la nationalité, la situation familiale, l'apparence ou le handicap.
 Sois exigeant : 75 ou plus veut dire « candidature à envoyer sans hésiter ».
+Quand l'entreprise et le candidat ont répondu aux mêmes thèmes (horaires, taille d'entreprise, contact client, missions, autonomie / style du tuteur, rythme de travail), compare réponse contre réponse et cite les accords (ex. « + Aime le contact client, comme le poste ») et les désaccords dans les points forts ou les manques.
 Si une offre contient « ATTENTES DE L'ENTREPRISE », utilise-les en priorité dans chaque critère (diplôme, expérience, permis, rythme, date, horaires, qualités) et cite-les dans les points forts ou les manques (ex. « Rythme 2 j / 3 j compatible », « Permis obligatoire »). La personnalité recherchée se compare au profil DISC du candidat s'il existe, sans dépasser ±5 points. Un élément rédhibitoire clairement présent dans le profil fait nettement baisser la note.
 
 CANDIDAT
@@ -500,4 +504,30 @@ ${profil}`,
     "medium",
   );
   return { ...r, mode: creation ? "creation" : "analyse" };
+}
+
+// ---------- Fiche de poste rédigée automatiquement pour une entreprise qui recrute ----------
+const FichePosteSchema = z.object({
+  intitule: z.string().describe("Intitulé clair du poste, ex. « Assistant(e) commercial(e) en alternance »"),
+  contrat: z.enum(["alternance", "cdi", "cdd", "interim", "stage", "job_etudiant", ""]),
+  missions: z.array(z.string()).describe("4 à 6 missions concrètes, phrases courtes"),
+  profil: z.array(z.string()).describe("3 à 5 éléments du profil recherché"),
+  infos: z.array(z.string()).describe("Infos pratiques connues : rythme, date de début, horaires, lieu ; « [à confirmer] » si inconnu"),
+});
+
+export async function redigerFicheDePoste(e: { nom: string; secteur: string; ville: string; notes: string; attentes?: unknown }, dits: string) {
+  const r = await demander(
+    FichePosteSchema,
+    `Rédige une fiche de poste courte et concrète pour cette entreprise qui recrute, à partir des seules informations ci-dessous.
+N'invente aucun fait : si une information manque (salaire, horaires, date…), écris « [à confirmer] ». Pas de formule creuse.
+
+Entreprise : ${e.nom}${e.secteur ? ` (${e.secteur})` : ""}${e.ville ? `, ${e.ville}` : ""}
+Notes de l'école : ${e.notes || "aucune"}
+${attentesTexte(e.attentes as Parameters<typeof attentesTexte>[0]) || "Fiche besoin non remplie."}
+Ce que l'entreprise a dit aux étudiants :
+${dits || "rien"}`,
+    "low",
+  );
+  const description = `Missions :\n${r.missions.map((x) => `- ${x}`).join("\n")}\n\nProfil recherché :\n${r.profil.map((x) => `- ${x}`).join("\n")}\n\nInfos pratiques :\n${r.infos.map((x) => `- ${x}`).join("\n")}`;
+  return { intitule: r.intitule, contrat: r.contrat, description };
 }

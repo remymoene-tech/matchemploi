@@ -48,6 +48,7 @@ export default async function Page({ params, searchParams }: {
         pour faire le lien avec l&apos;étudiant et l&apos;entreprise. Les coordonnées de l&apos;entreprise sont donc obligatoires.
       </p>
       {ent?.attentes && !o.id && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">📋 Le questionnaire des besoins de {ent.nom} est déjà rempli plus bas : adapte-le à cette offre si besoin.</p>}
+      {(o as Offre & { redigee_ia?: boolean }).redigee_ia && <p className="rounded-xl bg-warn-soft p-4 text-sm">📝 Cette fiche de poste a été rédigée par MagnusMatch à partir de la fiche besoin. Relis-la, complète les « [à confirmer] » et enregistre.</p>}
       {sp.erreur === "1" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Indique au moins l&apos;entreprise et l&apos;intitulé du poste.</p>}
       {sp.erreur === "contact" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Indique les coordonnées de l&apos;entreprise : le nom du contact, et son email ou son téléphone.</p>}
 

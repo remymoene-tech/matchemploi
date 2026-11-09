@@ -4,7 +4,8 @@ import { localiserLieu } from "@/lib/geo";
 import { noterOffrePourTous } from "@/lib/matching";
 import { offresDe, type Entreprise } from "@/lib/entreprises";
 import { memeEntreprise } from "@/lib/prospections";
-import { SOURCES_AUTO, type Offre } from "@/lib/types";
+import { CONTRATS, SOURCES_AUTO, type Offre } from "@/lib/types";
+import { iaConfiguree, redigerFicheDePoste } from "@/lib/ia";
 
 const INTITULE_AUTO = "Recrutement";
 
@@ -36,9 +37,17 @@ export async function lancerRechercheCandidats(entrepriseId: string): Promise<bo
   const dits = (prosp ?? []).filter((p) => memeEntreprise(p.entreprise, e.nom)).map((p) => `- ${p.justification}`).join("\n");
   const description = [e.notes, dits && `Ce que l'entreprise a dit aux étudiants :\n${dits}`].filter(Boolean).join("\n\n").slice(0, 6000);
 
-  // Le besoin créé automatiquement suit toujours la fiche besoin à jour
-  const auto = siennes.find((o) => o.intitule.startsWith(INTITULE_AUTO) && (o as Offre & { entreprise_id?: string }).entreprise_id === e.id);
-  if (auto) await db.from("offres").update({ attentes: e.attentes ?? null, description, ouverte: true, updated_at: new Date().toISOString() }).eq("id", auto.id);
+  // Fiche de poste rédigée par MagnusMatch (tant que l'équipe ne l'a pas relue, elle suit la fiche besoin à jour)
+  const fiche = iaConfiguree() ? await redigerFicheDePoste(e, dits).catch(() => null) : null;
+  const contenu = fiche
+    ? { intitule: fiche.intitule.slice(0, 200), contrat: fiche.contrat, contrat_libelle: CONTRATS.find((c) => c.id === fiche.contrat)?.label ?? "", description: `${fiche.description}${description ? `\n\n${description}` : ""}`.slice(0, 7000) }
+    : { intitule: `${INTITULE_AUTO} ${e.secteur ? `(${e.secteur}) ` : ""}— ${e.nom}`, contrat: "", contrat_libelle: "", description };
+  const auto = siennes.find((o) => (o as Offre & { entreprise_id?: string; redigee_ia?: boolean }).entreprise_id === e.id
+    && ((o as Offre & { redigee_ia?: boolean }).redigee_ia || o.intitule.startsWith(INTITULE_AUTO)));
+  if (auto) {
+    const aRelire = (auto as Offre & { redigee_ia?: boolean }).redigee_ia;
+    await db.from("offres").update({ ...(aRelire ? contenu : {}), attentes: e.attentes ?? null, ouverte: true, updated_at: new Date().toISOString() }).eq("id", auto.id);
+  }
 
   let ouvertes = siennes.filter((o) => o.ouverte || o.id === auto?.id);
   if (!ouvertes.length) {
@@ -46,10 +55,9 @@ export async function lancerRechercheCandidats(entrepriseId: string): Promise<bo
     const { data: o } = await db.from("offres").insert({
       source: "partenaire",
       entreprise: e.nom,
-      intitule: `${INTITULE_AUTO} ${e.secteur ? `(${e.secteur}) ` : ""}— ${e.nom}`,
-      contrat: "", contrat_libelle: "",
+      ...contenu,
+      redigee_ia: true,
       lieu: e.ville ?? "",
-      description,
       contact_nom: [e.contact_nom, e.contact_fonction].filter(Boolean).join(", "),
       contact_email: e.contact_email ?? "", contact_tel: e.contact_tel ?? "",
       attentes: e.attentes ?? null,
@@ -57,7 +65,17 @@ export async function lancerRechercheCandidats(entrepriseId: string): Promise<bo
       ouverte: true,
       latitude: position?.latitude ?? null, longitude: position?.longitude ?? null,
     }).select("*").single();
-    if (!o) return false;
+    if (!o) {
+      // Base pas encore à jour : sans la colonne « rédigée par MagnusMatch »
+      const { data: o2 } = await db.from("offres").insert({
+        source: "partenaire", entreprise: e.nom, ...contenu, lieu: e.ville ?? "",
+        contact_nom: [e.contact_nom, e.contact_fonction].filter(Boolean).join(", "), contact_email: e.contact_email ?? "", contact_tel: e.contact_tel ?? "",
+        attentes: e.attentes ?? null, entreprise_id: e.id, ouverte: true,
+      }).select("*").single();
+      if (!o2) return false;
+      for (const x of [o2 as Offre]) await noterOffrePourTous(x.id);
+      return true;
+    }
     ouvertes = [o as Offre];
   }
   for (const o of ouvertes) await noterOffrePourTous(o.id);

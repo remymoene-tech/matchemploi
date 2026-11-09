@@ -7,6 +7,7 @@ import { exigerUtilisateur } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { analyserLinkedin, iaConfiguree, motsClesDepuisProfil } from "@/lib/ia";
 import { estAdmis } from "@/lib/admission";
+import { lirePreferences } from "@/lib/attentes";
 import { analyserCV, cheminCV, cvDepose, majCandidat, stockerCV, telechargerCV } from "@/lib/cv";
 import { localiserCommune } from "@/lib/geo";
 import { ecoleParCode, formationsDeLEcole } from "@/lib/ecoles";
@@ -36,6 +37,7 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
     formation: (() => { const ch = texte(f, "formation_choix", 120); return ch && ch !== "autre" ? ch : texte(f, "formation", 200); })(),
     // (vérifié plus bas : uniquement une formation de l'école quand l'école en a)
     annee_cursus: null as number | null,
+    preferences: lirePreferences(f),
     rythme_cursus: null as string | null,
     diplome_annee: (() => { const a = Number(f.get("diplome_annee")); return Number.isInteger(a) && a >= 2000 && a <= 2100 ? a : null; })(),
     poste_vise: texte(f, "poste_vise", 200),

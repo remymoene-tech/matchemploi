@@ -83,6 +83,10 @@ export type Candidat = {
   pistes_le?: string | null;
   /** Dernier profil DISC (ajouté au moment de la notation, pas une colonne). */
   disc?: { scores: Record<string, number>; dominante: string; secondaire: string } | null;
+  /** Style de management dominant (test), ajouté au moment de la notation. */
+  management?: string | null;
+  /** « Mes préférences » : questions communes avec la fiche besoin des entreprises. */
+  preferences?: import("@/lib/attentes").Preferences | null;
   updated_at: string;
 };
 

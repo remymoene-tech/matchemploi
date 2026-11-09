@@ -32,8 +32,13 @@ export async function derniersTests(candidatId: string) {
 
 /** Ajoute au candidat son dernier profil DISC (utilisé par l'IA pour affiner les notes). */
 export async function avecDisc(c: Candidat): Promise<Candidat> {
-  const { data } = await createAdminClient().from("tests_resultats").select("scores, dominante").eq("candidat_id", c.user_id).eq("test", "disc").order("created_at", { ascending: false }).limit(1).maybeSingle();
-  if (!data) return c;
+  const db = createAdminClient();
+  const [{ data }, { data: mgt }] = await Promise.all([
+    db.from("tests_resultats").select("scores, dominante").eq("candidat_id", c.user_id).eq("test", "disc").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+    db.from("tests_resultats").select("dominante").eq("candidat_id", c.user_id).eq("test", "management").order("created_at", { ascending: false }).limit(1).maybeSingle(),
+  ]);
+  const avecMgt = mgt?.dominante ? { ...c, management: String(mgt.dominante) } : c;
+  if (!data) return avecMgt;
   const [dominante, secondaire] = String(data.dominante).split(",");
-  return { ...c, disc: { scores: data.scores, dominante, secondaire } as ResultatDisc };
+  return { ...avecMgt, disc: { scores: data.scores, dominante, secondaire } as ResultatDisc };
 }

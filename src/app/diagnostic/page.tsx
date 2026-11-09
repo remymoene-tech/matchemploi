@@ -94,7 +94,9 @@ alter table public.entreprises add column if not exists attentes jsonb;
 alter table public.offres add column if not exists expire_le timestamptz;
 alter table public.entreprises add column if not exists jeton_besoin text unique;
 alter table public.entreprises add column if not exists besoin_envoye_le timestamptz;
-alter table public.entreprises add column if not exists besoin_rempli_le timestamptz;`;
+alter table public.entreprises add column if not exists besoin_rempli_le timestamptz;
+alter table public.candidats add column if not exists preferences jsonb;
+alter table public.offres add column if not exists redigee_ia boolean not null default false;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -139,6 +141,8 @@ async function verifierBase() {
     db.from("entreprises").select("attentes").limit(1),
     db.from("offres").select("expire_le").limit(1),
     db.from("entreprises").select("jeton_besoin, besoin_envoye_le, besoin_rempli_le").limit(1),
+    db.from("candidats").select("preferences").limit(1),
+    db.from("offres").select("redigee_ia").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -181,6 +185,8 @@ async function verifierBase() {
     "Besoins des entreprises (questionnaire)",
     "Durée des offres (expiration automatique)",
     "Fiche besoin envoyée aux entreprises",
+    "Préférences des étudiants",
+    "Fiches de poste rédigées par MagnusMatch",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

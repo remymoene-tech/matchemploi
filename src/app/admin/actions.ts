@@ -73,6 +73,7 @@ export async function enregistrerOffre(f: FormData) {
     entreprise_id: t(f, "entreprise_id", 60) || null,
     ouverte: f.get("ouverte") === "on",
     expire_le: null as string | null,
+    redigee_ia: false, // relue et enregistrée par l'équipe
     updated_at: new Date().toISOString(),
   };
   if (id) {
@@ -94,10 +95,10 @@ export async function enregistrerOffre(f: FormData) {
           return error;
         });
   let erreur = await ecrire(avecGPS);
-  if (erreur && /latitude|longitude|contact_tel|attentes|entreprise_id|expire_le/.test(erreur.message)) {
+  if (erreur && /latitude|longitude|contact_tel|attentes|entreprise_id|expire_le|redigee_ia/.test(erreur.message)) {
     // Base pas encore à jour : on enregistre sans les colonnes récentes
-    const { contact_tel: _t, attentes: _a, entreprise_id: _e, expire_le: _x, ...ancien } = donnees;
-    void _t; void _a; void _e; void _x;
+    const { contact_tel: _t, attentes: _a, entreprise_id: _e, expire_le: _x, redigee_ia: _r, ...ancien } = donnees;
+    void _t; void _a; void _e; void _x; void _r;
     erreur = await ecrire(ancien as typeof donnees);
   }
   if (donnees.ouverte) after(() => noterOffrePourTous(offreId));
@@ -262,12 +263,14 @@ export async function enregistrerEntreprise(f: FormData) {
   const db = createAdminClient();
   // Base pas encore à jour pour le questionnaire : on enregistre sans lui
   const sansQuestionnaire = () => { const { attentes: _a, ...reste } = donnees; void _a; return reste; };
+  const { data: avantE } = id ? await db.from("entreprises").select("statut").eq("id", id).maybeSingle() : { data: null };
+  const devientRecrute = donnees.statut === "recrute" && avantE?.statut !== "recrute";
   if (id) {
     let { error } = await db.from("entreprises").update(donnees).eq("id", id);
     if (error && /attentes/.test(error.message)) ({ error } = await db.from("entreprises").update(sansQuestionnaire()).eq("id", id));
     if (error) redirect(`/admin/entreprises/${id}?erreur=base`);
     // Besoin rempli et l'entreprise recrute : MagnusMatch cherche les candidats tout de suite
-    if (donnees.attentes && (await entrepriseRecrute({ id, nom: donnees.nom, statut: donnees.statut }))) {
+    if (devientRecrute || (donnees.attentes && (await entrepriseRecrute({ id, nom: donnees.nom, statut: donnees.statut })))) {
       after(() => lancerRechercheCandidats(id).then(() => undefined));
       redirect(`/admin/entreprises/${id}?onglet=candidats&recherche=1`);
     }
@@ -276,7 +279,7 @@ export async function enregistrerEntreprise(f: FormData) {
   let { data, error } = await db.from("entreprises").insert({ ...donnees, auteur: user.email ?? "" }).select("id").single();
   if (error && /attentes/.test(error.message)) ({ data, error } = await db.from("entreprises").insert({ ...sansQuestionnaire(), auteur: user.email ?? "" }).select("id").single());
   if (error || !data) redirect("/admin/entreprises/nouvelle?erreur=base");
-  if (donnees.attentes && (await entrepriseRecrute({ id: data.id, nom: donnees.nom, statut: donnees.statut }))) {
+  if (devientRecrute || (donnees.attentes && (await entrepriseRecrute({ id: data.id, nom: donnees.nom, statut: donnees.statut })))) {
     after(() => lancerRechercheCandidats(data.id).then(() => undefined));
     redirect(`/admin/entreprises/${data.id}?onglet=candidats&recherche=1`);
   }
@@ -378,6 +381,8 @@ export async function ajouterProspectionAuxEntreprises(f: FormData) {
   const ids = (memes ?? []).filter((x) => memeEntreprise(x.entreprise, p.entreprise)).map((x) => x.id);
   if (ids.length) await db.from("prospections").update({ entreprise_id: entrepriseId }).in("id", ids);
   revalidatePath(`/admin/candidats/${t(f, "candidat_id", 60)}`);
+  // Elle recrute d'après l'étudiant : MagnusMatch rédige déjà une fiche de poste
+  if (p.recrute === "oui") { const eid = entrepriseId; after(() => lancerRechercheCandidats(eid).then(() => undefined)); }
   // On ouvre la fiche entreprise sur la fiche besoin, à remplir avec l'entreprise
   redirect(`/admin/entreprises/${entrepriseId}?besoins=1#besoins`);
 }
@@ -420,6 +425,10 @@ export async function changerStatutEntreprise(f: FormData) {
   await exigerAdmin();
   const statut = t(f, "statut", 30);
   if (!STATUTS_ENTREPRISE.some((x) => x.id === statut)) return;
-  await createAdminClient().from("entreprises").update({ statut, updated_at: new Date().toISOString() }).eq("id", t(f, "id", 60));
+  const id = t(f, "id", 60);
+  const { data: avant } = await createAdminClient().from("entreprises").select("statut").eq("id", id).maybeSingle();
+  await createAdminClient().from("entreprises").update({ statut, updated_at: new Date().toISOString() }).eq("id", id);
+  // Elle recrute : MagnusMatch rédige la fiche de poste et cherche les candidats
+  if (statut === "recrute" && avant?.statut !== "recrute") after(() => lancerRechercheCandidats(id).then(() => undefined));
   revalidatePath("/admin");
 }

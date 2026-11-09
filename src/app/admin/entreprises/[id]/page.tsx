@@ -233,6 +233,9 @@ export default async function FicheEntreprise({ params, searchParams }: {
                     {(() => { const x = texteExpiration(o.expire_le, maintenant); return x ? <span className={`chip ${x.chip}`}>{x.texte}</span> : !o.ouverte ? <span className="chip chip-minus">Fermée</span> : null; })()}
                   </div>
                   <p className="text-sm text-muted">{[o.contrat_libelle || contratLabel(o.contrat), o.lieu].filter(Boolean).join(" · ")}</p>
+                  {(o as Offre & { redigee_ia?: boolean }).redigee_ia && (
+                    <p className="rounded-lg bg-warn-soft px-3 py-2 text-sm">📝 Fiche de poste rédigée par MagnusMatch : <Link href={`/admin/offres/${o.id}`} className="font-semibold underline">relis-la et complète les « [à confirmer] »</Link>.</p>
+                  )}
                   <p className="text-sm">👥 {m.filter((x) => x.score >= 75).length} candidat(s) à 75 % ou plus · {m.filter((x) => x.suivi === "embauche").length} embauché(s)</p>
                   <div className="flex justify-end gap-2 border-t border-line pt-2">
                     <Link className="btn btn-sm" href={`/admin?vue=entreprises&sous=candidats#a-traiter`}>Voir les candidats</Link>

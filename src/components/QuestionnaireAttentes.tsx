@@ -44,19 +44,27 @@ export function QuestionnaireAttentes({ a, ouvert, titre = "Les attentes de l'en
           {bloc("horaires")}
         </section>
         <section className="flex flex-col gap-4">
-          <h3 className="eyebrow">3 · La personnalité</h3>
-          {bloc("personnalite", <p className="hint">Ces profils correspondent aux 4 couleurs du test DISC des étudiants.</p>)}
+          <h3 className="eyebrow">3 · Le poste</h3>
+          {bloc("taille")}
+          {bloc("contact_client")}
+          {bloc("missions")}
         </section>
         <section className="flex flex-col gap-4">
-          <h3 className="eyebrow">4 · Les qualités</h3>
+          <h3 className="eyebrow">4 · L&apos;ambiance et la personnalité</h3>
+          {bloc("rythme_travail")}
+          {bloc("reussite")}
+          {bloc("personnalite", <p className="hint">Ces réponses sont rapprochées du test DISC des étudiants.</p>)}
+        </section>
+        <section className="flex flex-col gap-4">
+          <h3 className="eyebrow">5 · Les qualités</h3>
           {bloc("qualites", <p className="hint">3 maximum : au-delà, seules les 3 premières sont gardées.</p>)}
         </section>
         <section className="flex flex-col gap-4">
-          <h3 className="eyebrow">5 · L&apos;encadrement</h3>
-          {bloc("encadrement")}
+          <h3 className="eyebrow">6 · Le tuteur</h3>
+          {bloc("encadrement", <p className="hint">Rapproché du test de management des étudiants.</p>)}
         </section>
         <section className="flex flex-col gap-3">
-          <h3 className="eyebrow">6 · En quelques mots</h3>
+          <h3 className="eyebrow">7 · En quelques mots</h3>
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-semibold">Ce qui ferait dire non tout de suite</span>
             <input className="input" name="att_redhibitoire" defaultValue={a?.redhibitoire ?? ""} placeholder="ex. retards répétés, refus de travailler le samedi…" />
@@ -66,7 +74,7 @@ export function QuestionnaireAttentes({ a, ouvert, titre = "Les attentes de l'en
             <input className="input" name="att_apporte" defaultValue={a?.apporte ?? ""} placeholder="ex. primes, formation interne, embauche possible en CDI…" />
           </label>
         </section>
-        <p className="text-xs text-muted">Ces réponses restent internes à l&apos;équipe : elles servent seulement à calculer le % et ses explications.</p>
+        <p className="text-xs text-muted">Ces réponses restent internes à l&apos;école : elles servent à vous présenter les étudiants qui vous correspondent.</p>
       </div>
     </details>
   );
