@@ -57,7 +57,7 @@ export function FormIntervenant() {
         ))}
       </div>
       <label className="flex flex-col gap-1 text-sm">
-        <span className="font-semibold">Domaine d&apos;intervention <span className="text-bad">*</span></span>
+        <span className="font-semibold">Matière(s) enseignée(s) <span className="text-bad">*</span></span>
         <input className="input" name="domaine" required maxLength={200} placeholder="Ex. Marketing digital, droit commercial, management, anglais…" />
       </label>
       <label className="flex flex-col gap-1 text-sm">

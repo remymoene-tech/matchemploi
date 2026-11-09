@@ -36,7 +36,7 @@ export async function deposerIntervenant(f: FormData): Promise<{ ok?: boolean; e
     annee_rentree: null,
   };
   if (!ligne.prenom || !ligne.nom || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !ligne.formation || txt(f, "presentation", 4000).length < 20)
-    return { erreur: "Merci de remplir votre prénom, votre nom, un email valide, votre domaine d'intervention et quelques lignes de présentation." };
+    return { erreur: "Merci de remplir votre prénom, votre nom, un email valide, la ou les matières que vous enseignez et quelques lignes de présentation." };
   if (!ligne.consentement) return { erreur: "Merci de cocher la case d'accord pour que nous puissions conserver votre candidature." };
   const db = createAdminClient();
   const { data: deja } = await db.from("leads").select("id, cv_chemin").eq("email", email).eq("categorie", "intervenant").limit(1);

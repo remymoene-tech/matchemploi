@@ -811,3 +811,38 @@ export async function attribuerLeadsGroupe(f: FormData) {
   revalidatePath("/admin");
   redirect(`${t(f, "retour", 200) || "/admin?vue=leads"}&attribution=${ids.length}`);
 }
+
+/**
+ * Requalifie un contact : lead du recrutement, intervenant (va à la pédagogie) ou alumni.
+ * Il sort (ou revient dans) les leads et les chiffres du recrutement.
+ */
+export async function requalifierLead(f: FormData) {
+  const { user } = await exigerAcces("leads", "intervenants", "alumni");
+  const { leadParId, notifierContact } = await import("@/lib/leads");
+  const id = t(f, "id", 60);
+  const choix = t(f, "categorie", 20);
+  const categorie = choix === "intervenant" || choix === "alumni" ? choix : null;
+  const l = await leadParId(id);
+  if (!l) redirect("/admin?vue=leads");
+  if ((l.categorie ?? null) === categorie) redirect(`/admin/leads/${id}`);
+  const db = createAdminClient();
+  const formation = t(f, "formation", 200);
+  const { error } = await db.from("leads").update({
+    categorie,
+    ...(formation ? { formation } : {}),
+    ...(categorie ? { annee_rentree: null } : {}),
+    attribue_a: null, attribue_le: null, // la nouvelle équipe (pédagogie…) le prend en charge
+    updated_at: new Date().toISOString(),
+  }).eq("id", id);
+  if (error) redirect(`/admin/leads/${id}?erreur=base`);
+  // Les notifications « Nouveau lead » n'ont plus lieu d'être
+  await db.from("echanges").update({ action_faite: true }).eq("lead_id", id).eq("action_faite", false).like("action", "🧲 Nouveau lead%");
+  const libelle = categorie === "intervenant" ? "🧑‍🏫 intervenant" : categorie === "alumni" ? "🎓 alumni" : "🧲 lead du recrutement";
+  await db.from("echanges").insert({ lead_id: id, type: "autre", date_echange: new Date().toISOString(), auteur: "", resume: `🔁 Requalifié en ${libelle} par ${user.email ?? "l'équipe"}.` });
+  if (categorie) {
+    const apres = await leadParId(id);
+    if (apres) await notifierContact(apres).catch(() => undefined);
+  }
+  revalidatePath("/admin");
+  redirect(`/admin/leads/${id}?requalifie=1`);
+}

@@ -16,7 +16,7 @@ export function VueIntervenants({ contacts, personnes, q }: { contacts: Lead[]; 
         </div>
         <form className="flex gap-2">
           <input type="hidden" name="vue" value="intervenants" />
-          <input className="input py-1.5" name="q" defaultValue={q ?? ""} placeholder="🔎 Nom, domaine…" />
+          <input className="input py-1.5" name="q" defaultValue={q ?? ""} placeholder="🔎 Nom, matière…" />
           <button className="btn btn-sm">Chercher</button>
         </form>
       </div>

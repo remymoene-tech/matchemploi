@@ -10,13 +10,13 @@ import { OngletsCartes } from "@/components/OngletsCartes";
 import { StatutLeadRapide } from "@/components/StatutLeadRapide";
 import { FormEchange } from "@/components/FormEchange";
 import { JournalEchanges } from "@/components/JournalEchanges";
-import { attribuerLeadAction, changerStatutLeadFiche, planifierEntretienLead, renvoyerInvitation, actionFaiteLead, ajouterEchangeLead, enregistrerLead, renvoyerBrochure, supprimerEchangeLead, supprimerLead } from "../../actions";
+import { attribuerLeadAction, requalifierLead, changerStatutLeadFiche, planifierEntretienLead, renvoyerInvitation, actionFaiteLead, ajouterEchangeLead, enregistrerLead, renvoyerBrochure, supprimerEchangeLead, supprimerLead } from "../../actions";
 
 export const metadata = { title: "Lead · MagnusMatch" };
 
 export default async function FicheLead({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ onglet?: string; ok?: string; erreur?: string; brochure?: string; invitation?: string; convocation?: string; attribue?: string }>;
+  searchParams: Promise<{ onglet?: string; ok?: string; erreur?: string; brochure?: string; invitation?: string; convocation?: string; attribue?: string; requalifier?: string; requalifie?: string }>;
 }) {
   const { user } = await exigerAcces("leads", "intervenants", "alumni");
   const equipe = await personnesEquipe();
@@ -113,7 +113,7 @@ export default async function FicheLead({ params, searchParams }: {
 
       {l && l.categorie && (
         <section className="flex flex-col gap-2 rounded-2xl border-2 p-4 text-sm" style={{ borderColor: "var(--sauge)" }}>
-          <p className="font-semibold">{l.categorie === "intervenant" ? `🧑‍🏫 Domaine : ${l.formation || "—"}` : `🎓 Diplôme : ${[l.formation, l.message].filter(Boolean).join(" · ") || "—"}`}</p>
+          <p className="font-semibold">{l.categorie === "intervenant" ? `🧑‍🏫 Matière(s) : ${l.formation || "—"}` : `🎓 Diplôme : ${[l.formation, l.message].filter(Boolean).join(" · ") || "—"}`}</p>
           {l.categorie === "intervenant" && l.message && <p className="whitespace-pre-line">{l.message}</p>}
           {l.cv_chemin && <a href={`/admin/intervenants/cv/${l.id}`} target="_blank" className="btn btn-sm btn-primary w-fit">📄 Voir le CV</a>}
           <p className="text-xs text-muted">Ce contact ne compte dans aucun chiffre ni graphique du recrutement.</p>
@@ -126,6 +126,7 @@ export default async function FicheLead({ params, searchParams }: {
       )}
 
       {sp.ok && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Enregistré ✓</p>}
+      {sp.requalifie && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">🔁 Contact requalifié ✓ {l?.categorie === "intervenant" ? "Il est maintenant dans 🧑‍🏫 Intervenants : la pédagogie et la direction sont prévenues." : l?.categorie === "alumni" ? "Il est maintenant dans 🎓 Alumni." : "Il est de retour dans les leads."}</p>}
       {sp.convocation && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">📨 Convocation envoyée par email ✓ Le rappel partira automatiquement la veille.</p>}
       {sp.erreur === "date" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">📅 Pour « Convoqué au concours », indique la date et l&apos;heure de l&apos;entretien d&apos;admission.</p>}
       {sp.invitation && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">🎉 Admis : le lien pour créer son espace MagnusMatch est parti par email ✓</p>}
@@ -168,7 +169,7 @@ export default async function FicheLead({ params, searchParams }: {
               <input type="hidden" name="statut" value={statutLead(l.statut).id} />
               <input type="hidden" name="origine" value={l.origine} />
               <label className="flex flex-col gap-1 text-sm">
-                <span className="font-semibold">{l.categorie === "intervenant" ? "🧑‍🏫 Domaine d'intervention" : "🎓 Diplôme obtenu"}</span>
+                <span className="font-semibold">{l.categorie === "intervenant" ? "🧑‍🏫 Matière(s) enseignée(s)" : "🎓 Diplôme obtenu"}</span>
                 <input className="input" name="formation" defaultValue={l.formation} />
               </label>
             </>
@@ -282,6 +283,28 @@ export default async function FicheLead({ params, searchParams }: {
             <JournalEchanges echanges={echanges} champ="lead_id" cibleId={l.id} actionFaite={actionFaiteLead} supprimer={supprimerEchangeLead} />
           </section>
         </>
+      )}
+
+      {l && onglet === "infos" && (
+        <details className="rounded-xl border-2 border-dashed border-line p-4 text-sm" open={!!sp.requalifier}>
+          <summary className="cursor-pointer font-semibold">🔁 Ce n&apos;est pas un lead ? Requalifier ce contact</summary>
+          <form action={requalifierLead} className="mt-3 flex flex-col gap-3">
+            <input type="hidden" name="id" value={l.id} />
+            <p className="text-muted">Par exemple un intervenant qui a rempli le formulaire brochure par erreur. Il sort des leads et de tous les chiffres du recrutement.</p>
+            <div className="flex flex-wrap gap-2">
+              {[["", "🧲 Lead (recrutement)"], ["intervenant", "🧑‍🏫 Intervenant → pédagogie"], ["alumni", "🎓 Alumni à recontacter"]].map(([v, lab]) => (
+                <label key={v} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-4 py-2 has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
+                  <input type="radio" name="categorie" value={v} defaultChecked={(l.categorie ?? "") === v} className="sr-only" />{lab}
+                </label>
+              ))}
+            </div>
+            <label className="flex flex-col gap-1">
+              <span className="font-semibold">Matière(s) ou diplôme <span className="font-normal text-muted">(facultatif)</span></span>
+              <input className="input" name="formation" defaultValue={l.categorie ? l.formation : ""} placeholder="Ex. Droit commercial · ou EGC pour un alumni" />
+            </label>
+            <button className="btn btn-primary w-fit">🔁 Requalifier</button>
+          </form>
+        </details>
       )}
 
       {l && onglet === "infos" && (
