@@ -94,7 +94,7 @@ export function Cloche({ lien = "/admin?vue=relances", etudiant = false }: { lie
       </button>
 
       {ouvert && (
-        <div className="absolute right-0 top-full z-50 mt-2 flex w-[min(92vw,380px)] flex-col gap-2 rounded-xl border border-line bg-surface p-3 shadow-xl">
+        <div className="fixed inset-x-3 top-1/2 z-50 flex max-h-[80vh] -translate-y-1/2 flex-col gap-2 overflow-y-auto rounded-xl border border-line bg-surface p-3 shadow-2xl sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:max-h-[70vh] sm:w-[380px] sm:translate-y-0">
           {briefing && (
             <Link href={briefing.lien} onClick={briefingVu} className="flex flex-col gap-0.5 rounded-lg bg-accent-soft p-2.5 text-sm hover:underline">
               <b>📋 Ton briefing de la semaine est prêt</b>
