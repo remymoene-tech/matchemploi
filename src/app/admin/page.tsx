@@ -13,6 +13,7 @@ import { MessageEnvoyable } from "@/components/MessageEnvoyable";
 import { ListeRelances } from "@/components/ListeRelances";
 import { Barres, Colonnes } from "@/components/Graphiques";
 import { OngletsCartes } from "@/components/OngletsCartes";
+import { Planning } from "@/components/Planning";
 import { Copier } from "@/components/Copier";
 import { FormBrochure } from "@/components/FormBrochure";
 import { ADMISSIONS, admission } from "@/lib/admission";
@@ -39,6 +40,7 @@ const VUES = [
   { id: "leads", label: "Leads" },
   { id: "entreprises", label: "Mes entreprises" },
   { id: "candidats", label: "Mes candidats" },
+  { id: "planning", label: "Planning" },
 ] as const;
 /** Pages secondaires, en petit à droite des onglets. */
 const AUTRES = [
@@ -49,7 +51,7 @@ const AUTRES = [
   { id: "reglages", label: "⚙️ Réglages" },
 ] as const;
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -232,6 +234,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           { href: "/admin", icone: "🏠", label: "Accueil", sous: "Mes chiffres", actif: vue === "accueil" },
           { href: "/admin?vue=leads", icone: "🎓", label: "Étudiants", sous: `${nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""} lead${nouveauxLeads > 1 ? "s" : ""}` : `${nbLeads} leads`} · ${C.size} candidat${C.size > 1 ? "s" : ""}`, actif: vue === "leads" || vue === "candidats" },
           { href: "/admin?vue=entreprises", icone: "🏢", label: "Mes entreprises", sous: entreprises ? `${nbEntreprises} rencontrée${nbEntreprises > 1 ? "s" : ""}` : `${mesOffresOuvertes} offre${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "entreprises" },
+          { href: "/admin?vue=planning", icone: "📅", label: "Planning", sous: "Entretiens programmés", actif: vue === "planning" },
         ]} />
         <nav className="flex flex-wrap justify-end gap-3 text-sm" aria-label="Autres pages">
           {AUTRES.map((v) => (
@@ -725,6 +728,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
           {!C.size && <p className="card border-dashed p-6 text-sm text-muted">Aucun candidat inscrit pour l&apos;instant.</p>}
         </div>
+      )}
+
+      {vue === "planning" && (
+        <Planning vue={sp.pvue === "jour" || sp.pvue === "mois" ? sp.pvue : "semaine"} date={sp.pdate} maintenant={maintenant} filtre={sp.pfiltre && sp.pfiltre !== "tous" ? sp.pfiltre : undefined} />
       )}
 
       {vue === "briefing" && (
