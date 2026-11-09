@@ -20,7 +20,7 @@ import { enregistrerTest } from "@/lib/tests-serveur";
 import { genererSynthese } from "@/lib/synthese";
 import { genererCvAmeliore } from "@/lib/cv-ameliore";
 import { ajouterEchange } from "@/lib/echanges";
-import { lireEntreprise } from "@/lib/entreprises";
+import { STATUTS_ENTREPRISE, lireEntreprise } from "@/lib/entreprises";
 import { entrepriseRecrute, lancerRechercheCandidats } from "@/lib/recherche-entreprise";
 import { lireFormations } from "@/lib/formations";
 import { changerAdmission } from "@/lib/admission-serveur";
@@ -414,4 +414,12 @@ export async function chercherCandidatsEntreprise(f: FormData) {
   const id = t(f, "id", 60);
   after(() => lancerRechercheCandidats(id).then(() => undefined));
   redirect(`/admin/entreprises/${id}?onglet=candidats&recherche=1`);
+}
+
+export async function changerStatutEntreprise(f: FormData) {
+  await exigerAdmin();
+  const statut = t(f, "statut", 30);
+  if (!STATUTS_ENTREPRISE.some((x) => x.id === statut)) return;
+  await createAdminClient().from("entreprises").update({ statut, updated_at: new Date().toISOString() }).eq("id", t(f, "id", 60));
+  revalidatePath("/admin");
 }

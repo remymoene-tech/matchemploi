@@ -17,12 +17,12 @@ import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
 import { anneeLabel, lireFormations } from "@/lib/formations";
-import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe, statutEntreprise } from "@/lib/entreprises";
+import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe } from "@/lib/entreprises";
 import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -711,42 +711,69 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               {nbEntreprises ? "Aucune entreprise ne correspond à ces filtres." : "Ajoute les entreprises que tu as rencontrées, même sans offre : tu pourras suivre tes échanges et programmer des rappels."}
             </p>
           )}
-          <div className="grid gap-3 md:grid-cols-2">
-            {entreprisesAffichees.map((e) => {
-              const st = statutEntreprise(e.statut);
-              const nOffres = parEntreprise.get(e.id)!.filter((o) => o.ouverte).length;
-              const ech = echangesEnt.filter((x) => x.entreprise_id === e.id);
-              const rappel = ech.filter((x) => x.action && !x.action_faite).map((x) => echeance(x)).filter((d): d is Date => !!d).sort((a, b) => +a - +b)[0];
-              return (
-                <Link key={e.id} href={`/admin/entreprises/${e.id}`} className="card flex flex-col gap-2 p-5 transition-colors hover:border-accent">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <h3 className="truncate text-lg font-semibold">🏢 {e.nom}</h3>
-                      <p className="text-sm text-muted">{[e.secteur, e.ville].filter(Boolean).join(" · ") || "—"}</p>
-                    </div>
-                    <span className={`chip shrink-0 ${st.chip}`}>{st.label}</span>
-                  </div>
-                  {e.contact_nom && <p className="text-sm">👤 {e.contact_nom}{e.contact_fonction ? `, ${e.contact_fonction}` : ""}</p>}
-                  {(() => {
+          {!!entreprisesAffichees.length && (
+            <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+              <table className="w-full min-w-[1180px] text-left text-sm">
+                <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
+                  <tr>
+                    <th className="p-3 font-semibold">Entreprise</th>
+                    <th className="p-3 font-semibold">Où on en est</th>
+                    <th className="p-3 font-semibold">Trouvée par</th>
+                    <th className="p-3 font-semibold">Contact</th>
+                    <th className="p-3 font-semibold">Offres</th>
+                    <th className="p-3 font-semibold">Fiche besoin</th>
+                    <th className="p-3 font-semibold">Dernier échange</th>
+                    <th className="p-3 font-semibold">Rappel</th>
+                    <th className="p-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {entreprisesAffichees.map((e) => {
+                    const nOffres = parEntreprise.get(e.id)!.filter((o) => o.ouverte).length;
+                    const ech = echangesEnt.filter((x) => x.entreprise_id === e.id);
+                    const rappel = ech.filter((x) => x.action && !x.action_faite).map((x) => echeance(x)).filter((d): d is Date => !!d).sort((a, b) => +a - +b)[0];
                     const d = decouvreurs.get(e.id) ?? [];
-                    if (!d.length) return e.auteur ? <p className="text-xs text-muted">Ajoutée par l&apos;équipe ({e.auteur})</p> : null;
+                    const court = (iso: string | Date) => new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" });
                     return (
-                      <p className="rounded-lg bg-accent-soft px-3 py-1.5 text-sm">
-                        🎓 Trouvée par <b>{d[0].nom}</b> le {new Date(d[0].date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" })}
-                        {d[0].recrute === "oui" ? " · ✅ recrute" : ""}
-                        {d.length > 1 ? <span className="text-muted"> (+{d.length - 1} autre{d.length > 2 ? "s" : ""} étudiant{d.length > 2 ? "s" : ""})</span> : null}
-                      </p>
+                      <tr key={e.id} className="border-b border-line align-top last:border-0 hover:bg-bg">
+                        <td className="p-3">
+                          <Link href={`/admin/entreprises/${e.id}`} className="font-semibold hover:text-accent hover:underline">🏢 {e.nom}</Link>
+                          <div className="text-xs text-muted">{[e.secteur, e.ville].filter(Boolean).join(" · ") || "—"}</div>
+                        </td>
+                        <td className="p-3">
+                          <form action={changerStatutEntreprise}>
+                            <input type="hidden" name="id" value={e.id} />
+                            <SelectAuto name="statut" label={`Statut de ${e.nom}`} defaultValue={e.statut} options={STATUTS_ENTREPRISE} />
+                          </form>
+                        </td>
+                        <td className="p-3">
+                          {d.length ? (
+                            <>
+                              <Link href={`/admin/candidats/${d[0].candidat_id}?onglet=prospections`} className="hover:text-accent hover:underline">🎓 {d[0].nom}</Link>
+                              <div className="text-xs text-muted">{court(d[0].date)}{d[0].recrute === "oui" ? " · ✅ recrute" : ""}{d.length > 1 ? ` · +${d.length - 1}` : ""}</div>
+                            </>
+                          ) : <span className="text-xs text-muted">L&apos;équipe</span>}
+                        </td>
+                        <td className="p-3">
+                          {e.contact_nom ? <>{e.contact_nom}<div className="text-xs text-muted">{e.contact_tel || e.contact_email || e.contact_fonction}</div></> : <span className="text-muted">—</span>}
+                        </td>
+                        <td className="p-3"><span className={`chip whitespace-nowrap ${nOffres ? "chip-plus" : ""}`}>💼 {nOffres || "Aucune"}</span></td>
+                        <td className="p-3">{e.attentes ? <span className="chip whitespace-nowrap chip-plus">📋 Remplie</span> : <Link href={`/admin/entreprises/${e.id}?besoins=1#besoins`} className="chip whitespace-nowrap chip-minus">📋 À remplir</Link>}</td>
+                        <td className="p-3 text-muted">{ech[0] ? court(ech[0].date_echange) : "—"}</td>
+                        <td className="p-3">{rappel ? <span className={`chip whitespace-nowrap ${+rappel <= maintenant ? "chip-minus" : "chip-tag"}`}>⏰ {court(rappel)}</span> : <span className="text-muted">—</span>}</td>
+                        <td className="p-3 text-right">
+                          <span className="flex justify-end gap-2">
+                            <Link href={`/admin/entreprises/${e.id}?onglet=echanges`} className="btn btn-sm whitespace-nowrap">💬 Échanges</Link>
+                            <Link href={`/admin/entreprises/${e.id}`} className="btn btn-sm btn-primary whitespace-nowrap">Fiche →</Link>
+                          </span>
+                        </td>
+                      </tr>
                     );
-                  })()}
-                  <div className="flex flex-wrap gap-1.5 text-xs">
-                    <span className={`chip ${nOffres ? "chip-plus" : ""}`}>💼 {nOffres ? `${nOffres} offre${nOffres > 1 ? "s" : ""}` : "Pas d'offre"}</span>
-                    {ech[0] && <span className="chip">💬 {new Date(ech[0].date_echange).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" })}</span>}
-                    {rappel && <span className={`chip ${+rappel <= maintenant ? "chip-minus" : "chip-tag"}`}>⏰ {rappel.toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}</span>}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
