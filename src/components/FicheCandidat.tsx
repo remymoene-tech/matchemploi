@@ -47,7 +47,9 @@ const Ligne = ({ l, v }: { l: string; v: React.ReactNode }) => (
  * Fiche complète d'un candidat pour l'équipe : profil, CV, recherches, offres.
  * Les droits sont vérifiés par la page qui l'affiche.
  */
-export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite, changerAdmission, changerDiplome, ajouterAuxEntreprises, admissionDemandee, refaireQrCarte, carteRefaite }: {
+export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite, changerAdmission, changerDiplome, ajouterAuxEntreprises, admissionDemandee, refaireQrCarte, carteRefaite, messageDiplome }: {
+  /** Retour de l'enregistrement du diplôme : ok, sql (colonne rentrée manquante), erreur. */
+  messageDiplome?: string;
   /** Administrateur : refaire le QR code de la carte de visite. */
   refaireQrCarte?: (f: FormData) => Promise<void>;
   carteRefaite?: boolean;
@@ -263,6 +265,9 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         <>
         {changerDiplome && (
           <Bloc titre="🎓 Diplôme préparé">
+            {messageDiplome === "ok" && <p className="rounded-xl bg-good-soft p-3 text-sm text-good">✅ Diplôme et année de rentrée enregistrés.</p>}
+            {messageDiplome === "sql" && <p className="rounded-xl bg-bad-soft p-3 text-sm text-bad">⚠️ L&apos;année de rentrée n&apos;a pas pu être enregistrée : ta base n&apos;est pas encore à jour. Va sur <a href="/diagnostic" className="font-semibold underline">/diagnostic</a>, copie le SQL et lance-le dans Supabase (ligne « Année de rentrée des étudiants »), puis recommence.</p>}
+            {messageDiplome === "erreur" && <p className="rounded-xl bg-bad-soft p-3 text-sm text-bad">L&apos;enregistrement a échoué. Réessaie dans un instant.</p>}
             <form action={changerDiplome} className="flex flex-col gap-4">
               <input type="hidden" name="candidat_id" value={candidatId} />
               <fieldset className="flex flex-col gap-2 text-sm">

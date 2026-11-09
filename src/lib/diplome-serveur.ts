@@ -5,7 +5,7 @@ import { formationsDeLEcole } from "@/lib/ecoles";
 const txt = (f: FormData, k: string, max = 200) => String(f.get(k) ?? "").trim().slice(0, max);
 
 /** L'équipe change le diplôme préparé d'un étudiant : formation, année de cursus, année de rentrée. */
-export async function majDiplome(candidatId: string, f: FormData): Promise<{ erreur?: string }> {
+export async function majDiplome(candidatId: string, f: FormData): Promise<{ erreur?: string; sansRentree?: boolean }> {
   const db = createAdminClient();
   const { data: c } = await db.from("candidats").select("ecole_id").eq("user_id", candidatId).maybeSingle();
   if (!c) return { erreur: "Candidat introuvable." };
@@ -29,11 +29,14 @@ export async function majDiplome(candidatId: string, f: FormData): Promise<{ err
     updated_at: new Date().toISOString(),
   };
   let { error } = await db.from("candidats").update(ligne).eq("user_id", candidatId);
+  let sansColonne = false;
   if (error && /annee_rentree/.test(error.message)) {
+    // Base pas encore à jour : on enregistre le reste, et on prévient l'équipe
     const { annee_rentree: _r, ...sansRentree } = ligne;
     void _r;
+    sansColonne = true;
     ({ error } = await db.from("candidats").update(sansRentree).eq("user_id", candidatId));
   }
   if (error) ({ error } = await db.from("candidats").update({ formation, updated_at: ligne.updated_at }).eq("user_id", candidatId));
-  return error ? { erreur: "L'enregistrement a échoué." } : {};
+  return error ? { erreur: "L'enregistrement a échoué." } : { sansRentree: sansColonne && !!annee_rentree };
 }

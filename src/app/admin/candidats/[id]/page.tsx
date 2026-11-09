@@ -4,8 +4,8 @@ import { ajouterProspectionAuxEntreprises, changerDiplomeAdmin, changerAdmission
 
 export const metadata = { title: "Fiche candidat · MagnusMatch" };
 
-export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string; admission?: string; carte?: string }> }) {
-  const { onglet, admission: admissionDemandee, carte } = await searchParams;
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string; admission?: string; carte?: string; diplome?: string }> }) {
+  const { onglet, admission: admissionDemandee, carte, diplome } = await searchParams;
   const { role } = await exigerAcces("candidats", "alumni");
   const { id } = await params;
   return (
@@ -28,6 +28,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       changerSuivi={changerSuivi}
       refaireQrCarte={role === "admin" ? refaireQrCarteAdmin : undefined}
       carteRefaite={carte === "nouveau"}
+      messageDiplome={diplome}
     />
   );
 }

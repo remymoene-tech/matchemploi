@@ -362,8 +362,9 @@ export async function retirerFormation(f: FormData) {
 export async function changerDiplomeAdmin(f: FormData) {
   await exigerAcces("candidats", "alumni");
   const candidat = t(f, "candidat_id", 60);
-  await majDiplome(candidat, f);
+  const r = await majDiplome(candidat, f);
   revalidatePath(`/admin/candidats/${candidat}`);
+  redirect(`/admin/candidats/${candidat}?diplome=${r.erreur ? "erreur" : r.sansRentree ? "sql" : "ok"}`);
 }
 
 /** Entreprise prospectée par un étudiant → « Mes entreprises » (ou rattachée à la fiche existante du même nom). */
