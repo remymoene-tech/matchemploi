@@ -136,7 +136,11 @@ alter table public.leads add column if not exists attribue_a text;
 alter table public.leads add column if not exists attribue_le timestamptz;
 alter table public.leads add column if not exists categorie text;
 alter table public.leads add column if not exists message text not null default '';
-alter table public.leads add column if not exists cv_chemin text;`;
+alter table public.leads add column if not exists cv_chemin text;
+alter table public.leads add column if not exists situation text not null default '';
+alter table public.leads add column if not exists entreprise text not null default '';
+alter table public.leads add column if not exists recrute boolean not null default false;
+alter table public.leads add column if not exists entreprise_id uuid references public.entreprises(id) on delete set null;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -200,7 +204,7 @@ async function verifierBase() {
     db.from("offres").select("validation, proposee_par").limit(1),
     db.from("equipe").select("id, poste, acces").limit(1),
     db.from("leads").select("attribue_a, attribue_le").limit(1),
-    db.from("leads").select("categorie, message, cv_chemin").limit(1),
+    db.from("leads").select("categorie, message, cv_chemin, situation, entreprise, recrute, entreprise_id").limit(1),
   ]);
   const noms = [
     "Table des candidats",

@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { exigerAcces } from "@/lib/auth";
-import { nomPersonne, personnesEquipe } from "@/lib/equipe";
+import { nomPersonne, personnesEquipe, peut } from "@/lib/equipe";
+import { SITUATIONS_INTERVENANT } from "@/lib/intervenants";
 import { MOTIFS_PERTE, ORIGINES_LEAD, STATUTS_LEAD, dateEntretienTexte, estLeadAdmis, isoVersParis, leadParId, nomLead, statutLead, type Lead } from "@/lib/leads";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { echangesDuLead, echeance, maintenantMs } from "@/lib/echanges";
@@ -18,13 +19,15 @@ export default async function FicheLead({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ onglet?: string; ok?: string; erreur?: string; brochure?: string; invitation?: string; convocation?: string; attribue?: string; requalifier?: string; requalifie?: string }>;
 }) {
-  const { user } = await exigerAcces("leads", "intervenants", "alumni");
+  const { user, droits } = await exigerAcces("leads", "intervenants", "alumni");
   const equipe = await personnesEquipe();
   const { id } = await params;
   const sp = await searchParams;
   const nouveau = id === "nouveau";
   const l = nouveau ? null : await leadParId(id);
   if (!nouveau && !l) notFound();
+  // Un intervenant n'est visible que par la pédagogie et l'administrateur
+  if (l?.categorie === "intervenant" && !peut(droits, "intervenants")) redirect("/admin?vue=leads&refuse=1");
   const onglet = nouveau ? "infos" : sp.onglet === "echanges" || sp.onglet === "entretien" ? sp.onglet : "infos";
   const { data: fichesData } = l ? await createAdminClient().from("entretiens_conseil").select("id, date_entretien, conseiller, bilan").eq("lead_id", l.id).order("date_entretien", { ascending: false }) : { data: [] };
   const fiches = (fichesData ?? []) as { id: string; date_entretien: string; conseiller: string; bilan: string }[];
@@ -114,8 +117,12 @@ export default async function FicheLead({ params, searchParams }: {
       {l && l.categorie && (
         <section className="flex flex-col gap-2 rounded-2xl border-2 p-4 text-sm" style={{ borderColor: "var(--sauge)" }}>
           <p className="font-semibold">{l.categorie === "intervenant" ? `🧑‍🏫 Matière(s) : ${l.formation || "—"}` : `🎓 Diplôme : ${[l.formation, l.message].filter(Boolean).join(" · ") || "—"}`}</p>
+          {l.categorie === "intervenant" && (l.entreprise || l.situation) && <p>💼 {[l.situation && SITUATIONS_INTERVENANT[l.situation], l.entreprise].filter(Boolean).join(" · ")}{l.recrute ? " · 🧑‍💼 recrute" : ""}{l.entreprise_id ? <> · <Link href={`/admin/entreprises/${l.entreprise_id}`} className="text-accent underline">fiche entreprise</Link></> : null}</p>}
           {l.categorie === "intervenant" && l.message && <p className="whitespace-pre-line">{l.message}</p>}
-          {l.cv_chemin && <a href={`/admin/intervenants/cv/${l.id}`} target="_blank" className="btn btn-sm btn-primary w-fit">📄 Voir le CV</a>}
+          <div className="flex flex-wrap gap-2">
+            {l.cv_chemin && <a href={`/admin/intervenants/cv/${l.id}`} target="_blank" className="btn btn-sm btn-primary w-fit">📄 Voir le CV</a>}
+            {l.categorie === "intervenant" && <a href={`/admin/intervenants/contact/${l.id}`} className="btn btn-sm w-fit">👤 Ajouter à mes contacts</a>}
+          </div>
           <p className="text-xs text-muted">Ce contact ne compte dans aucun chiffre ni graphique du recrutement.</p>
         </section>
       )}
@@ -126,7 +133,7 @@ export default async function FicheLead({ params, searchParams }: {
       )}
 
       {sp.ok && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Enregistré ✓</p>}
-      {sp.requalifie && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">🔁 Contact requalifié ✓ {l?.categorie === "intervenant" ? "Il est maintenant dans 🧑‍🏫 Intervenants : la pédagogie et la direction sont prévenues." : l?.categorie === "alumni" ? "Il est maintenant dans 🎓 Alumni." : "Il est de retour dans les leads."}</p>}
+      {sp.requalifie && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">🔁 Contact requalifié ✓ {l?.categorie === "intervenant" ? "Il est maintenant dans 🧑‍🏫 Intervenants : la pédagogie et le directeur campus sont prévenus." : l?.categorie === "alumni" ? "Il est maintenant dans 🎓 Alumni." : "Il est de retour dans les leads."}</p>}
       {sp.convocation && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">📨 Convocation envoyée par email ✓ Le rappel partira automatiquement la veille.</p>}
       {sp.erreur === "date" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">📅 Pour « Convoqué au concours », indique la date et l&apos;heure de l&apos;entretien d&apos;admission.</p>}
       {sp.invitation && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">🎉 Admis : le lien pour créer son espace MagnusMatch est parti par email ✓</p>}

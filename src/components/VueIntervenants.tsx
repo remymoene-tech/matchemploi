@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { nomLead, type Lead } from "@/lib/leads";
+import { SITUATIONS_INTERVENANT } from "@/lib/intervenants";
 import { nomPersonne, type Personne } from "@/lib/equipe";
 
 /** Carnet d'adresses des intervenants (questionnaire /intervenant). Ne compte dans aucun chiffre du recrutement. */
@@ -12,7 +13,7 @@ export function VueIntervenants({ contacts, personnes, q }: { contacts: Lead[]; 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="text-2xl font-extrabold">🧑‍🏫 Intervenants</h2>
-          <p className="text-sm text-muted">Le carnet d&apos;adresses des intervenants. Ils arrivent par le questionnaire « Devenir intervenant » ({site.replace(/^https?:\/\//, "")}/intervenant). Ils ne comptent dans aucun chiffre du recrutement.</p>
+          <p className="text-sm text-muted">Le carnet d&apos;adresses des intervenants, réservé à la pédagogie et au directeur campus. Ils arrivent par le questionnaire « Devenir intervenant » ({site.replace(/^https?:\/\//, "")}/intervenant). Ils ne comptent dans aucun chiffre du recrutement.</p>
         </div>
         <form className="flex gap-2">
           <input type="hidden" name="vue" value="intervenants" />
@@ -30,6 +31,10 @@ export function VueIntervenants({ contacts, personnes, q }: { contacts: Lead[]; 
                 <div>
                   <Link href={`/admin/leads/${c.id}`} className="text-lg font-semibold hover:text-accent hover:underline">{nomLead(c)}</Link>
                   <p className="text-sm font-medium text-accent">{c.formation}</p>
+                  {(c.entreprise || c.situation) && <p className="text-xs text-muted">💼 {[c.situation && SITUATIONS_INTERVENANT[c.situation], c.entreprise].filter(Boolean).join(" · ")}</p>}
+                  {c.recrute && (c.entreprise_id
+                    ? <Link href={`/admin/entreprises/${c.entreprise_id}`} className="chip chip-plus mt-1 text-xs">🧑‍💼 Recrute → fiche entreprise</Link>
+                    : <span className="chip chip-plus mt-1 text-xs">🧑‍💼 Recrute</span>)}
                 </div>
                 <span className="text-xs text-muted">{new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Paris" })}</span>
               </div>
@@ -40,6 +45,7 @@ export function VueIntervenants({ contacts, personnes, q }: { contacts: Lead[]; 
               {c.message && <p className="line-clamp-3 whitespace-pre-line text-sm text-muted">{c.message}</p>}
               <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
                 {c.cv_chemin && <a href={`/admin/intervenants/cv/${c.id}`} target="_blank" className="btn btn-sm btn-primary">📄 Voir le CV</a>}
+                <a href={`/admin/intervenants/contact/${c.id}`} className="btn btn-sm">👤 Ajouter à mes contacts</a>
                 <Link href={`/admin/leads/${c.id}?onglet=echanges`} className="btn btn-sm">💬 Échanges</Link>
                 {c.attribue_a && <span className="chip text-xs">👤 {nomPersonne(personnes.find((p) => p.email === c.attribue_a), c.attribue_a)}</span>}
               </div>

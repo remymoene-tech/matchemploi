@@ -66,6 +66,11 @@ export type Lead = {
   message?: string | null;
   /** CV déposé par un intervenant (stockage privé « cv »). */
   cv_chemin?: string | null;
+  /** Intervenant : salarié ou à son compte, son entreprise, et s'il recrute. */
+  situation?: string | null;
+  entreprise?: string | null;
+  recrute?: boolean | null;
+  entreprise_id?: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -77,7 +77,7 @@ export default async function FicheEntreprise({ params, searchParams }: {
                 🎓 Trouvée par <b>{premier.candidats?.nom || premier.candidats?.email || "un étudiant"}</b> le {new Date(premier.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" })}
                 {premier.recrute === "oui" ? " · ✅ recrute" : ""}
               </Link>
-            ) : e.auteur === "alumni" ? <p className="mt-1 w-fit rounded-lg bg-accent-soft px-3 py-1.5 text-sm">🎓 Ajoutée par un alumni{e.contact_nom ? <> : <b>{e.contact_nom}</b></> : ""}</p> : e.auteur ? <p className="text-xs text-muted">Ajoutée par l&apos;équipe ({e.auteur})</p> : null;
+            ) : e.auteur === "intervenant" ? <p className="mt-1 w-fit rounded-lg bg-accent-soft px-3 py-1.5 text-sm">🧑‍🏫 Ajoutée par un intervenant{e.contact_nom ? <> : <b>{e.contact_nom}</b></> : ""}</p> : e.auteur === "alumni" ? <p className="mt-1 w-fit rounded-lg bg-accent-soft px-3 py-1.5 text-sm">🎓 Ajoutée par un alumni{e.contact_nom ? <> : <b>{e.contact_nom}</b></> : ""}</p> : e.auteur ? <p className="text-xs text-muted">Ajoutée par l&apos;équipe ({e.auteur})</p> : null;
           })()}
         </div>
         {e && (

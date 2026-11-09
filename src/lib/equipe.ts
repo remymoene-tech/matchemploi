@@ -36,7 +36,7 @@ export const ACCES = [
   { id: "entreprises", label: "Entreprises et offres", icone: "🏢", aide: "Fiches entreprises, offres, annonces d'alumni à valider" },
   { id: "planning", label: "Planning", icone: "📅", aide: "Entretiens programmés" },
   { id: "evenements", label: "Événements", icone: "🎪", aide: "JPO, salons, QR codes" },
-  { id: "intervenants", label: "Intervenants", icone: "🧑‍🏫", aide: "Carnet d'adresses des intervenants et leurs CV" },
+  { id: "intervenants", label: "Intervenants", icone: "🧑‍🏫", aide: "Carnet d'adresses des intervenants et leurs CV · réservé aux postes de pédagogie" },
 ] as const;
 
 export type Acces = (typeof ACCES)[number]["id"];
@@ -51,9 +51,12 @@ export type Membre = { id: string; email: string; nom: string; role: string; pos
 export type Droits = { admin: boolean; acces: Acces[]; poste: string };
 
 /** Accès réels d'un membre (ses cases cochées, ou ceux de son ancien rôle). */
-export function accesDe(m: Pick<Membre, "role" | "acces">): Acces[] {
-  if (Array.isArray(m.acces)) return m.acces.filter((a): a is Acces => TOUS_ACCES.includes(a as Acces));
-  return PAR_DEFAUT[m.role] ?? ["accueil"];
+/** Le CRM intervenants est réservé à la pédagogie (et à l'administrateur, directeur campus). */
+export const estPedagogie = (poste?: string | null) => /p[ée]dagog/i.test(poste ?? "");
+
+export function accesDe(m: Pick<Membre, "role" | "acces"> & { poste?: string | null }): Acces[] {
+  const liste = Array.isArray(m.acces) ? m.acces.filter((a): a is Acces => TOUS_ACCES.includes(a as Acces)) : PAR_DEFAUT[m.role] ?? ["accueil"];
+  return liste.filter((a) => a !== "intervenants" || estPedagogie(m.poste));
 }
 
 export const roleEquipe = (id: string) => ROLES_EQUIPE.find((r) => r.id === id);
@@ -130,6 +133,6 @@ export const nomPersonne = (p: Personne | undefined, email?: string | null) => (
 /** Pédagogie et direction (intervenants) : l'administrateur et les membres dont le poste parle de pédagogie ou de direction. */
 export async function emailsPedagogieDirection(): Promise<string[]> {
   const admins = emailsAdmins();
-  const membres = ((await listeEquipe().catch(() => null)) ?? []).filter((m) => m.actif && /p[ée]dagog|direct/i.test(m.poste ?? ""));
+  const membres = ((await listeEquipe().catch(() => null)) ?? []).filter((m) => m.actif && estPedagogie(m.poste));
   return [...new Set([...admins, ...membres.map((m) => m.email.toLowerCase())])];
 }

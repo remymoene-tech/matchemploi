@@ -426,3 +426,7 @@ alter table public.leads add column if not exists attribue_le timestamptz;
 alter table public.leads add column if not exists categorie text;
 alter table public.leads add column if not exists message text not null default '';
 alter table public.leads add column if not exists cv_chemin text;
+alter table public.leads add column if not exists situation text not null default '';
+alter table public.leads add column if not exists entreprise text not null default '';
+alter table public.leads add column if not exists recrute boolean not null default false;
+alter table public.leads add column if not exists entreprise_id uuid references public.entreprises(id) on delete set null;

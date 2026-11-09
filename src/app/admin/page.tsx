@@ -62,7 +62,7 @@ const AUTRES = [
 /** Pages réservées à l'administrateur (accessibles depuis ⚙️). */
 const RESERVEES_ADMIN = ["ecoles", "reglages"];
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -269,6 +269,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
         </nav>
       </div>
 
+      {sp.requalifie === "intervenant" && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">🔁 Contact requalifié en intervenant ✓ Il est sorti de tes leads : la pédagogie et le directeur campus sont prévenus.</p>}
       {sp.refuse && <p className="rounded-xl bg-warn-soft p-4 text-sm">🔒 Tu n&apos;as pas accès à cette page. Demande à l&apos;administrateur si tu en as besoin.</p>}
 
       {vue === "accueil" && a("entreprises") && <AnnoncesAValider offres={offresEquipe} valider={validerAnnonceAlumni} refuser={refuserAnnonceAlumni} retour="/admin" />}

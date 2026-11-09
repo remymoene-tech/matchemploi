@@ -3,12 +3,14 @@
 import { useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { deposerIntervenant, preparerDepotIntervenant } from "@/app/intervenant/actions";
+import { SITUATIONS_INTERVENANT } from "@/lib/intervenants";
 
 const TAILLE_MAX = 10 * 1024 * 1024;
 
 export function FormIntervenant() {
   const [erreur, setErreur] = useState<string | null>(null);
   const [fini, setFini] = useState(false);
+  const [besoin, setBesoin] = useState<string | null>(null);
   const [envoi, demarrer] = useTransition();
 
   if (fini) {
@@ -17,6 +19,13 @@ export function FormIntervenant() {
         <p className="text-4xl" aria-hidden>🙌</p>
         <h2 className="text-2xl font-extrabold">Merci !</h2>
         <p>Votre profil est bien arrivé. L&apos;équipe pédagogique du Campus Magnus l&apos;étudie et revient vers vous.</p>
+        {besoin && (
+          <div className="mt-2 flex flex-col items-center gap-2 rounded-xl bg-accent-soft p-4">
+            <p className="font-semibold">🧑‍💼 Vous recrutez : décrivez votre besoin en 2 minutes</p>
+            <p className="text-sm text-muted">Poste, missions, rythme… L&apos;équipe vous présente les étudiants qui correspondent.</p>
+            <a href={besoin} className="btn btn-primary">📋 Remplir la fiche besoin</a>
+          </div>
+        )}
       </div>
     );
   }
@@ -42,7 +51,7 @@ export function FormIntervenant() {
           }
           const r = await deposerIntervenant(f);
           if (r.erreur) setErreur(r.erreur);
-          else setFini(true);
+          else { setBesoin(r.besoin ?? null); setFini(true); }
         });
       }}
     >
@@ -63,6 +72,21 @@ export function FormIntervenant() {
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-semibold">Présentez-vous <span className="text-bad">*</span></span>
         <textarea className="input min-h-36" name="presentation" required minLength={20} maxLength={4000} placeholder="Votre parcours, votre expérience, ce que vous aimeriez transmettre aux étudiants, les formats possibles (cours, atelier, conférence…)." />
+      </label>
+      <fieldset className="flex flex-col gap-2 text-sm">
+        <legend className="mb-1 font-semibold">💼 Votre situation</legend>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(SITUATIONS_INTERVENANT).map(([id, lab]) => (
+            <label key={id} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-4 py-2 has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
+              <input type="radio" name="situation" value={id} className="sr-only" />{lab}
+            </label>
+          ))}
+        </div>
+        <label className="mt-1 flex flex-col gap-1"><span className="font-semibold">Entreprise</span><input className="input" name="entreprise" maxLength={150} placeholder="Nom de votre entreprise ou de votre activité" /></label>
+      </fieldset>
+      <label className="flex cursor-pointer items-start gap-3 rounded-xl border-2 border-dashed border-line p-4 text-sm has-[:checked]:border-solid has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)]">
+        <input type="checkbox" name="recrute" className="mt-1 h-4 w-4" />
+        <span><b>🧑‍💼 Je recrute aussi !</b><span className="block text-muted">Vous cherchez un alternant ou un stagiaire ? Cochez : vous pourrez décrire votre besoin juste après.</span></span>
       </label>
       <div className="grid gap-4 sm:grid-cols-2">
         <label className="flex flex-col gap-1 text-sm"><span className="font-semibold">LinkedIn</span><input className="input" name="linkedin" type="url" placeholder="https://www.linkedin.com/in/…" /></label>

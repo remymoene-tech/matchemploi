@@ -500,8 +500,9 @@ function lireLead(f: FormData) {
 }
 
 export async function enregistrerLead(f: FormData) {
-  await exigerAcces("leads", "intervenants", "alumni");
+  const { droits } = await exigerAcces("leads", "intervenants", "alumni");
   const id = t(f, "id", 60);
+  if (id) await verifierContact(id, droits);
   const d = lireLead(f);
   if (!d.email && !d.telephone && !d.nom) redirect(`/admin/leads/${id || "nouveau"}?erreur=champs`);
   if (d.statut === "perdu" && d.motif_perte.length < 3) redirect(`/admin/leads/${id || "nouveau"}?erreur=motif`);
@@ -570,8 +571,9 @@ export async function renvoyerBrochure(f: FormData) {
 }
 
 export async function ajouterEchangeLead(_: { erreur?: string; ok?: boolean }, f: FormData): Promise<{ erreur?: string; ok?: boolean }> {
-  const { user } = await exigerAcces("leads", "intervenants", "alumni");
+  const { user, droits } = await exigerAcces("leads", "intervenants", "alumni");
   const id = t(f, "lead_id", 60);
+  await verifierContact(id, droits);
   const r = await ajouterEchange({ lead: id }, f, user.email ?? "");
   if (r.erreur) return r;
   await prendreSiLibre(id, user.email);
@@ -780,11 +782,19 @@ export async function supprimerMembre(f: FormData) {
   redirect("/admin/parametres?ok=supprime");
 }
 
+/** Un intervenant ne se modifie que par la pédagogie et l'administrateur. */
+async function verifierContact(leadId: string, droits: import("@/lib/equipe").Droits) {
+  const { peut } = await import("@/lib/equipe");
+  const { data } = await createAdminClient().from("leads").select("categorie").eq("id", leadId).maybeSingle();
+  if (data?.categorie === "intervenant" && !peut(droits, "intervenants")) redirect("/admin?vue=leads&refuse=1");
+}
+
 /** « Je m'en occupe » ou attribution à un membre de l'équipe. */
 export async function attribuerLeadAction(f: FormData) {
-  const { user } = await exigerAcces("leads", "intervenants", "alumni");
+  const { user, droits } = await exigerAcces("leads", "intervenants", "alumni");
   const { attribuerLead } = await import("@/lib/leads");
   const id = t(f, "lead_id", 60);
+  await verifierContact(id, droits);
   const choix = t(f, "attribue_a", 200);
   const email = choix === "moi" ? (user.email ?? "") : choix;
   await attribuerLead(id, email, user.email ?? "");
@@ -817,9 +827,10 @@ export async function attribuerLeadsGroupe(f: FormData) {
  * Il sort (ou revient dans) les leads et les chiffres du recrutement.
  */
 export async function requalifierLead(f: FormData) {
-  const { user } = await exigerAcces("leads", "intervenants", "alumni");
+  const { user, droits } = await exigerAcces("leads", "intervenants", "alumni");
   const { leadParId, notifierContact } = await import("@/lib/leads");
   const id = t(f, "id", 60);
+  await verifierContact(id, droits);
   const choix = t(f, "categorie", 20);
   const categorie = choix === "intervenant" || choix === "alumni" ? choix : null;
   const l = await leadParId(id);
@@ -844,5 +855,7 @@ export async function requalifierLead(f: FormData) {
     if (apres) await notifierContact(apres).catch(() => undefined);
   }
   revalidatePath("/admin");
+  const { peut } = await import("@/lib/equipe");
+  if (categorie === "intervenant" && !peut(droits, "intervenants")) redirect("/admin?vue=leads&requalifie=intervenant");
   redirect(`/admin/leads/${id}?requalifie=1`);
 }
