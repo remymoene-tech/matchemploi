@@ -58,6 +58,7 @@ export function VueIntervenants({ contacts, personnes, q, specialite }: { contac
               <div className="mt-auto flex flex-wrap items-center gap-2 pt-1">
                 {c.cv_chemin && <a href={`/admin/intervenants/cv/${c.id}`} target="_blank" className="btn btn-sm btn-primary">📄 Voir le CV</a>}
                 <a href={`/admin/intervenants/contact/${c.id}`} className="btn btn-sm">👤 Ajouter à mes contacts</a>
+                <Link href={`/admin/intervenants/${c.id}/fiche`} className="btn btn-sm">✏️ Fiche</Link>
                 <Link href={`/admin/leads/${c.id}?onglet=echanges`} className="btn btn-sm">💬 Échanges</Link>
                 {c.attribue_a && <span className="chip text-xs">👤 {nomPersonne(personnes.find((p) => p.email === c.attribue_a), c.attribue_a)}</span>}
               </div>

@@ -7,7 +7,7 @@ import { ADMISSIONS, AVEC_MOTIF, type Admission } from "@/lib/admission";
 import { bienvenueAlumni } from "@/lib/alumni-serveur";
 
 /** Change le statut d'admission. Passage à « admis » : recherche d'offres lancée + email de bienvenue. */
-export async function changerAdmission(candidatId: string, statut: string, motif = ""): Promise<{ erreur?: string }> {
+export async function changerAdmission(candidatId: string, statut: string, motif = ""): Promise<{ erreur?: string; leadIntervenant?: string }> {
   if (!ADMISSIONS.some((a) => a.id === statut)) return { erreur: "Statut inconnu." };
   if (statut === "abandon" && !motif.trim()) return { erreur: "motif" };
   const db = createAdminClient();
@@ -28,6 +28,7 @@ export async function changerAdmission(candidatId: string, statut: string, motif
     const { synchroniserLeadDuCandidat, notifierContact } = await import("@/lib/leads");
     const l = await synchroniserLeadDuCandidat(candidatId, true).catch(() => null);
     if (l) await notifierContact(l).catch(() => undefined);
+    if (l) return { leadIntervenant: l.id };
   }
   // Retour en arrière : son lead redevient un lead du recrutement
   if (statut !== "intervenant" && avant?.statut_admission === "intervenant") {

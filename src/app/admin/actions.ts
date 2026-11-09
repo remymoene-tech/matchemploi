@@ -328,6 +328,8 @@ export async function changerAdmissionAdmin(f: FormData) {
   if (r.erreur === "motif") redirect(`/admin/candidats/${candidat}?admission=${statut}#admission`);
   revalidatePath(`/admin/candidats/${candidat}`);
   revalidatePath("/admin");
+  // Requalifié en intervenant : on remplit tout de suite sa fiche intervenant
+  if (r.leadIntervenant) redirect(`/admin/intervenants/${r.leadIntervenant}/fiche?requalifie=1`);
 }
 
 /* ---------- Formations des écoles ---------- */
@@ -863,7 +865,39 @@ export async function requalifierLead(f: FormData) {
     if (apres) await notifierContact(apres).catch(() => undefined);
   }
   revalidatePath("/admin");
-  const { peut } = await import("@/lib/equipe");
-  if (categorie === "intervenant" && !peut(droits, "intervenants")) redirect("/admin?vue=leads&requalifie=intervenant");
+  // Requalifié en intervenant : on remplit tout de suite sa fiche intervenant
+  if (categorie === "intervenant") redirect(`/admin/intervenants/${id}/fiche?requalifie=1`);
   redirect(`/admin/leads/${id}?requalifie=1`);
+}
+
+/** Fiche intervenant remplie par l'équipe (après une requalification, ou pour la compléter). */
+export async function enregistrerFicheIntervenant(f: FormData) {
+  await exigerAcces("intervenants", "leads", "candidats");
+  const { SPECIALITES, SITUATIONS_INTERVENANT } = await import("@/lib/intervenants");
+  const id = t(f, "id", 60);
+  const db = createAdminClient();
+  const { data: l } = await db.from("leads").select("*").eq("id", id).eq("categorie", "intervenant").maybeSingle();
+  if (!l) redirect("/admin");
+  const situation = t(f, "situation", 20);
+  const specialites = [...f.getAll("specialites").map(String).filter((x) => (SPECIALITES as readonly string[]).includes(x)), t(f, "autre_specialite", 80)].filter(Boolean);
+  const message = [
+    t(f, "presentation", 4000),
+    t(f, "linkedin", 200) && `LinkedIn : ${t(f, "linkedin", 200)}`,
+    t(f, "disponibilites", 300) && `Disponibilités : ${t(f, "disponibilites", 300)}`,
+  ].filter(Boolean).join("\n\n");
+  const maj = {
+    prenom: t(f, "prenom", 80) || l.prenom, nom: t(f, "nom", 80) || l.nom, telephone: t(f, "telephone", 30),
+    formation: specialites.join(" · "), situation: situation in SITUATIONS_INTERVENANT ? situation : "",
+    entreprise: t(f, "entreprise", 150), recrute: f.get("recrute") === "on", message, updated_at: new Date().toISOString(),
+  };
+  let { error } = await db.from("leads").update(maj).eq("id", id);
+  if (error && /situation|entreprise|recrute/.test(error.message)) {
+    const { situation: _s, entreprise: _e, recrute: _r, ...base } = maj;
+    void _s; void _e; void _r;
+    ({ error } = await db.from("leads").update(base).eq("id", id));
+  }
+  if (error) redirect(`/admin/intervenants/${id}/fiche?erreur=base`);
+  const { peut } = await import("@/lib/equipe");
+  const { droits } = await exigerAcces("intervenants", "leads", "candidats");
+  redirect(peut(droits, "intervenants") ? `/admin/leads/${id}?ok=1` : "/admin?vue=leads&requalifie=intervenant");
 }

@@ -122,6 +122,7 @@ export default async function FicheLead({ params, searchParams }: {
           <div className="flex flex-wrap gap-2">
             {l.cv_chemin && <a href={`/admin/intervenants/cv/${l.id}`} target="_blank" className="btn btn-sm btn-primary w-fit">📄 Voir le CV</a>}
             {l.categorie === "intervenant" && <a href={`/admin/intervenants/contact/${l.id}`} className="btn btn-sm w-fit">👤 Ajouter à mes contacts</a>}
+            {l.categorie === "intervenant" && <Link href={`/admin/intervenants/${l.id}/fiche`} className="btn btn-sm w-fit">✏️ Compléter sa fiche</Link>}
           </div>
           <p className="text-xs text-muted">Ce contact ne compte dans aucun chiffre ni graphique du recrutement.</p>
         </section>
