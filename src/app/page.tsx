@@ -53,11 +53,14 @@ const FORMATIONS: Formation[] = [
   },
 ];
 
+/** Seules les journées portes ouvertes s'affichent sur l'accueil (le nom contient « portes ouvertes » ou « JPO »). */
+const estPortesOuvertes = (nom: string) => /portes?[\s-]+ouvertes?|\bjpo\b/i.test(nom.normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+
 async function prochainsEvenements(): Promise<Evenement[]> {
   try {
     const aujourdhui = jourParis(new Date());
     const liste = (await listeEvenements()) ?? [];
-    return liste.filter((e) => e.date >= aujourdhui).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
+    return liste.filter((e) => e.date >= aujourdhui && estPortesOuvertes(e.nom)).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
   } catch {
     return [];
   }
@@ -145,7 +148,7 @@ export default async function Accueil() {
       {/* Agenda + MagnusMatch */}
       <section className="grid grid-cols-[minmax(0,1fr)] gap-0 overflow-hidden rounded-xl border border-line lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <div className="flex flex-col gap-4 bg-[#111] p-8 text-white">
-          <h2 className="font-display text-2xl font-medium uppercase tracking-[.08em]">Agenda</h2>
+          <h2 className="font-display text-2xl font-medium uppercase tracking-[.08em]">Journées portes ouvertes</h2>
           {evenements.length ? (
             <ul className="flex flex-col divide-y divide-white/15">
               {evenements.map((e) => (

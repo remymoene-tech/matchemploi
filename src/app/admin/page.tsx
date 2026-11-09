@@ -741,7 +741,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           <form action={creerEvenement} className="card flex flex-wrap items-end gap-3 p-5">
             <div className="w-full">
               <h2 className="text-lg font-semibold">🎪 Nouvel événement</h2>
-              <p className="text-sm text-muted">Journée portes ouvertes, salon, forum… MagnusMatch crée un QR code : les visiteurs remplissent le formulaire brochure et arrivent dans tes leads, avec le nom de l&apos;événement comme origine.</p>
+              <p className="text-sm text-muted">Journée portes ouvertes, salon, forum… MagnusMatch crée un QR code : les visiteurs remplissent le formulaire brochure et arrivent dans tes leads, avec le nom de l&apos;événement comme origine. 🏠 Les événements dont le nom contient « Portes ouvertes » ou « JPO » s&apos;affichent aussi sur la page d&apos;accueil.</p>
             </div>
             <label className="flex min-w-56 flex-1 flex-col gap-1 text-sm"><span className="font-semibold">Nom</span><input className="input" name="nom" required placeholder="Journée Portes Ouvertes" /></label>
             <label className="flex flex-col gap-1 text-sm"><span className="font-semibold">Date</span><input className="input" type="date" name="date" required /></label>
