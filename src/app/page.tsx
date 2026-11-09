@@ -53,14 +53,14 @@ const FORMATIONS: Formation[] = [
   },
 ];
 
-/** Seules les journées portes ouvertes s'affichent sur l'accueil (le nom contient « portes ouvertes » ou « JPO »). */
-const estPortesOuvertes = (nom: string) => /portes?[\s-]+ouvertes?|\bjpo\b/i.test(nom.normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+/** Sur l'accueil : seulement les événements cochés « Mettre sur la page d'accueil ». */
+const surAccueil = (e: Evenement) => e.sur_accueil === true;
 
 async function prochainsEvenements(): Promise<Evenement[]> {
   try {
     const aujourdhui = jourParis(new Date());
     const liste = (await listeEvenements()) ?? [];
-    return liste.filter((e) => e.date >= aujourdhui && estPortesOuvertes(e.nom)).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
+    return liste.filter((e) => e.date >= aujourdhui && surAccueil(e)).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3);
   } catch {
     return [];
   }

@@ -29,7 +29,7 @@ import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { creerEvenement, supprimerEvenement, changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { creerEvenement, supprimerEvenement, basculerAccueilEvenement, changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -741,18 +741,19 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           <form action={creerEvenement} className="card flex flex-wrap items-end gap-3 p-5">
             <div className="w-full">
               <h2 className="text-lg font-semibold">🎪 Nouvel événement</h2>
-              <p className="text-sm text-muted">Journée portes ouvertes, salon, forum… MagnusMatch crée un QR code : les visiteurs remplissent le formulaire brochure et arrivent dans tes leads, avec le nom de l&apos;événement comme origine. 🏠 Les événements dont le nom contient « Portes ouvertes » ou « JPO » s&apos;affichent aussi sur la page d&apos;accueil.</p>
+              <p className="text-sm text-muted">Journée portes ouvertes, salon, forum… MagnusMatch crée un QR code : les visiteurs remplissent le formulaire brochure et arrivent dans tes leads, avec le nom de l&apos;événement comme origine.</p>
             </div>
             <label className="flex min-w-56 flex-1 flex-col gap-1 text-sm"><span className="font-semibold">Nom</span><input className="input" name="nom" required placeholder="Journée Portes Ouvertes" /></label>
             <label className="flex flex-col gap-1 text-sm"><span className="font-semibold">Date</span><input className="input" type="date" name="date" required /></label>
             <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm"><span className="font-semibold">Lieu <span className="font-normal text-muted">(facultatif)</span></span><input className="input" name="lieu" placeholder="Campus Magnus, Arles" /></label>
+            <label className="flex w-full items-center gap-2 text-sm"><input type="checkbox" name="sur_accueil" className="h-4 w-4" /> 🏠 Mettre sur la page d&apos;accueil <span className="text-muted">(dans « Journées portes ouvertes »)</span></label>
             <button className="btn btn-primary">➕ Créer et générer le QR code</button>
           </form>
           {evenements && evenements.length > 0 && (
             <div className="overflow-x-auto rounded-xl border border-line bg-surface">
               <table className="w-full min-w-[720px] text-left text-sm">
                 <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
-                  <tr><th className="p-3 font-semibold">Événement</th><th className="p-3 font-semibold">Date</th><th className="p-3 font-semibold">Leads</th><th className="p-3 font-semibold">Admis</th><th className="p-3" /></tr>
+                  <tr><th className="p-3 font-semibold">Événement</th><th className="p-3 font-semibold">Date</th><th className="p-3 font-semibold">Leads</th><th className="p-3 font-semibold">Admis</th><th className="p-3 font-semibold">Accueil</th><th className="p-3" /></tr>
                 </thead>
                 <tbody>
                   {evenements.map((ev) => {
@@ -763,6 +764,12 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                         <td className="p-3">{new Date(`${ev.date}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}</td>
                         <td className="p-3"><Link href={`/admin?vue=leads&lorigine=${encodeURIComponent(ev.nom)}`} className="chip chip-tag">🧲 {ls.length}</Link></td>
                         <td className="p-3">{ls.filter((l) => estLeadAdmis(l)).length}</td>
+                        <td className="p-3">
+                          <form action={basculerAccueilEvenement}>
+                            <input type="hidden" name="id" value={ev.id} /><input type="hidden" name="valeur" value={ev.sur_accueil ? "0" : "1"} />
+                            <button className={`btn btn-sm ${ev.sur_accueil ? "btn-primary" : ""}`} title={ev.sur_accueil ? "Retirer de la page d'accueil" : "Mettre sur la page d'accueil"}>{ev.sur_accueil ? "🏠 Oui" : "Non"}</button>
+                          </form>
+                        </td>
                         <td className="p-3 text-right">
                           <span className="flex justify-end gap-2">
                             <Link href={`/admin/evenements/${ev.id}`} className="btn btn-sm btn-primary">📲 QR code</Link>

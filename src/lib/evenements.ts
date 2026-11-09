@@ -4,7 +4,7 @@ import QRCode from "qrcode";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 /** Événements (JPO, salons…) : un QR code mène au formulaire brochure, les leads arrivent avec l'événement comme origine. */
-export type Evenement = { id: string; nom: string; date: string; lieu: string; code: string; created_at: string };
+export type Evenement = { id: string; nom: string; date: string; lieu: string; code: string; created_at: string; sur_accueil?: boolean | null };
 
 export const nouveauCode = () => randomBytes(6).toString("base64url").replace(/[-_]/g, "x").slice(0, 8).toUpperCase();
 

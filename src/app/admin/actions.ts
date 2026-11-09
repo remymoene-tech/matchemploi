@@ -675,13 +675,25 @@ export async function creerEvenement(f: FormData) {
   const nom = t(f, "nom", 150);
   const date = t(f, "date", 10);
   if (!nom || !/^\d{4}-\d{2}-\d{2}$/.test(date)) redirect("/admin?vue=evenements&erreur=evenement");
-  const { data, error } = await createAdminClient().from("evenements").insert({ nom, date, lieu: t(f, "lieu", 150), code: nouveauCode() }).select("id").single();
+  const db = createAdminClient();
+  const base = { nom, date, lieu: t(f, "lieu", 150), code: nouveauCode() };
+  let { data, error } = await db.from("evenements").insert({ ...base, sur_accueil: f.get("sur_accueil") === "on" }).select("id").single();
+  if (error) ({ data, error } = await db.from("evenements").insert(base).select("id").single()); // colonne pas encore créée
   if (error || !data) redirect("/admin?vue=evenements&erreur=base");
+  revalidatePath("/");
   redirect(`/admin/evenements/${data.id}`);
+}
+
+export async function basculerAccueilEvenement(f: FormData) {
+  await exigerAdmin();
+  const { error } = await createAdminClient().from("evenements").update({ sur_accueil: f.get("valeur") === "1" }).eq("id", t(f, "id", 60));
+  revalidatePath("/");
+  redirect(error ? "/admin?vue=evenements&erreur=base" : "/admin?vue=evenements");
 }
 
 export async function supprimerEvenement(f: FormData) {
   await exigerAdmin();
   await createAdminClient().from("evenements").delete().eq("id", t(f, "id", 60));
+  revalidatePath("/");
   redirect("/admin?vue=evenements");
 }
