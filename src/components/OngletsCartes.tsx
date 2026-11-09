@@ -5,7 +5,7 @@ export type OngletCarte = { href: string; icone: string; label: string; sous?: s
 /** Onglets en cartes avec icône (style B). */
 export function OngletsCartes({ onglets, label }: { onglets: OngletCarte[]; label: string }) {
   const n = onglets.length;
-  const grille = n <= 3 ? "grid-cols-3" : n === 4 ? "grid-cols-2 sm:grid-cols-4" : n === 6 ? "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5";
+  const grille = n <= 3 ? "grid-cols-3" : n === 4 ? "grid-cols-2 sm:grid-cols-4" : n === 6 ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5";
   return (
     <nav className={`grid gap-2 sm:gap-3 ${grille}`} aria-label={label}>
       {onglets.map((o) => (

@@ -49,13 +49,13 @@ const VUES = [
   { id: "alumni", label: "Alumni" },
   { id: "planning", label: "Planning" },
   { id: "evenements", label: "Événements" },
+  { id: "intervenants", label: "Intervenants" },
 ] as const;
 /** Pages secondaires, en petit à droite des onglets. */
 const AUTRES = [
   { id: "briefing", label: "📋 Briefing" },
   { id: "relances", label: "🔔 Relances" },
   { id: "entretiens", label: "🗣️ Entretiens" },
-  { id: "intervenants", label: "🧑‍🏫 Intervenants" },
   { id: "ecoles", label: "🏫 Écoles" },
   { id: "reglages", label: "⚙️ Réglages" },
 ] as const;
@@ -261,6 +261,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           ...(a("entreprises") ? [{ href: "/admin?vue=entreprises", icone: "🏢", label: "Mes entreprises", sous: entreprises ? `${nbEntreprises} rencontrée${nbEntreprises > 1 ? "s" : ""}` : `${mesOffresOuvertes} offre${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "entreprises" }] : []),
           ...(a("planning") ? [{ href: "/admin?vue=planning", icone: "📅", label: "Planning", sous: "Entretiens programmés", actif: vue === "planning" }] : []),
           ...(a("evenements") ? [{ href: "/admin?vue=evenements", icone: "🎪", label: "Événements", sous: "JPO, salons · QR code", actif: vue === "evenements" }] : []),
+          ...(a("intervenants") ? [{ href: "/admin?vue=intervenants", icone: "🧑‍🏫", label: "Intervenants", sous: "Carnet d'adresses · pédagogie", actif: vue === "intervenants" }] : []),
         ]} />
         <nav className="flex flex-wrap justify-end gap-3 text-sm" aria-label="Autres pages">
           {AUTRES.filter((v) => !RESERVEES_ADMIN.includes(v.id) && permise(v.id)).map((v) => (
