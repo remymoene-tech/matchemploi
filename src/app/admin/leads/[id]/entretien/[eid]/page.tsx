@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { exigerAdmin } from "@/lib/auth";
+import { exigerAcces } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { FormEntretienConseil } from "@/components/FormEntretienConseil";
 import { leadParId, nomLead } from "@/lib/leads";
@@ -11,7 +11,7 @@ export const metadata = { title: "Entretien d'admission · MagnusMatch" };
 
 /** Fiche d'entretien d'admission d'un lead (la même que celle des candidats ; elle le suivra dans son espace). */
 export default async function EntretienLead({ params, searchParams }: { params: Promise<{ id: string; eid: string }>; searchParams: Promise<{ ok?: string }> }) {
-  await exigerAdmin();
+  await exigerAcces("leads");
   const { id, eid } = await params;
   const { ok } = await searchParams;
   const l = await leadParId(id);

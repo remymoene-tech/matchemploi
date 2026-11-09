@@ -1,11 +1,11 @@
-import { exigerAdmin } from "@/lib/auth";
+import { exigerAcces } from "@/lib/auth";
 import { PageEntretienConseil } from "@/components/PageEntretienConseil";
 import { enregistrerEntretienAdmin } from "../../../../actions";
 
 export const metadata = { title: "Fiche d'entretien · MagnusMatch" };
 
 export default async function Page({ params, searchParams }: { params: Promise<{ id: string; eid: string }>; searchParams: Promise<{ ok?: string }> }) {
-  await exigerAdmin();
+  await exigerAcces("candidats", "alumni");
   const { id, eid } = await params;
   const { ok } = await searchParams;
   return (

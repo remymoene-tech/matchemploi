@@ -2,7 +2,7 @@ import Link from "next/link";
 import { QuestionnaireAttentes } from "@/components/QuestionnaireAttentes";
 import { ChampExpiration } from "@/components/ChampExpiration";
 import { notFound } from "next/navigation";
-import { exigerAdmin } from "@/lib/auth";
+import { exigerAcces } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { enregistrerOffre, supprimerOffre } from "../../actions";
 import { CONTRATS, SOURCES_AUTO, type Offre } from "@/lib/types";
@@ -15,7 +15,7 @@ export default async function Page({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ verifier?: string; erreur?: string; entreprise?: string }>;
 }) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   const { id } = await params;
   const sp = await searchParams;
   let o: Partial<Offre> = { source: "partenaire", ouverte: true };

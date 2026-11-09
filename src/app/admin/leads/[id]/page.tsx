@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { exigerAdmin } from "@/lib/auth";
+import { exigerAcces } from "@/lib/auth";
 import { MOTIFS_PERTE, ORIGINES_LEAD, STATUTS_LEAD, dateEntretienTexte, estLeadAdmis, isoVersParis, leadParId, nomLead, statutLead, type Lead } from "@/lib/leads";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { echangesDuLead, echeance, maintenantMs } from "@/lib/echanges";
@@ -17,7 +17,7 @@ export default async function FicheLead({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ onglet?: string; ok?: string; erreur?: string; brochure?: string; invitation?: string; convocation?: string }>;
 }) {
-  await exigerAdmin();
+  await exigerAcces("leads");
   const { id } = await params;
   const sp = await searchParams;
   const nouveau = id === "nouveau";

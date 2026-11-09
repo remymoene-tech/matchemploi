@@ -6,7 +6,7 @@ import { estExpiree, lireExpiration } from "@/lib/expiration";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { exigerAdmin, exigerSuperAdmin } from "@/lib/auth";
+import { exigerAcces, exigerSuperAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, lireAnnonce } from "@/lib/ia";
 import { noterOffrePourTous, rechercheQuotidienne } from "@/lib/matching";
@@ -38,7 +38,7 @@ import { FREQUENCES, ecrireFrequence, type Frequence } from "@/lib/reglages";
 const t = (f: FormData, k: string, max = 300) => String(f.get(k) ?? "").trim().slice(0, max);
 
 export async function changerSuivi(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("entreprises", "candidats");
   const suivi = t(f, "suivi");
   if (!SUIVIS.some((s) => s.id === suivi)) return;
   await createAdminClient()
@@ -55,7 +55,7 @@ export async function changerSuivi(f: FormData) {
 }
 
 export async function enregistrerOffre(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   const id = t(f, "id");
   const contrat = t(f, "contrat");
   const donnees = {
@@ -110,7 +110,7 @@ export async function enregistrerOffre(f: FormData) {
 }
 
 export async function supprimerOffre(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   await createAdminClient().from("offres").delete().eq("id", t(f, "id"));
   redirect("/admin?vue=entreprises&sous=offres");
 }
@@ -118,7 +118,7 @@ export async function supprimerOffre(f: FormData) {
 export type EtatAnnonce = { erreur?: string };
 
 export async function importerAnnonce(_: EtatAnnonce, f: FormData): Promise<EtatAnnonce> {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   const texte = String(f.get("texte") ?? "").trim();
   if (!iaConfiguree()) return { erreur: "La lecture automatique demande la clé IA (ANTHROPIC_API_KEY). En attendant, crée l'offre avec « Ajouter une offre »." };
   if (texte.length < 80) return { erreur: "Colle le texte complet de l'annonce (le lien seul ne suffit pas)." };
@@ -144,7 +144,7 @@ export async function importerAnnonce(_: EtatAnnonce, f: FormData): Promise<Etat
 }
 
 export async function relancerTout() {
-  await exigerAdmin();
+  await exigerAcces("candidats", "alumni");
   after(() => rechercheQuotidienne());
   redirect("/admin?vue=candidats&relance=1");
 }
@@ -184,14 +184,14 @@ export async function retirerResponsable(f: FormData) {
 }
 
 export async function envoyerMessageAdmin(_: EtatEnvoi, f: FormData): Promise<EtatEnvoi> {
-  const { user } = await exigerAdmin();
+  const { user } = await exigerAcces("candidats", "alumni");
   const r = await envoyerMessageCorrespondance(f, { nom: process.env.NOM_EXPEDITEUR || "L'équipe MagnusMatch", email: user.email! });
   revalidatePath("/admin");
   return r;
 }
 
 export async function enregistrerEntretienAdmin(_: EtatEntretien, f: FormData): Promise<EtatEntretien> {
-  const { user } = await exigerAdmin();
+  const { user } = await exigerAcces("candidats", "alumni");
   const candidat = t(f, "candidat_id", 60);
   const r = await enregistrerEntretienConseil(f, candidat, { email: user.email! });
   if (r.erreur) return { erreur: r.erreur };
@@ -201,7 +201,7 @@ export async function enregistrerEntretienAdmin(_: EtatEntretien, f: FormData): 
 }
 
 async function passerTestPour(test: TestId, f: FormData): Promise<EtatTest> {
-  await exigerAdmin();
+  await exigerAcces("candidats", "alumni");
   const candidat = t(f, "candidat_id", 60);
   const r = await enregistrerTest(candidat, test, f, "conseiller");
   if (r.erreur) return r;
@@ -211,7 +211,7 @@ export async function passerTestDiscAdmin(_: EtatTest, f: FormData) { return pas
 export async function passerTestManagementAdmin(_: EtatTest, f: FormData) { return passerTestPour("management", f); }
 
 export async function autoriserTestAdmin(f: FormData) {
-  const { user } = await exigerAdmin();
+  const { user } = await exigerAcces("candidats", "alumni");
   const candidat = t(f, "candidat_id", 60);
   const test = t(f, "test", 20);
   if (!["disc", "management"].includes(test)) return;
@@ -220,7 +220,7 @@ export async function autoriserTestAdmin(f: FormData) {
 }
 
 export async function genererSyntheseAdmin(_: { erreur?: string }, f: FormData): Promise<{ erreur?: string }> {
-  const { user } = await exigerAdmin();
+  const { user } = await exigerAcces("candidats", "alumni");
   const candidat = t(f, "candidat_id", 60);
   const r = await genererSynthese(candidat, user.email ?? "");
   if (!r.erreur) revalidatePath(`/admin/candidats/${candidat}`);
@@ -228,7 +228,7 @@ export async function genererSyntheseAdmin(_: { erreur?: string }, f: FormData):
 }
 
 export async function genererCvAmelioreAdmin(_: { erreur?: string }, f: FormData): Promise<{ erreur?: string }> {
-  await exigerAdmin();
+  await exigerAcces("candidats", "alumni");
   const candidat = t(f, "candidat_id", 60);
   const r = await genererCvAmeliore(candidat);
   if (!r.erreur) revalidatePath(`/admin/candidats/${candidat}`);
@@ -236,7 +236,7 @@ export async function genererCvAmelioreAdmin(_: { erreur?: string }, f: FormData
 }
 
 export async function ajouterEchangeAdmin(_: { erreur?: string; ok?: boolean }, f: FormData): Promise<{ erreur?: string; ok?: boolean }> {
-  const { user } = await exigerAdmin();
+  const { user } = await exigerAcces("candidats", "alumni");
   const candidat = t(f, "candidat_id", 60);
   const r = await ajouterEchange(candidat, f, user.email ?? "");
   if (r.erreur) return r;
@@ -245,14 +245,14 @@ export async function ajouterEchangeAdmin(_: { erreur?: string; ok?: boolean }, 
 }
 
 export async function supprimerEchangeAdmin(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("candidats", "alumni");
   const candidat = t(f, "candidat_id", 60);
   await createAdminClient().from("echanges").delete().eq("id", t(f, "id", 60)).eq("candidat_id", candidat);
   revalidatePath(`/admin/candidats/${candidat}`);
 }
 
 export async function actionFaiteAdmin(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("candidats", "alumni");
   const candidat = t(f, "candidat_id", 60);
   await createAdminClient().from("echanges").update({ action_faite: true }).eq("id", t(f, "id", 60)).eq("candidat_id", candidat);
   revalidatePath(`/admin/candidats/${candidat}`);
@@ -260,7 +260,7 @@ export async function actionFaiteAdmin(f: FormData) {
 
 /* ---------- Mes entreprises ---------- */
 export async function enregistrerEntreprise(f: FormData) {
-  const { user } = await exigerAdmin();
+  const { user } = await exigerAcces("entreprises");
   const id = t(f, "id", 60);
   const donnees = lireEntreprise(f);
   if (!donnees.nom) redirect(`/admin/entreprises/${id || "nouvelle"}?erreur=nom`);
@@ -291,13 +291,13 @@ export async function enregistrerEntreprise(f: FormData) {
 }
 
 export async function supprimerEntreprise(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   await createAdminClient().from("entreprises").delete().eq("id", t(f, "id", 60));
   redirect("/admin?vue=entreprises");
 }
 
 export async function ajouterEchangeEntreprise(_: { erreur?: string; ok?: boolean }, f: FormData): Promise<{ erreur?: string; ok?: boolean }> {
-  const { user } = await exigerAdmin();
+  const { user } = await exigerAcces("entreprises");
   const id = t(f, "entreprise_id", 60);
   const r = await ajouterEchange({ entreprise: id }, f, user.email ?? "");
   if (r.erreur) return r;
@@ -306,21 +306,21 @@ export async function ajouterEchangeEntreprise(_: { erreur?: string; ok?: boolea
 }
 
 export async function supprimerEchangeEntreprise(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   const id = t(f, "entreprise_id", 60);
   await createAdminClient().from("echanges").delete().eq("id", t(f, "id", 60)).eq("entreprise_id", id);
   revalidatePath(`/admin/entreprises/${id}`);
 }
 
 export async function actionFaiteEntreprise(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   const id = t(f, "entreprise_id", 60);
   await createAdminClient().from("echanges").update({ action_faite: true }).eq("id", t(f, "id", 60)).eq("entreprise_id", id);
   revalidatePath(`/admin/entreprises/${id}`);
 }
 
 export async function changerAdmissionAdmin(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("candidats", "alumni");
   const candidat = t(f, "candidat_id", 60);
   const statut = t(f, "statut_admission", 30);
   const r = await changerAdmission(candidat, statut, t(f, "motif_admission", 1000));
@@ -358,7 +358,7 @@ export async function retirerFormation(f: FormData) {
 }
 
 export async function changerDiplomeAdmin(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("candidats", "alumni");
   const candidat = t(f, "candidat_id", 60);
   await majDiplome(candidat, f);
   revalidatePath(`/admin/candidats/${candidat}`);
@@ -366,7 +366,7 @@ export async function changerDiplomeAdmin(f: FormData) {
 
 /** Entreprise prospectée par un étudiant → « Mes entreprises » (ou rattachée à la fiche existante du même nom). */
 export async function ajouterProspectionAuxEntreprises(f: FormData) {
-  const { user } = await exigerAdmin();
+  const { user } = await exigerAcces("entreprises");
   const db = createAdminClient();
   const { data: p } = await db.from("prospections").select("*").eq("id", t(f, "prospection_id", 60)).maybeSingle();
   if (!p) return;
@@ -395,7 +395,7 @@ export async function ajouterProspectionAuxEntreprises(f: FormData) {
 
 /** Envoie à l'entreprise un lien personnel pour remplir sa fiche besoin elle-même. */
 export async function envoyerFicheBesoin(f: FormData) {
-  const { user } = await exigerAdmin();
+  const { user } = await exigerAcces("entreprises");
   const id = t(f, "id", 60);
   const db = createAdminClient();
   const { data: e } = await db.from("entreprises").select("*").eq("id", id).maybeSingle();
@@ -421,14 +421,14 @@ export async function envoyerFicheBesoin(f: FormData) {
  * à partir de la fiche besoin et des notes, puis tous les étudiants admis sont notés en arrière-plan.
  */
 export async function chercherCandidatsEntreprise(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   const id = t(f, "id", 60);
   after(() => lancerRechercheCandidats(id).then(() => undefined));
   redirect(`/admin/entreprises/${id}?onglet=candidats&recherche=1`);
 }
 
 export async function changerStatutEntreprise(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   const statut = t(f, "statut", 30);
   if (!STATUTS_ENTREPRISE.some((x) => x.id === statut)) return;
   const id = t(f, "id", 60);
@@ -441,7 +441,7 @@ export async function changerStatutEntreprise(f: FormData) {
 
 /** Bouton « Générer la fiche de poste » d'une offre : MagnusMatch la rédige, puis on l'ouvre en version imprimable. */
 export async function genererFicheDePosteOffre(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   const offre = t(f, "offre_id", 60);
   const retour = t(f, "retour", 300) || "/admin?vue=entreprises&sous=offres";
   const r = await genererFicheOffre(offre);
@@ -451,7 +451,7 @@ export async function genererFicheDePosteOffre(f: FormData) {
 
 /** Entreprise qui recrute sans aucune offre : MagnusMatch crée l'offre et sa fiche de poste. */
 export async function genererFicheDePosteEntreprise(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   const id = t(f, "id", 60);
   const o = await preparerFicheDePoste(id, f.get("forcer") === "1");
   if (!o) redirect(`/admin/entreprises/${id}?onglet=offres&erreur=fiche-base`);
@@ -500,7 +500,7 @@ function lireLead(f: FormData) {
 }
 
 export async function enregistrerLead(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("leads");
   const id = t(f, "id", 60);
   const d = lireLead(f);
   if (!d.email && !d.telephone && !d.nom) redirect(`/admin/leads/${id || "nouveau"}?erreur=champs`);
@@ -526,7 +526,7 @@ export async function enregistrerLead(f: FormData) {
 }
 
 export async function changerStatutLead(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("leads");
   const statut = t(f, "statut", 30);
   if (!STATUTS_LEAD.some((x) => x.id === statut)) return;
   const id = t(f, "id", 60);
@@ -543,7 +543,7 @@ export async function changerStatutLead(f: FormData) {
 }
 
 export async function renvoyerInvitation(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("leads");
   const id = t(f, "id", 60);
   const l = await leadParId(id);
   if (!l) redirect("/admin?vue=leads");
@@ -552,13 +552,13 @@ export async function renvoyerInvitation(f: FormData) {
 }
 
 export async function supprimerLead(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("leads");
   await createAdminClient().from("leads").delete().eq("id", t(f, "id", 60));
   redirect("/admin?vue=leads");
 }
 
 export async function renvoyerBrochure(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("leads");
   const id = t(f, "id", 60);
   const l = await leadParId(id);
   if (!l) redirect("/admin?vue=leads");
@@ -570,7 +570,7 @@ export async function renvoyerBrochure(f: FormData) {
 }
 
 export async function ajouterEchangeLead(_: { erreur?: string; ok?: boolean }, f: FormData): Promise<{ erreur?: string; ok?: boolean }> {
-  const { user } = await exigerAdmin();
+  const { user } = await exigerAcces("leads");
   const id = t(f, "lead_id", 60);
   const r = await ajouterEchange({ lead: id }, f, user.email ?? "");
   if (r.erreur) return r;
@@ -579,14 +579,14 @@ export async function ajouterEchangeLead(_: { erreur?: string; ok?: boolean }, f
 }
 
 export async function supprimerEchangeLead(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("leads");
   const id = t(f, "lead_id", 60);
   await createAdminClient().from("echanges").delete().eq("id", t(f, "id", 60)).eq("lead_id", id);
   revalidatePath(`/admin/leads/${id}`);
 }
 
 export async function actionFaiteLead(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("leads");
   const id = t(f, "lead_id", 60);
   await createAdminClient().from("echanges").update({ action_faite: true }).eq("id", t(f, "id", 60)).eq("lead_id", id);
   revalidatePath(`/admin/leads/${id}`);
@@ -594,7 +594,7 @@ export async function actionFaiteLead(f: FormData) {
 
 /* ---------- Entretien d'admission d'un lead ---------- */
 export async function enregistrerEntretienLead(_: EtatEntretien, f: FormData): Promise<EtatEntretien> {
-  const { user } = await exigerAdmin();
+  const { user } = await exigerAcces("leads");
   const lead = t(f, "lead_id", 60);
   const r = await enregistrerEntretienConseil(f, { lead }, { email: user.email! });
   if (r.erreur) return { erreur: r.erreur };
@@ -605,7 +605,7 @@ export async function enregistrerEntretienLead(_: EtatEntretien, f: FormData): P
 
 /** Date et heure de l'entretien d'admission : convocation par email tout de suite, rappel la veille. */
 export async function planifierEntretienLead(f: FormData) {
-  const { user } = await exigerAdmin();
+  const { user } = await exigerAcces("leads");
   const id = t(f, "id", 60);
   const l = await leadParId(id);
   if (!l) redirect("/admin?vue=leads");
@@ -629,7 +629,7 @@ export async function planifierEntretienLead(f: FormData) {
 
 /** Barre de statut de la fiche lead : statut + motif (perdu) + date d'entretien (convoqué) + invitation (admis). */
 export async function changerStatutLeadFiche(f: FormData) {
-  const { user } = await exigerAdmin();
+  const { user } = await exigerAcces("leads");
   const id = t(f, "id", 60);
   const statut = t(f, "statut", 30);
   const retour = t(f, "retour", 200);
@@ -671,7 +671,7 @@ export async function changerStatutLeadFiche(f: FormData) {
 
 /* ---------- Événements (JPO, salons…) ---------- */
 export async function creerEvenement(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("evenements");
   const nom = t(f, "nom", 150);
   const date = t(f, "date", 10);
   if (!nom || !/^\d{4}-\d{2}-\d{2}$/.test(date)) redirect("/admin?vue=evenements&erreur=evenement");
@@ -685,14 +685,14 @@ export async function creerEvenement(f: FormData) {
 }
 
 export async function basculerAccueilEvenement(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("evenements");
   const { error } = await createAdminClient().from("evenements").update({ sur_accueil: f.get("valeur") === "1" }).eq("id", t(f, "id", 60));
   revalidatePath("/");
   redirect(error ? "/admin?vue=evenements&erreur=base" : "/admin?vue=evenements");
 }
 
 export async function supprimerEvenement(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("evenements");
   await createAdminClient().from("evenements").delete().eq("id", t(f, "id", 60));
   revalidatePath("/");
   redirect("/admin?vue=evenements");
@@ -709,7 +709,7 @@ export async function refaireQrCarteAdmin(f: FormData) {
 
 /** Annonce déposée par un alumni : validée, elle est ouverte et comparée aux étudiants admis. */
 export async function validerAnnonceAlumni(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   const id = t(f, "id", 60);
   const db = createAdminClient();
   const expire = new Date(Date.now() + 60 * 864e5).toISOString();
@@ -721,7 +721,7 @@ export async function validerAnnonceAlumni(f: FormData) {
 }
 
 export async function refuserAnnonceAlumni(f: FormData) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   await createAdminClient().from("offres").update({ ouverte: false, validation: "refusee" }).eq("id", t(f, "id", 60)).eq("source", "alumni");
   revalidatePath("/admin");
   redirect(t(f, "retour", 200) || "/admin");
@@ -731,20 +731,20 @@ export async function refuserAnnonceAlumni(f: FormData) {
 
 export async function ajouterMembreEquipe(f: FormData) {
   await exigerSuperAdmin();
-  const { ROLES_EQUIPE } = await import("@/lib/equipe");
+  const { TOUS_ACCES } = await import("@/lib/equipe");
   const email = t(f, "email", 200).toLowerCase();
-  const role = t(f, "role", 30);
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !ROLES_EQUIPE.some((r) => r.id === role)) redirect("/admin/parametres?erreur=membre");
+  const acces = f.getAll("acces").map(String).filter((x) => (TOUS_ACCES as string[]).includes(x));
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) redirect("/admin/parametres?erreur=membre");
+  if (!acces.length) redirect("/admin/parametres?erreur=acces");
   const db = createAdminClient();
   const { data: existe } = await db.from("equipe").select("id").eq("email", email).maybeSingle();
-  const ligne = { email, nom: t(f, "nom", 120), role, actif: true, retire_le: null };
+  const ligne = { email, nom: t(f, "nom", 120), poste: t(f, "poste", 120), acces, role: "equipe", actif: true, retire_le: null };
   const { error } = existe ? await db.from("equipe").update(ligne).eq("id", existe.id) : await db.from("equipe").insert(ligne);
   if (error) redirect("/admin/parametres?erreur=base");
   if (f.get("prevenir") === "1" && moyenEnvoi()) {
     const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
-    const { roleEquipe } = await import("@/lib/equipe");
     after(() => envoyerEmail(email, "Ton accès au tableau de bord MagnusMatch", texteEnHtml(
-      `Bonjour ${ligne.nom || ""},\n\nTu as maintenant accès au tableau de bord MagnusMatch du Campus Magnus, en tant que ${roleEquipe(role)?.label ?? "membre de l'équipe"}.\n\n1. Crée ton compte avec cette adresse (${email}) : ${site}/inscription\n   (si tu as déjà un compte, connecte-toi simplement : ${site}/connexion)\n2. Clique sur « 📊 Tableau de bord » en haut de la page.\n\nÀ très vite,\nL'équipe du Campus Magnus`)).then(() => undefined));
+      `Bonjour ${ligne.nom || ""},\n\nTu as maintenant accès au tableau de bord MagnusMatch du Campus Magnus${ligne.poste ? `, en tant que ${ligne.poste}` : ""}.\n\n1. Crée ton compte avec cette adresse (${email}) : ${site}/inscription\n   (si tu as déjà un compte, connecte-toi simplement : ${site}/connexion)\n2. Tu arrives directement sur ton tableau de bord.\n\nÀ très vite,\nL'équipe du Campus Magnus`)).then(() => undefined));
   }
   redirect("/admin/parametres?ok=ajoute");
 }
@@ -756,12 +756,13 @@ export async function basculerAccesMembre(f: FormData) {
   redirect(`/admin/parametres?ok=${actif ? "retabli" : "coupe"}`);
 }
 
-export async function changerRoleMembre(f: FormData) {
+export async function modifierMembre(f: FormData) {
   await exigerSuperAdmin();
-  const { ROLES_EQUIPE } = await import("@/lib/equipe");
-  const role = t(f, "role", 30);
-  if (ROLES_EQUIPE.some((r) => r.id === role)) await createAdminClient().from("equipe").update({ role }).eq("id", t(f, "id", 60));
-  redirect("/admin/parametres?ok=role");
+  const { TOUS_ACCES } = await import("@/lib/equipe");
+  const acces = f.getAll("acces").map(String).filter((x) => (TOUS_ACCES as string[]).includes(x));
+  if (!acces.length) redirect("/admin/parametres?erreur=acces");
+  const { error } = await createAdminClient().from("equipe").update({ nom: t(f, "nom", 120), poste: t(f, "poste", 120), acces }).eq("id", t(f, "id", 60));
+  redirect(error ? "/admin/parametres?erreur=base" : "/admin/parametres?ok=modifie");
 }
 
 export async function supprimerMembre(f: FormData) {

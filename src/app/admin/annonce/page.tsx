@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { exigerAdmin } from "@/lib/auth";
+import { exigerAcces } from "@/lib/auth";
 import { FormAnnonce } from "@/components/FormAnnonce";
 
 export const metadata = { title: "Coller une annonce · MagnusMatch" };
 
 export default async function Page() {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6">
       <Link href="/admin?vue=offres" className="text-sm text-muted">← Retour aux offres</Link>

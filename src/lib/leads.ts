@@ -115,7 +115,7 @@ L'équipe Campus Magnus`),
 
 /** Notification 🔔 à l'équipe : nouveau lead. */
 export async function notifierNouveauLead(l: Pick<Lead, "id" | "prenom" | "nom" | "email" | "formation" | "annee_rentree" | "origine">) {
-  const admins = await emailsEquipe(["admission"]);
+  const admins = await emailsEquipe(["leads"]);
   if (!admins.length) return;
   const maintenant = new Date().toISOString();
   const quoi = [l.formation, l.annee_rentree && `rentrée ${l.annee_rentree}`].filter(Boolean).join(", ");

@@ -448,7 +448,7 @@ export async function enregistrerParcours(f: FormData) {
   const nom = c.nom || c.email;
   if (nouvelleEntreprise) await notifierEquipe(user.id, `🎓 ${nom} (alumni) travaille maintenant chez ${p.entreprise}${p.poste ? ` comme ${p.poste}` : ""}. L'entreprise est dans Mes entreprises.`, `🎓 Alumni : ${nom} est chez ${p.entreprise}`, ["entreprises"]);
   const nouvellesAides = p.aides.filter((a) => !(avant?.aides ?? []).includes(a));
-  if (nouvellesAides.length) await notifierEquipe(user.id, `🎓 ${nom} (alumni) propose d'aider le Campus : ${texteAides(nouvellesAides)}.`, `🎓 ${nom} peut aider : ${texteAides(nouvellesAides)}`);
+  if (nouvellesAides.length) await notifierEquipe(user.id, `🎓 ${nom} (alumni) propose d'aider le Campus : ${texteAides(nouvellesAides)}.`, `🎓 ${nom} peut aider : ${texteAides(nouvellesAides)}`, ["alumni"]);
   redirect("/espace/parcours?ok=1");
 }
 

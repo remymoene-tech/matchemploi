@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { exigerAdmin } from "@/lib/auth";
+import { exigerAcces } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { TESTS } from "@/lib/tests";
 import { FormTestDisc, FormTestManagement } from "@/components/FormTests";
@@ -10,7 +10,7 @@ import type { Candidat } from "@/lib/types";
 export const metadata = { title: "Faire passer un test · MagnusMatch" };
 
 export default async function Page({ params }: { params: Promise<{ id: string; test: string }> }) {
-  await exigerAdmin();
+  await exigerAcces("candidats", "alumni");
   const { id, test } = await params;
   const t = TESTS.find((x) => x.id === test);
   const { data: c } = await createAdminClient().from("candidats").select("*").eq("user_id", id).maybeSingle<Candidat>();

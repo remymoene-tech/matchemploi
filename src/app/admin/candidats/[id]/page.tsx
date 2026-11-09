@@ -1,4 +1,4 @@
-import { exigerAdmin } from "@/lib/auth";
+import { exigerAcces } from "@/lib/auth";
 import { FicheCandidat } from "@/components/FicheCandidat";
 import { ajouterProspectionAuxEntreprises, changerDiplomeAdmin, changerAdmissionAdmin, autoriserTestAdmin, changerSuivi, ajouterEchangeAdmin, actionFaiteAdmin, genererCvAmelioreAdmin, supprimerEchangeAdmin, genererSyntheseAdmin, refaireQrCarteAdmin } from "../../actions";
 
@@ -6,7 +6,7 @@ export const metadata = { title: "Fiche candidat · MagnusMatch" };
 
 export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string; admission?: string; carte?: string }> }) {
   const { onglet, admission: admissionDemandee, carte } = await searchParams;
-  const { role } = await exigerAdmin();
+  const { role } = await exigerAcces("candidats", "alumni");
   const { id } = await params;
   return (
     <FicheCandidat

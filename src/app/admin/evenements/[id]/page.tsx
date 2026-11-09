@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { exigerAdmin } from "@/lib/auth";
+import { exigerAcces } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { dateEvenementTexte, evenementParId, lienEvenement, qrEvenement } from "@/lib/evenements";
 import { nomLead, statutLead, type Lead } from "@/lib/leads";
@@ -12,7 +12,7 @@ export const metadata = { title: "Événement · MagnusMatch" };
 
 /** Affiche à imprimer (QR code) et leads de l'événement. */
 export default async function PageEvenement({ params }: { params: Promise<{ id: string }> }) {
-  await exigerAdmin();
+  await exigerAcces("evenements");
   const { id } = await params;
   const e = await evenementParId(id);
   if (!e) notFound();

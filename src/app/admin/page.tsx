@@ -19,6 +19,7 @@ import { Copier } from "@/components/Copier";
 import { FormBrochure } from "@/components/FormBrochure";
 import { ADMISSIONS, admission } from "@/lib/admission";
 import { VueAlumni } from "@/components/VueAlumni";
+import { peut, type Acces } from "@/lib/equipe";
 import { AnnoncesAValider } from "@/components/AnnoncesAValider";
 import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
@@ -58,13 +59,18 @@ const AUTRES = [
 /** Pages réservées à l'administrateur (accessibles depuis ⚙️). */
 const RESERVEES_ADMIN = ["ecoles", "reglages"];
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
   const superAdmin = moi.role === "admin";
   const vueDemandee = sp.vue === "offres" || sp.vue === "correspondances" ? "entreprises" : [...VUES, ...AUTRES].some((v) => v.id === sp.vue) ? sp.vue! : "accueil";
-  const vue = !superAdmin && RESERVEES_ADMIN.includes(vueDemandee) ? "accueil" : vueDemandee;
+  // Chaque vue demande un accès (l'administrateur a tout) ; sinon on ouvre la première vue permise
+  const ACCES_VUE: Record<string, Acces | null> = { accueil: "accueil", leads: "leads", candidats: "candidats", alumni: "alumni", entreprises: "entreprises", planning: "planning", evenements: "evenements", briefing: "candidats", entretiens: "candidats", relances: null, ecoles: null, reglages: null };
+  const permise = (v: string) => (RESERVEES_ADMIN.includes(v) ? superAdmin : ACCES_VUE[v] == null || peut(moi.droits, ACCES_VUE[v]!));
+  const premiere = ["accueil", "leads", "candidats", "alumni", "entreprises", "planning", "evenements"].find(permise) ?? "relances";
+  const vue = permise(vueDemandee) ? vueDemandee : premiere;
+  const a = (x: Acces) => peut(moi.droits, x);
   const sous = sp.sous === "offres" || sp.sous === "candidats" ? sp.sous
     : sp.vue === "offres" ? (sp.suivi ? "candidats" : "offres") : sp.vue === "correspondances" ? "candidats" : "entreprises";
   const db = createAdminClient();
@@ -219,18 +225,20 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           <span className="eyebrow">Espace équipe</span>
           <h1 className="text-3xl font-extrabold">Tableau de bord</h1>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link className="btn" href="/admin/annonce">Coller une annonce</Link>
-          <Link className="btn btn-primary" href="/admin/offres/nouvelle">Ajouter une offre</Link>
-        </div>
+        {a("entreprises") && (
+          <div className="flex flex-wrap gap-2">
+            <Link className="btn" href="/admin/annonce">Coller une annonce</Link>
+            <Link className="btn btn-primary" href="/admin/offres/nouvelle">Ajouter une offre</Link>
+          </div>
+        )}
       </div>
 
-      {!iaConfiguree() && (
+      {superAdmin && !iaConfiguree() && (
         <p className="rounded-xl bg-warn-soft p-4 text-sm">
           L&apos;IA n&apos;est pas encore branchée : les candidats peuvent s&apos;inscrire et déposer leur CV, mais aucune offre n&apos;est notée. Ajoute ANTHROPIC_API_KEY dans Vercel pour activer la notation, puis clique sur « Relancer la recherche pour tous » dans l&apos;onglet Candidats.
         </p>
       )}
-      {!franceTravailConfigure() && !adzunaConfigure() && !lbaConfigure() && (
+      {superAdmin && !franceTravailConfigure() && !adzunaConfigure() && !lbaConfigure() && (
         <p className="rounded-xl bg-warn-soft p-4 text-sm">
           Aucune source d&apos;offres automatique n&apos;est branchée : ajoute les identifiants France Travail, Adzuna ou La bonne alternance dans Vercel (voir le guide). En attendant, seules tes offres sont proposées.
         </p>
@@ -242,20 +250,22 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
       <div className="flex flex-col gap-2">
         <OngletsCartes label="Espace équipe" onglets={[
-          { href: "/admin", icone: "🏠", label: "Accueil", sous: "Mes chiffres", actif: vue === "accueil" },
-          { href: "/admin?vue=leads", icone: "🎓", label: "Étudiants", sous: `${nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""} lead${nouveauxLeads > 1 ? "s" : ""}` : `${nbLeads} leads`} · ${C.size} candidat${C.size > 1 ? "s" : ""}`, actif: vue === "leads" || vue === "candidats" || vue === "alumni" },
-          { href: "/admin?vue=entreprises", icone: "🏢", label: "Mes entreprises", sous: entreprises ? `${nbEntreprises} rencontrée${nbEntreprises > 1 ? "s" : ""}` : `${mesOffresOuvertes} offre${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "entreprises" },
-          { href: "/admin?vue=planning", icone: "📅", label: "Planning", sous: "Entretiens programmés", actif: vue === "planning" },
-          { href: "/admin?vue=evenements", icone: "🎪", label: "Événements", sous: "JPO, salons · QR code", actif: vue === "evenements" },
+          ...(a("accueil") ? [{ href: "/admin", icone: "🏠", label: "Accueil", sous: "Mes chiffres", actif: vue === "accueil" }] : []),
+          ...(a("leads") || a("candidats") || a("alumni") ? [{ href: `/admin?vue=${a("leads") ? "leads" : a("candidats") ? "candidats" : "alumni"}`, icone: "🎓", label: "Étudiants", sous: `${nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""} lead${nouveauxLeads > 1 ? "s" : ""}` : `${nbLeads} leads`} · ${C.size} candidat${C.size > 1 ? "s" : ""}`, actif: vue === "leads" || vue === "candidats" || vue === "alumni" }] : []),
+          ...(a("entreprises") ? [{ href: "/admin?vue=entreprises", icone: "🏢", label: "Mes entreprises", sous: entreprises ? `${nbEntreprises} rencontrée${nbEntreprises > 1 ? "s" : ""}` : `${mesOffresOuvertes} offre${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "entreprises" }] : []),
+          ...(a("planning") ? [{ href: "/admin?vue=planning", icone: "📅", label: "Planning", sous: "Entretiens programmés", actif: vue === "planning" }] : []),
+          ...(a("evenements") ? [{ href: "/admin?vue=evenements", icone: "🎪", label: "Événements", sous: "JPO, salons · QR code", actif: vue === "evenements" }] : []),
         ]} />
         <nav className="flex flex-wrap justify-end gap-3 text-sm" aria-label="Autres pages">
-          {AUTRES.filter((v) => !RESERVEES_ADMIN.includes(v.id)).map((v) => (
+          {AUTRES.filter((v) => !RESERVEES_ADMIN.includes(v.id) && permise(v.id)).map((v) => (
             <Link key={v.id} href={`/admin?vue=${v.id}`} className={vue === v.id ? "font-semibold text-ink underline underline-offset-4" : "text-muted hover:text-ink"}>{v.label}</Link>
           ))}
         </nav>
       </div>
 
-      {vue === "accueil" && <AnnoncesAValider offres={offresEquipe} valider={validerAnnonceAlumni} refuser={refuserAnnonceAlumni} retour="/admin" />}
+      {sp.refuse && <p className="rounded-xl bg-warn-soft p-4 text-sm">🔒 Tu n&apos;as pas accès à cette page. Demande à l&apos;administrateur si tu en as besoin.</p>}
+
+      {vue === "accueil" && a("entreprises") && <AnnoncesAValider offres={offresEquipe} valider={validerAnnonceAlumni} refuser={refuserAnnonceAlumni} retour="/admin" />}
 
       {vue === "accueil" && (
         <div className="flex flex-col gap-6">
@@ -387,7 +397,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             ["leads", "🧲", "Leads", nbLeads],
             ["candidats", "👥", "Mes candidats", C.size + admisSansEspace.length],
             ["alumni", "🎓", "Alumni", tousCandidats.filter((c) => c.statut_admission === "alumni").length],
-          ] as const).map(([id, icone, label, n]) => (
+          ] as const).filter(([id]) => permise(id)).map(([id, icone, label, n]) => (
             <Link key={id} href={`/admin?vue=${id}`} aria-current={vue === id ? "page" : undefined}
               className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${vue === id ? "border-accent bg-accent-soft text-ink" : "border-line bg-surface text-muted hover:text-ink"}`}>
               <span aria-hidden>{icone}</span>{label}<span className="rounded-full bg-bg px-2 text-xs tabular-nums">{n}</span>

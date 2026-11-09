@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { exigerAdmin } from "@/lib/auth";
+import { exigerAcces } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { BoutonImprimer } from "@/components/BoutonFiche";
 import { Logo } from "@/components/Logo";
@@ -10,7 +10,7 @@ export const metadata = { title: "Fiche de poste · MagnusMatch" };
 
 /** Fiche de poste professionnelle, prête à imprimer ou à enregistrer en PDF. */
 export default async function FicheDePoste({ params }: { params: Promise<{ id: string }> }) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   const { id } = await params;
   const db = createAdminClient();
   const { data } = await db.from("offres").select("*").eq("id", id).maybeSingle();

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { exigerAdmin } from "@/lib/auth";
+import { exigerAcces } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, entrepriseParId, offresDe, statutEntreprise, type Entreprise } from "@/lib/entreprises";
 import { echangesDeLEntreprise, echeance, maintenantMs } from "@/lib/echanges";
@@ -23,7 +23,7 @@ export default async function FicheEntreprise({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ onglet?: string; ok?: string; erreur?: string; besoins?: string; besoin?: string; recherche?: string }>;
 }) {
-  await exigerAdmin();
+  await exigerAcces("entreprises");
   const { id } = await params;
   const sp = await searchParams;
   const nouvelle = id === "nouvelle";

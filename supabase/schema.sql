@@ -419,3 +419,5 @@ alter table public.offres add column if not exists validation text;
 alter table public.offres add column if not exists proposee_par uuid references auth.users(id) on delete set null;
 create table if not exists public.equipe (id uuid primary key default gen_random_uuid(), email text not null unique, nom text not null default '', role text not null default 'admission', actif boolean not null default true, retire_le timestamptz, created_at timestamptz not null default now());
 alter table public.equipe enable row level security;
+alter table public.equipe add column if not exists poste text not null default '';
+alter table public.equipe add column if not exists acces jsonb;

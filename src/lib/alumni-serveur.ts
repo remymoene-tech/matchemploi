@@ -1,5 +1,5 @@
 import "server-only";
-import { emailsEquipe } from "@/lib/equipe";
+import { emailsEquipe, type Acces } from "@/lib/equipe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { memeEntreprise } from "@/lib/prospections";
 import { nouveauJeton, VALIDITE_JOURS } from "@/lib/fiche-besoin";
@@ -9,7 +9,7 @@ import { AIDES, lireParcours, type Parcours } from "@/lib/alumni";
 const db = () => createAdminClient();
 
 /** Notification 🔔 pour l'équipe (admins + responsables de l'école), sur la fiche du candidat. */
-export async function notifierEquipe(candidatId: string, resume: string, action: string, roles?: string[]) {
+export async function notifierEquipe(candidatId: string, resume: string, action: string, roles?: Acces[]) {
   try {
     const base = db();
     const { data: c } = await base.from("candidats").select("ecole_id").eq("user_id", candidatId).maybeSingle();
