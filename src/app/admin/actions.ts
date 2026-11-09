@@ -636,6 +636,11 @@ export async function changerStatutLeadFiche(f: FormData) {
   const { user } = await exigerAcces("leads");
   const id = t(f, "id", 60);
   const statut = t(f, "statut", 30);
+  // « Alumni » ou « Intervenant » dans la barre de statut : ce n'est pas un lead, on le requalifie
+  if (statut === "requalif_alumni" || statut === "requalif_intervenant") {
+    f.set("categorie", statut === "requalif_alumni" ? "alumni" : "intervenant");
+    return requalifierLead(f);
+  }
   const retour = t(f, "retour", 200);
   const l = await leadParId(id);
   if (!l || !STATUTS_LEAD.some((x) => x.id === statut)) redirect("/admin?vue=leads");

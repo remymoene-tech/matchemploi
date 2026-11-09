@@ -34,7 +34,24 @@ export function StatutLeadRapide({ id, statut, statuts, motifs, motifActuel, ent
             {s.label}
           </label>
         ))}
+        <span className="mx-1 hidden h-6 w-px bg-line sm:block" aria-hidden />
+        {[["requalif_alumni", "🎓 Alumni"], ["requalif_intervenant", "🧑‍🏫 Intervenant"]].map(([v, lab]) => (
+          <label key={v} className="flex cursor-pointer items-center rounded-full border border-dashed border-line bg-surface px-3 py-1.5 text-sm has-[:checked]:border-solid has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
+            <input type="radio" name="statut" value={v} checked={choix === v} onChange={() => setChoix(v)} className="sr-only" />
+            {lab}
+          </label>
+        ))}
       </div>
+
+      {(choix === "requalif_alumni" || choix === "requalif_intervenant") && (
+        <div className="flex flex-col gap-2 rounded-xl bg-surface p-3 text-sm">
+          <p>🔁 {choix === "requalif_intervenant" ? "Ce n'est pas un lead mais un intervenant : il sort des leads et de tous les chiffres, et va dans l'onglet 🧑‍🏫 Intervenants (la pédagogie est prévenue)." : "Ce n'est pas un lead mais un alumni : il sort des leads et de tous les chiffres, et va dans 🎓 Alumni à recontacter."}</p>
+          <label className="flex flex-col gap-1">
+            <span className="font-semibold">{choix === "requalif_intervenant" ? "Spécialité(s)" : "Diplôme obtenu"} <span className="font-normal text-muted">(facultatif)</span></span>
+            <input className="input" name="formation" placeholder={choix === "requalif_intervenant" ? "Ex. Vente · Marketing" : "Ex. EGC"} />
+          </label>
+        </div>
+      )}
 
       {choix === "convoque" && (
         <div className="flex flex-wrap items-end gap-3 rounded-xl bg-surface p-3">
