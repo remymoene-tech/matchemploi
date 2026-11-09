@@ -1,7 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerEmail, moyenEnvoi, texteEnHtml } from "@/lib/email";
-import { lireFormations } from "@/lib/formations";
+import { BROCHURES_PAR_DEFAUT, lireFormations } from "@/lib/formations";
 
 /** Leads (prospects) : personnes qui ont demandé une brochure ou rencontrées en salon, JPO… */
 export const STATUTS_LEAD = [
@@ -54,11 +54,15 @@ export async function brochurePour(formation: string, ecoleId?: string | null): 
   const { data } = await db().from("ecoles").select("*");
   const ecoles = (data ?? []) as { id: string; formations?: unknown; brochure?: string | null }[];
   const ordre = [...ecoles.filter((e) => e.id === ecoleId), ...ecoles.filter((e) => e.id !== ecoleId)];
-  const chemin =
-    ordre.flatMap((e) => lireFormations(e.formations)).find((f) => f.nom === formation)?.brochure
-    ?? ordre.find((e) => e.brochure)?.brochure
-    ?? null;
-  return chemin ? db().storage.from("brochures").getPublicUrl(chemin).data.publicUrl : null;
+  const propre = ordre.flatMap((e) => lireFormations(e.formations)).find((f) => f.nom === formation)?.brochure;
+  if (propre) return db().storage.from("brochures").getPublicUrl(propre).data.publicUrl;
+  if (!BROCHURES_PAR_DEFAUT[formation.toUpperCase()]) {
+    const generale = ordre.find((e) => e.brochure)?.brochure;
+    if (generale) return db().storage.from("brochures").getPublicUrl(generale).data.publicUrl;
+  }
+  // Sinon : la brochure fournie avec le site pour cette formation
+  const defaut = BROCHURES_PAR_DEFAUT[formation.toUpperCase()];
+  return defaut ? `${process.env.NEXT_PUBLIC_SITE_URL || "https://magnusmatch.vercel.app"}${defaut}` : null;
 }
 
 /** Envoie la brochure par email. Renvoie true si l'email est parti. */

@@ -16,3 +16,13 @@ export function lireFormations(v: unknown): Formation[] {
     .filter((x) => typeof x.nom === "string" && x.nom.trim())
     .map((x) => ({ nom: x.nom!.trim(), duree: Math.max(1, Math.min(5, Number(x.duree) || 1)), alternance: Array.isArray(x.alternance) ? x.alternance.map(Number).filter((n) => n >= 1 && n <= 5) : [], brochure: typeof x.brochure === "string" ? x.brochure : null }));
 }
+
+/** Intitulés officiels des formations connues (affichés sous le sigle). */
+export const INTITULES: Record<string, string> = {
+  EGC: "EGC Business School · Bachelor",
+  GUC: "Gestionnaire d'Unité Commerciale · Bac+2 (RNCP niveau 5)",
+  AMLHR: "Assistant(e) Manager Loisirs Hébergement Restauration · Bac+2 (RNCP niveau 5)",
+};
+
+/** Brochures fournies avec le site (public/brochures), utilisées si aucune n'a été déposée. */
+export const BROCHURES_PAR_DEFAUT: Record<string, string> = { EGC: "/brochures/egc.pdf", GUC: "/brochures/guc.pdf", AMLHR: "/brochures/amlhr.pdf" };

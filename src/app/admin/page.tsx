@@ -18,7 +18,7 @@ import { ADMISSIONS, admission } from "@/lib/admission";
 import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
-import { anneeLabel, lireFormations } from "@/lib/formations";
+import { BROCHURES_PAR_DEFAUT, anneeLabel, lireFormations } from "@/lib/formations";
 import { ORIGINES_LEAD, STATUTS_LEAD, listeLeads, nomLead } from "@/lib/leads";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe } from "@/lib/entreprises";
 import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
@@ -725,7 +725,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                         <span className="flex flex-col gap-1">
                           <span><b>{fo.nom}</b> · {fo.duree} an{fo.duree > 1 ? "s" : ""} ·{" "}
                           {Array.from({ length: fo.duree }, (_, i) => i + 1).map((n) => `${anneeLabel(n)} ${fo.alternance.includes(n) ? "alternance" : "initiale"}`).join(", ")}</span>
-                          <FormBrochure ecoleId={e.id} formation={fo.nom} actuelle={fo.brochure} />
+                          <FormBrochure ecoleId={e.id} formation={fo.nom} actuelle={fo.brochure} defaut={BROCHURES_PAR_DEFAUT[fo.nom.toUpperCase()]} />
                         </span>
                         <form action={retirerFormation}>
                           <input type="hidden" name="ecole_id" value={e.id} />

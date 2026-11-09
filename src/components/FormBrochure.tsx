@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { enregistrerBrochure, preparerDepotBrochure } from "@/app/admin/actions";
 
 /** Dépôt (ou retrait) d'une brochure PDF pour une formation, ou la brochure générale de l'école. */
-export function FormBrochure({ ecoleId, formation, actuelle }: { ecoleId: string; formation: string; actuelle?: string | null }) {
+export function FormBrochure({ ecoleId, formation, actuelle, defaut }: { ecoleId: string; formation: string; actuelle?: string | null; defaut?: string }) {
   const [etat, setEtat] = useState<"" | "envoi" | "ok">("");
   const [erreur, setErreur] = useState("");
   const router = useRouter();
@@ -26,7 +26,9 @@ export function FormBrochure({ ecoleId, formation, actuelle }: { ecoleId: string
   };
   return (
     <span className="flex flex-wrap items-center gap-2 text-xs">
-      {actuelle ? <span className="chip chip-plus">📄 Brochure en ligne</span> : <span className="chip">📄 Pas de brochure</span>}
+      {actuelle ? <span className="chip chip-plus">📄 Brochure déposée</span>
+        : defaut ? <a href={defaut} target="_blank" rel="noopener" className="chip chip-plus">📄 Brochure fournie avec le site ↗</a>
+        : <span className="chip">📄 Pas de brochure</span>}
       <label className="btn btn-sm cursor-pointer">
         {etat === "envoi" ? "Envoi…" : actuelle ? "Remplacer" : "Déposer le PDF"}
         <input type="file" accept="application/pdf" className="sr-only" disabled={etat === "envoi"} onChange={(e) => e.target.files?.[0] && deposer(e.target.files[0])} />

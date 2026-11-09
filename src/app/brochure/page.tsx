@@ -1,5 +1,6 @@
 import { Logo } from "@/components/Logo";
 import { formationsDeLEcole, ecoleParCode } from "@/lib/ecoles";
+import { INTITULES } from "@/lib/formations";
 import { demanderBrochure } from "./actions";
 
 export const metadata = { title: "Recevoir la brochure · Campus Magnus", description: "Recevez la brochure de nos formations par email." };
@@ -73,9 +74,10 @@ export default async function Brochure({ searchParams }: { searchParams: Promise
           {formations.length ? (
             <div className="flex flex-wrap gap-2">
               {formations.map((x) => (
-                <label key={x.nom} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-4 py-2 text-sm has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
+                <label key={x.nom} className="flex min-w-[200px] flex-1 cursor-pointer flex-col gap-0.5 rounded-xl border border-line px-4 py-3 text-sm has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)]">
                   <input type="radio" name="formation" value={x.nom} defaultChecked={sp.formation === x.nom} required className="sr-only" />
-                  {x.nom} · {x.duree} an{x.duree > 1 ? "s" : ""}
+                  <b>{x.nom} · {x.duree} an{x.duree > 1 ? "s" : ""}</b>
+                  {INTITULES[x.nom] && <span className="text-xs text-muted">{INTITULES[x.nom]}</span>}
                 </label>
               ))}
             </div>
