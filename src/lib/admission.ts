@@ -7,6 +7,7 @@ export const ADMISSIONS = [
   { id: "refus", label: "Refusé", icone: "❌", chip: "chip-minus" },
   { id: "abandon", label: "Abandon", icone: "🚪", chip: "chip-minus" },
   { id: "alumni", label: "Alumni", icone: "🎓", chip: "chip-plus" },
+  { id: "intervenant", label: "Intervenant", icone: "🧑‍🏫", chip: "" },
 ] as const;
 
 /** Statuts qui demandent un motif. */

@@ -98,7 +98,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     db.from("offres").select("*").not("source", "in", `(${SOURCES_AUTO.join(",")})`).order("created_at", { ascending: false }),
     db.from("correspondances").select("*").gte("score", SEUIL).order("score", { ascending: false }).limit(500),
   ]);
-  const C = new Map(((candidats ?? []) as Candidat[]).map((c) => [c.user_id, c]));
+  // Requalifiés en intervenants : ils ne sont plus des candidats (carnet d'adresses des intervenants)
+  const C = new Map(((candidats ?? []) as Candidat[]).filter((c) => c.statut_admission !== "intervenant").map((c) => [c.user_id, c]));
   const M = (matchs ?? []) as Correspondance[];
   const idsOffres = [...new Set(M.map((m) => m.offre_id))];
   const { data: offresMatch } = idsOffres.length

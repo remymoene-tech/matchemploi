@@ -174,7 +174,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
               <p className="rounded-lg bg-warn-soft px-3 py-2 text-sm">Indique le motif de « {choisi.label} » puis clique sur Enregistrer.</p>
             )}
             <span className="text-xs text-muted">
-              {actuel.id === "admis" ? "L'étudiant a accès à ses offres." : actuel.id === "alumni" ? "🎓 Alumni : il garde son espace à vie (offres, CV, carte de visite) et peut mettre à jour son parcours." : "Tant qu'il n'est pas « Admis », l'étudiant ne voit pas d'offres (il peut remplir son profil, son CV et ses tests)."}
+              {actuel.id === "admis" ? "L'étudiant a accès à ses offres." : actuel.id === "alumni" ? "🎓 Alumni : il garde son espace à vie (offres, CV, carte de visite) et peut mettre à jour son parcours." : actuel.id === "intervenant" ? "🧑‍🏫 Intervenant (erreur d'inscription) : il ne fait plus partie des candidats et se trouve dans l'onglet Intervenants." : "Tant qu'il n'est pas « Admis », l'étudiant ne voit pas d'offres (il peut remplir son profil, son CV et ses tests)."}
               {AVEC_MOTIF.includes(actuel.id) && c.motif_admission ? ` Motif enregistré : ${c.motif_admission}` : ""}
             </span>
           </form>
