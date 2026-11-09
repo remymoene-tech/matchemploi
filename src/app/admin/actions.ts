@@ -21,7 +21,7 @@ import { genererSynthese } from "@/lib/synthese";
 import { genererCvAmeliore } from "@/lib/cv-ameliore";
 import { ajouterEchange } from "@/lib/echanges";
 import { STATUTS_ENTREPRISE, lireEntreprise } from "@/lib/entreprises";
-import { entrepriseRecrute, lancerRechercheCandidats, preparerFicheDePoste } from "@/lib/recherche-entreprise";
+import { entrepriseRecrute, genererFicheOffre, lancerRechercheCandidats, preparerFicheDePoste } from "@/lib/recherche-entreprise";
 import { lireFormations } from "@/lib/formations";
 import { changerAdmission } from "@/lib/admission-serveur";
 import { majDiplome } from "@/lib/diplome-serveur";
@@ -435,12 +435,24 @@ export async function changerStatutEntreprise(f: FormData) {
   revalidatePath("/admin");
 }
 
-/** Bouton « Générer la fiche de poste » : MagnusMatch la rédige, puis on l'ouvre en version imprimable. */
+/** Bouton « Générer la fiche de poste » d'une offre : MagnusMatch la rédige, puis on l'ouvre en version imprimable. */
+export async function genererFicheDePosteOffre(f: FormData) {
+  await exigerAdmin();
+  const offre = t(f, "offre_id", 60);
+  const retour = t(f, "retour", 300) || "/admin?vue=entreprises&sous=offres";
+  const r = await genererFicheOffre(offre);
+  if (r.erreur) redirect(`${retour}${retour.includes("?") ? "&" : "?"}erreur=fiche-${r.erreur}`);
+  redirect(`/admin/offres/${offre}/fiche`);
+}
+
+/** Entreprise qui recrute sans aucune offre : MagnusMatch crée l'offre et sa fiche de poste. */
 export async function genererFicheDePosteEntreprise(f: FormData) {
   await exigerAdmin();
   const id = t(f, "id", 60);
   const o = await preparerFicheDePoste(id, f.get("forcer") === "1");
-  if (!o) redirect(`/admin/entreprises/${id}?onglet=offres&erreur=fiche`);
+  if (!o) redirect(`/admin/entreprises/${id}?onglet=offres&erreur=fiche-base`);
   after(() => noterOffrePourTous(o.id));
+  if (!("fiche" in o)) redirect(`/admin/entreprises/${id}?onglet=offres&erreur=fiche-base`);
+  if (!(o as { fiche?: unknown }).fiche) redirect(`/admin/entreprises/${id}?onglet=offres&erreur=fiche-ia`);
   redirect(`/admin/offres/${o.id}/fiche`);
 }

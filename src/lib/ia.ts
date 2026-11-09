@@ -519,7 +519,11 @@ const FichePosteSchema = z.object({
 });
 export type FichePoste = z.infer<typeof FichePosteSchema>;
 
-export async function redigerFicheDePoste(e: { nom: string; secteur: string; ville: string; notes: string; attentes?: unknown }, dits: string) {
+export async function redigerFicheDePoste(
+  e: { nom: string; secteur: string; ville: string; notes: string; attentes?: unknown },
+  dits: string,
+  offre?: { intitule: string; description: string; contrat_libelle: string; lieu: string; salaire: string; attentes?: unknown } | null,
+) {
   const r = await demander(
     FichePosteSchema,
     `Tu es chargé de recrutement. Rédige une fiche de poste professionnelle, claire et attractive pour cette entreprise qui recrute, à partir des seules informations ci-dessous.
@@ -528,7 +532,12 @@ N'invente aucun fait (salaire, horaires, avantages, chiffres) : si une informati
 
 Entreprise : ${e.nom}${e.secteur ? ` (${e.secteur})` : ""}${e.ville ? `, ${e.ville}` : ""}
 Notes de l'école : ${e.notes || "aucune"}
-${attentesTexte(e.attentes as Parameters<typeof attentesTexte>[0]) || "Fiche besoin non remplie."}
+${offre ? `OFFRE À METTRE EN FORME (garde son intitulé et ses informations, améliore la rédaction) :
+Intitulé : ${offre.intitule}
+Contrat : ${offre.contrat_libelle || "?"} · Lieu : ${offre.lieu || "?"}${offre.salaire ? ` · Salaire : ${offre.salaire}` : ""}
+Description : ${offre.description.slice(0, 3000) || "aucune"}
+${attentesTexte(offre.attentes as Parameters<typeof attentesTexte>[0])}
+` : ""}${attentesTexte(e.attentes as Parameters<typeof attentesTexte>[0]) || (offre?.attentes ? "" : "Fiche besoin non remplie.")}
 Ce que l'entreprise a dit aux étudiants :
 ${dits || "rien"}`,
     "medium",

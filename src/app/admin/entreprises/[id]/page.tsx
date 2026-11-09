@@ -10,7 +10,7 @@ import { QuestionnaireAttentes } from "@/components/QuestionnaireAttentes";
 import { texteExpiration } from "@/lib/expiration";
 import { FormEchange } from "@/components/FormEchange";
 import { JournalEchanges } from "@/components/JournalEchanges";
-import { genererFicheDePosteEntreprise, chercherCandidatsEntreprise, envoyerFicheBesoin, actionFaiteEntreprise, ajouterEchangeEntreprise, enregistrerEntreprise, supprimerEchangeEntreprise, supprimerEntreprise } from "../../actions";
+import { genererFicheDePosteOffre, genererFicheDePosteEntreprise, chercherCandidatsEntreprise, envoyerFicheBesoin, actionFaiteEntreprise, ajouterEchangeEntreprise, enregistrerEntreprise, supprimerEchangeEntreprise, supprimerEntreprise } from "../../actions";
 import { SCORE_VERT, SOURCES_AUTO, SUIVIS, contratLabel, diplomeLabel, type Offre } from "@/lib/types";
 import { Chips, Score } from "@/components/Score";
 import { Rafraichir } from "@/components/Rafraichir";
@@ -104,7 +104,8 @@ export default async function FicheEntreprise({ params, searchParams }: {
 
       {sp.ok && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Enregistré ✓</p>}
       {sp.erreur === "nom" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Indique au moins le nom de l&apos;entreprise.</p>}
-      {sp.erreur === "fiche" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">La fiche de poste n&apos;a pas pu être générée. Réessaie dans un instant.</p>}
+      {sp.erreur === "fiche-base" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">📄 La fiche de poste ne peut pas encore être enregistrée : exécute la mise à jour SQL de la page /diagnostic (lignes « Fiche de poste imprimable » et « Logo des entreprises »), puis recommence.</p>}
+      {sp.erreur === "fiche-ia" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">📄 MagnusMatch n&apos;a pas pu rédiger la fiche de poste (crédit Claude épuisé ou service indisponible). Réessaie dans un instant ; si ça continue, vérifie ton crédit sur console.anthropic.com.</p>}
       {sp.erreur === "base" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">L&apos;enregistrement a échoué : exécute la mise à jour SQL de la page /diagnostic (« Mes entreprises »).</p>}
 
       {e && (
@@ -221,17 +222,18 @@ export default async function FicheEntreprise({ params, searchParams }: {
 
       {e && onglet === "offres" && (
         <section className="flex flex-col gap-3">
-          <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
-            <div>
-              <b>📄 Fiche de poste professionnelle</b>
-              <p className="text-sm text-muted">MagnusMatch la rédige à partir de la fiche besoin{e.site ? ", avec le logo de l'entreprise pris sur son site" : ""}, prête à imprimer ou à envoyer en PDF.</p>
+          {!offres.length && (
+            <div className="card flex flex-wrap items-center justify-between gap-3 p-4">
+              <div>
+                <b>📄 Pas encore d&apos;offre</b>
+                <p className="text-sm text-muted">MagnusMatch peut créer l&apos;offre et sa fiche de poste à partir de la fiche besoin.</p>
+              </div>
+              <form action={genererFicheDePosteEntreprise}>
+                <input type="hidden" name="id" value={e.id} />
+                <button className="btn btn-primary">📄 Créer l&apos;offre et sa fiche de poste</button>
+              </form>
             </div>
-            <form action={genererFicheDePosteEntreprise}>
-              <input type="hidden" name="id" value={e.id} />
-              {offres.some((o) => o.fiche) && <input type="hidden" name="forcer" value="1" />}
-              <button className="btn btn-primary">📄 {offres.some((o) => o.fiche) ? "Régénérer la fiche de poste" : "Générer la fiche de poste"}</button>
-            </form>
-          </div>
+          )}
           {!e.attentes && <p className="text-xs text-muted">💡 Plus la <Link href={`${base}?besoins=1#besoins`} className="underline">fiche besoin</Link> est remplie (type de poste, missions, temps de travail…), plus la fiche de poste est précise.</p>}
           {!offres.length && (
             <p className="card border-dashed p-6 text-sm text-muted">Pas encore d&apos;offre pour cette entreprise. Ajoute-en une quand elle recrute : elle sera comparée à tous les candidats.</p>
@@ -250,9 +252,14 @@ export default async function FicheEntreprise({ params, searchParams }: {
                     <p className="rounded-lg bg-warn-soft px-3 py-2 text-sm">📝 Fiche de poste rédigée par MagnusMatch : <Link href={`/admin/offres/${o.id}`} className="font-semibold underline">relis-la et complète les « [à confirmer] »</Link>.</p>
                   )}
                   <p className="text-sm">👥 {m.filter((x) => x.score >= 75).length} candidat(s) à 75 % ou plus · {m.filter((x) => x.suivi === "embauche").length} embauché(s)</p>
-                  <div className="flex justify-end gap-2 border-t border-line pt-2">
+                  <div className="flex flex-wrap justify-end gap-2 border-t border-line pt-2">
                     <Link className="btn btn-sm" href={`/admin?vue=entreprises&sous=candidats#a-traiter`}>Voir les candidats</Link>
-                    {o.fiche && <Link className="btn btn-sm btn-primary" href={`/admin/offres/${o.id}/fiche`}>📄 Fiche de poste (PDF)</Link>}
+                    <form action={genererFicheDePosteOffre}>
+                      <input type="hidden" name="offre_id" value={o.id} />
+                      <input type="hidden" name="retour" value={`${base}?onglet=offres`} />
+                      <button className="btn btn-sm btn-primary">📄 {o.fiche ? "Regénérer" : "Générer la fiche de poste"}</button>
+                    </form>
+                    {o.fiche && <Link className="btn btn-sm" href={`/admin/offres/${o.id}/fiche`}>👁️ Voir la fiche de poste</Link>}
                     <Link className="btn btn-sm btn-ghost" href={`/admin/offres/${o.id}`}>Modifier</Link>
                   </div>
                 </article>

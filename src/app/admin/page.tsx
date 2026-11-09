@@ -22,7 +22,7 @@ import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -191,6 +191,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
         </p>
       )}
       {sp.ok && vue !== "reglages" && vue !== "ecoles" && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Offre enregistrée. Elle est comparée aux candidats en arrière-plan.</p>}
+      {sp.erreur === "fiche-base" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">📄 La fiche de poste ne peut pas encore être enregistrée : exécute la mise à jour SQL de la page /diagnostic, puis recommence.</p>}
+      {sp.erreur === "fiche-ia" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">📄 MagnusMatch n&apos;a pas pu rédiger la fiche de poste (crédit Claude épuisé ou service indisponible). Réessaie dans un instant.</p>}
       {sp.relance && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Recherche relancée pour tous les candidats. Les résultats arrivent dans quelques minutes.</p>}
 
       <div className="flex flex-col gap-2">
@@ -793,7 +795,13 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 </div>
               </div>
               <p className="text-sm">{[o.contrat_libelle || contratLabel(o.contrat), o.lieu].filter(Boolean).join(" · ")}</p>
-              <div className="flex justify-end border-t border-line pt-2">
+              <div className="flex flex-wrap justify-end gap-2 border-t border-line pt-2">
+                <form action={genererFicheDePosteOffre}>
+                  <input type="hidden" name="offre_id" value={o.id} />
+                  <input type="hidden" name="retour" value="/admin?vue=entreprises&sous=offres" />
+                  <button className="btn btn-sm btn-primary">📄 {o.fiche ? "Regénérer" : "Générer la fiche de poste"}</button>
+                </form>
+                {o.fiche && <Link className="btn btn-sm" href={`/admin/offres/${o.id}/fiche`}>👁️ Voir la fiche de poste</Link>}
                 <Link className="btn btn-sm btn-ghost" href={`/admin/offres/${o.id}`}>Modifier</Link>
               </div>
             </article>

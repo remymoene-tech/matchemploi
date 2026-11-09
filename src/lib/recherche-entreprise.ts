@@ -5,7 +5,7 @@ import { noterOffrePourTous } from "@/lib/matching";
 import { offresDe, type Entreprise } from "@/lib/entreprises";
 import { memeEntreprise } from "@/lib/prospections";
 import { logoDepuisSite } from "@/lib/logo-entreprise";
-import { CONTRATS, SOURCES_AUTO, type Offre } from "@/lib/types";
+import { CONTRATS, SOURCES_AUTO, contratLabel, type Offre } from "@/lib/types";
 import { iaConfiguree, redigerFicheDePoste } from "@/lib/ia";
 
 const INTITULE_AUTO = "Recrutement";
@@ -85,4 +85,37 @@ export async function lancerRechercheCandidats(entrepriseId: string): Promise<bo
   const cibles = [...new Map([...ouvertes, ...(auto ? [auto] : [])].map((o) => [o.id, o])).values()];
   for (const o of cibles) await noterOffrePourTous(o.id);
   return cibles.length > 0;
+}
+
+/**
+ * Fiche de poste professionnelle pour UNE offre (bouton dans le rectangle de l'offre).
+ * Renvoie une erreur lisible : base pas à jour, IA indisponible…
+ */
+export async function genererFicheOffre(offreId: string): Promise<{ erreur?: "base" | "ia" | "introuvable" }> {
+  const db = createAdminClient();
+  const { data: o } = await db.from("offres").select("*").eq("id", offreId).maybeSingle();
+  if (!o) return { erreur: "introuvable" };
+  const offre = o as OffreAuto;
+  if (!("fiche" in offre)) return { erreur: "base" };
+  let e: (Entreprise & { logo_url?: string | null }) | null = null;
+  if (offre.entreprise_id) e = (await db.from("entreprises").select("*").eq("id", offre.entreprise_id).maybeSingle()).data as typeof e;
+  if (!e) {
+    const { data: toutes } = await db.from("entreprises").select("*");
+    e = ((toutes ?? []) as (Entreprise & { logo_url?: string | null })[]).find((x) => memeEntreprise(x.nom, offre.entreprise)) ?? null;
+  }
+  if (e?.site && !e.logo_url) {
+    const logo = await logoDepuisSite(e.site);
+    if (logo) await db.from("entreprises").update({ logo_url: logo }).eq("id", e.id);
+  }
+  if (!iaConfiguree()) return { erreur: "ia" };
+  const { data: prosp } = await db.from("prospections").select("entreprise, recrute, justification").eq("recrute", "oui");
+  const dits = (prosp ?? []).filter((p) => memeEntreprise(p.entreprise, offre.entreprise)).map((p) => `- ${p.justification}`).join("\n");
+  const redaction = await redigerFicheDePoste(
+    e ?? { nom: offre.entreprise, secteur: "", ville: offre.lieu, notes: "" },
+    dits,
+    { intitule: offre.intitule, description: offre.description ?? "", contrat_libelle: offre.contrat_libelle || contratLabel(offre.contrat), lieu: offre.lieu, salaire: offre.salaire ?? "", attentes: offre.attentes },
+  ).catch(() => null);
+  if (!redaction) return { erreur: "ia" };
+  const { error } = await db.from("offres").update({ fiche: redaction.fiche, ...(e && !offre.entreprise_id ? { entreprise_id: e.id } : {}) }).eq("id", offreId);
+  return error ? { erreur: "base" } : {};
 }

@@ -77,7 +77,9 @@ export default async function FicheDePoste({ params }: { params: Promise<{ id: s
             </div>
           </>
         ) : (
-          <p className="whitespace-pre-line">{o.description}</p>
+          o.description?.trim()
+            ? <p className="whitespace-pre-line">{o.description}</p>
+            : <p className="rounded-xl bg-warn-soft p-4 text-sm print:hidden">Cette fiche est vide : retourne sur l&apos;offre et clique sur « 📄 Générer la fiche de poste ».</p>
         )}
 
         <footer className="mt-2 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-xs" style={{ borderColor: "#e1e4dc", color: "#5e6358" }}>
