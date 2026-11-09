@@ -6,8 +6,10 @@ import { BILANS, REPONSES_QUESTION, SECTIONS, type EntretienConseil, type Repons
 export type EtatEntretien = { erreur?: string; ok?: string };
 
 /** Fiche d'entretien conseiller : cocher une case ouvre un champ « Préciser » juste en dessous. */
-export function FormEntretienConseil({ initial, action, nomEtudiant, candidatId }: {
+export function FormEntretienConseil({ initial, action, nomEtudiant, candidatId, champ = "candidat_id" }: {
   candidatId: string;
+  /** « lead_id » pour l'entretien d'admission d'un lead. */
+  champ?: string;
   initial: Partial<EntretienConseil> & { reponses: Reponses };
   action: (e: EtatEntretien, f: FormData) => Promise<EtatEntretien>;
   nomEtudiant: string;
@@ -20,7 +22,7 @@ export function FormEntretienConseil({ initial, action, nomEtudiant, candidatId 
 
   return (
     <form action={envoyer} className="flex flex-col gap-5">
-      <input type="hidden" name="candidat_id" value={candidatId} />
+      <input type="hidden" name={champ} value={candidatId} />
       {initial.id && <input type="hidden" name="id" value={initial.id} />}
 
       <section className="card grid gap-4 p-5 sm:grid-cols-2">

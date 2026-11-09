@@ -7,7 +7,7 @@ const txt = (f: FormData, k: string, max = 2000) => String(f.get(k) ?? "").trim(
 /** Lit le formulaire de la fiche d'entretien et l'enregistre (création ou mise à jour). Renvoie l'id ou une erreur. */
 export async function enregistrerEntretienConseil(
   f: FormData,
-  candidatId: string,
+  cible: string | { lead: string },
   conseiller: { email: string },
 ): Promise<{ id?: string; erreur?: string }> {
   const reponses: Reponses = {};
@@ -25,8 +25,9 @@ export async function enregistrerEntretienConseil(
     }
   }
   const bilan = txt(f, "bilan", 40);
+  const qui: Record<string, string> = typeof cible === "string" ? { candidat_id: cible } : { lead_id: cible.lead };
   const ligne = {
-    candidat_id: candidatId,
+    ...qui,
     conseiller: txt(f, "conseiller", 120),
     conseiller_email: conseiller.email,
     date_entretien: /^\d{4}-\d{2}-\d{2}$/.test(txt(f, "date_entretien", 10)) ? txt(f, "date_entretien", 10) : new Date().toISOString().slice(0, 10),
@@ -44,12 +45,12 @@ export async function enregistrerEntretienConseil(
   const db = createAdminClient();
   const id = txt(f, "id", 60);
   if (id) {
-    const { error } = await db.from("entretiens_conseil").update(ligne).eq("id", id).eq("candidat_id", candidatId);
+    const { error } = await db.from("entretiens_conseil").update(ligne).eq("id", id).eq(...(typeof cible === "string" ? ["candidat_id", cible] : ["lead_id", cible.lead]) as [string, string]);
     return error ? { erreur: "L'enregistrement a échoué." } : { id };
   }
   const { data, error } = await db.from("entretiens_conseil").insert(ligne).select("id").single();
   if (error || !data) {
-    return { erreur: /entretiens_conseil/.test(error?.message ?? "") ? "La base n'est pas à jour : exécute la mise à jour SQL affichée sur la page /diagnostic." : "L'enregistrement a échoué." };
+    return { erreur: /entretiens_conseil|lead_id|candidat_id/.test(error?.message ?? "") ? "La base n'est pas à jour : exécute la mise à jour SQL affichée sur la page /diagnostic." : "L'enregistrement a échoué." };
   }
   return { id: data.id };
 }

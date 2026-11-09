@@ -23,7 +23,7 @@ import { ajouterEchange } from "@/lib/echanges";
 import { STATUTS_ENTREPRISE, lireEntreprise } from "@/lib/entreprises";
 import { entrepriseRecrute, genererFicheOffre, lancerRechercheCandidats, preparerFicheDePoste } from "@/lib/recherche-entreprise";
 import { lireFormations } from "@/lib/formations";
-import { STATUTS_LEAD, datesEtapes, brochurePour, envoyerBrochure, envoyerInvitation, estLeadAdmis, leadParId } from "@/lib/leads";
+import { STATUTS_LEAD, dateEntretienTexte, datesEtapes, brochurePour, envoyerBrochure, envoyerConvocation, envoyerInvitation, estLeadAdmis, leadParId, nomLead, parisVersISO } from "@/lib/leads";
 import { changerAdmission } from "@/lib/admission-serveur";
 import { majDiplome } from "@/lib/diplome-serveur";
 import { memeEntreprise } from "@/lib/prospections";
@@ -582,4 +582,39 @@ export async function actionFaiteLead(f: FormData) {
   const id = t(f, "lead_id", 60);
   await createAdminClient().from("echanges").update({ action_faite: true }).eq("id", t(f, "id", 60)).eq("lead_id", id);
   revalidatePath(`/admin/leads/${id}`);
+}
+
+/* ---------- Entretien d'admission d'un lead ---------- */
+export async function enregistrerEntretienLead(_: EtatEntretien, f: FormData): Promise<EtatEntretien> {
+  const { user } = await exigerAdmin();
+  const lead = t(f, "lead_id", 60);
+  const r = await enregistrerEntretienConseil(f, { lead }, { email: user.email! });
+  if (r.erreur) return { erreur: r.erreur };
+  revalidatePath(`/admin/leads/${lead}`);
+  if (!f.get("id")) redirect(`/admin/leads/${lead}/entretien/${r.id}?ok=1`);
+  return { ok: "Fiche enregistrée." };
+}
+
+/** Date et heure de l'entretien d'admission : convocation par email tout de suite, rappel la veille. */
+export async function planifierEntretienLead(f: FormData) {
+  const { user } = await exigerAdmin();
+  const id = t(f, "id", 60);
+  const l = await leadParId(id);
+  if (!l) redirect("/admin?vue=leads");
+  const quand = parisVersISO(t(f, "entretien_a", 20));
+  if (!quand) redirect(`/admin/leads/${id}?onglet=entretien&erreur=date`);
+  const db = createAdminClient();
+  const statut = ["nouveau", "contacte", "rdv", "dossier", "entretien"].includes(l.statut) ? "convoque" : l.statut;
+  const { error } = await db.from("leads").update({ entretien_a: quand, rappel_entretien_envoye: false, statut, ...datesEtapes(l, statut), updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) redirect(`/admin/leads/${id}?onglet=entretien&erreur=base`);
+  // Rappel 🔔 pour l'équipe, 1 heure avant
+  await db.from("echanges").insert({
+    lead_id: id, type: "rdv", date_echange: new Date().toISOString(),
+    resume: `📨 Convoqué à l'entretien d'admission : ${dateEntretienTexte(quand)}.`,
+    action: `🗣️ Entretien d'admission de ${nomLead(l)} à ${new Date(quand).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}`,
+    action_le: quand.slice(0, 10), action_a: new Date(new Date(quand).getTime() - 3600e3).toISOString(),
+    auteur: user.email ?? "",
+  });
+  const ok = f.get("convocation") === "on" ? await envoyerConvocation(l, quand) : false;
+  redirect(`/admin/leads/${id}?onglet=entretien&${ok ? "convocation=1" : "ok=1"}`);
 }

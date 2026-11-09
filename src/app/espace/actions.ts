@@ -127,7 +127,10 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
   after(async () => {
     try {
       const db = createAdminClient();
-      const { data: liens } = await db.from("leads").update({ candidat_id: user.id }).eq("email", (user.email ?? "").toLowerCase()).is("candidat_id", null).select("statut");
+      const { data: liens } = await db.from("leads").update({ candidat_id: user.id }).eq("email", (user.email ?? "").toLowerCase()).is("candidat_id", null).select("id, statut");
+      // Ses fiches d'entretien d'admission le suivent dans son espace (visibles par l'équipe seulement)
+      const ids = (liens ?? []).map((l) => l.id as string);
+      if (ids.length) await db.from("entretiens_conseil").update({ candidat_id: user.id }).in("lead_id", ids).is("candidat_id", null);
       // Admis à l'entretien (lead) : il est directement « Admis » sur MagnusMatch
       if ((liens ?? []).some((l) => l.statut === "admis" || l.statut === "inscrit")) {
         await db.from("candidats").update({ statut_admission: "admis" }).eq("user_id", user.id).eq("statut_admission", "prospect");

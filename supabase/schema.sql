@@ -394,3 +394,9 @@ alter table public.leads add column if not exists convoque_le timestamptz;
 alter table public.leads add column if not exists present_le timestamptz;
 alter table public.leads add column if not exists admis_le timestamptz;
 update public.leads set statut = 'convoque' where statut = 'entretien';
+
+-- Entretien d'admission des leads : date, rappel la veille, fiche d'entretien
+alter table public.leads add column if not exists entretien_a timestamptz;
+alter table public.leads add column if not exists rappel_entretien_envoye boolean not null default false;
+alter table public.entretiens_conseil alter column candidat_id drop not null;
+alter table public.entretiens_conseil add column if not exists lead_id uuid references public.leads(id) on delete set null;

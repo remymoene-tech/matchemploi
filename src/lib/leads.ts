@@ -48,6 +48,9 @@ export type Lead = {
   convoque_le?: string | null;
   present_le?: string | null;
   admis_le?: string | null;
+  /** Entretien d'admission (concours) : date et heure, rappel envoyé la veille. */
+  entretien_a?: string | null;
+  rappel_entretien_envoye?: boolean;
   notes: string;
   created_at: string;
   updated_at: string;
@@ -168,3 +171,71 @@ const rang = (statut: string) => ({ convoque: 1, present: 2, absent: 1, admis: 3
 export const aEteConvoque = (l: Lead) => !!l.convoque_le || rang(l.statut) >= 1;
 export const aEtePresent = (l: Lead) => !!l.present_le || rang(l.statut) >= 2;
 export const aEteAdmis = (l: Lead) => !!l.admis_le || rang(l.statut) >= 3;
+
+/* ---------- Entretien d'admission (concours) ---------- */
+/** « 2026-11-18T14:00 » saisi à l'heure de Paris → instant exact (heure d'été ou d'hiver). */
+export function parisVersISO(local: string): string | null {
+  const m = local.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  const utc = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]);
+  const decalage = Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", timeZoneName: "shortOffset" })
+    .formatToParts(new Date(utc)).find((x) => x.type === "timeZoneName")?.value.match(/([+-]\d+)/)?.[1];
+  return new Date(utc - Number(decalage ?? 1) * 3600e3).toISOString();
+}
+/** Instant → valeur d'un champ date-heure, à l'heure de Paris. */
+export const isoVersParis = (iso?: string | null) =>
+  iso ? new Date(iso).toLocaleString("sv-SE", { timeZone: "Europe/Paris" }).replace(" ", "T").slice(0, 16) : "";
+export const dateEntretienTexte = (iso: string) =>
+  new Date(iso).toLocaleString("fr-FR", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" });
+
+const ADRESSE_ECOLE = "Campus Magnus, 45 boulevard Marcellin Berthelot, 13200 Arles";
+
+/** Convocation à l'entretien d'admission (envoyée dès que la date est posée). */
+export async function envoyerConvocation(l: Pick<Lead, "id" | "prenom" | "email" | "formation">, entretien: string): Promise<boolean> {
+  if (!moyenEnvoi() || !l.email) return false;
+  const ok = await envoyerEmail(l.email, "Votre entretien d'admission au Campus Magnus", texteEnHtml(`Bonjour ${l.prenom || ""},
+
+Vous êtes convoqué(e) à votre entretien d'admission${l.formation ? ` pour la formation ${l.formation}` : ""} :
+
+📅 ${dateEntretienTexte(entretien)}
+📍 ${ADRESSE_ECOLE}
+
+Pensez à apporter votre CV et vos derniers bulletins. Un empêchement ? Répondez simplement à cet email.
+
+Nous vous enverrons un rappel la veille.
+
+À très bientôt,
+L'équipe Campus Magnus`));
+  if (ok) await db().from("echanges").insert({ lead_id: l.id, type: "email", resume: `📨 Convocation à l'entretien d'admission envoyée (${dateEntretienTexte(entretien)}).`, auteur: "" });
+  return ok;
+}
+
+/** Rappels par email la veille de l'entretien d'admission (tâche du matin). */
+export async function rappelsEntretiensAdmission() {
+  if (!moyenEnvoi()) return 0;
+  const maintenant = Date.now();
+  const { data, error } = await db().from("leads").select("*")
+    .eq("rappel_entretien_envoye", false).not("entretien_a", "is", null)
+    .gt("entretien_a", new Date(maintenant).toISOString())
+    .lte("entretien_a", new Date(maintenant + 40 * 3600e3).toISOString());
+  if (error) return 0;
+  let n = 0;
+  for (const l of (data ?? []) as Lead[]) {
+    if (!["convoque", "entretien"].includes(l.statut) || !l.email) continue;
+    const ok = await envoyerEmail(l.email, "Rappel : votre entretien d'admission demain", texteEnHtml(`Bonjour ${l.prenom || ""},
+
+Petit rappel : votre entretien d'admission${l.formation ? ` (${l.formation})` : ""} a lieu ${dateEntretienTexte(l.entretien_a!)}.
+📍 ${ADRESSE_ECOLE}
+
+Un empêchement ? Répondez simplement à cet email.
+
+À demain,
+L'équipe Campus Magnus`)).catch(() => false);
+    if (ok) {
+      n++;
+      await db().from("leads").update({ rappel_entretien_envoye: true }).eq("id", l.id);
+      await db().from("echanges").insert({ lead_id: l.id, type: "email", resume: "⏰ Rappel de l'entretien d'admission envoyé par email (la veille).", auteur: "" });
+    }
+  }
+  return n;
+}
