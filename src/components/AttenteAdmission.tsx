@@ -13,7 +13,7 @@ export function AttenteAdmission({ c }: { c: Candidat }) {
     abandon: "Ton dossier est clôturé. Si tu veux reprendre ton parcours, contacte ton conseiller.",
   };
   const etapes = [
-    { fait: !!(c.formation && c.diplome_annee && c.poste_vise), icone: "🪪", titre: "Compléter mon profil", href: "/espace/profil" },
+    { fait: !!(c.formation && (c.annee_rentree || c.diplome_annee) && c.poste_vise), icone: "🪪", titre: "Compléter mon profil", href: "/espace/profil" },
     { fait: !!c.cv_chemin, icone: "📄", titre: "Déposer mon CV et lire les conseils", href: "/espace/cv" },
     { fait: !!c.linkedin_analyse, icone: "🔗", titre: "Améliorer mon LinkedIn", href: "/espace/reseau" },
     { fait: false, icone: "🧭", titre: "Passer mes tests (DISC et management)", href: "/espace/tests" },

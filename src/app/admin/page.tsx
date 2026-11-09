@@ -227,7 +227,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     if (sp.cv && (sp.cv === "avec") !== !!c.cv_chemin) return false;
     if (sp.entretien && (sp.entretien === "fait") !== dernierEntretien.has(c.user_id)) return false;
     if (sp.bilan && bilanDe(c.user_id) !== sp.bilan) return false;
-    if (sp.annee && String(c.diplome_annee ?? "") !== sp.annee) return false;
+    if (sp.annee && String(c.annee_rentree ?? "") !== sp.annee) return false;
     if (sp.admission && admission(c.statut_admission).id !== sp.admission) return false;
     return true;
   });
@@ -641,10 +641,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span className="font-semibold">📅 Année du diplôme</span>
+              <span className="font-semibold">📅 Rentrée</span>
               <select className="input" name="annee" defaultValue={sp.annee ?? ""}>
                 <option value="">Toutes</option>
-                {[...new Set(tousCandidats.map((c) => c.diplome_annee).filter(Boolean))].sort().map((a) => <option key={a} value={String(a)}>{a}</option>)}
+                {[...new Set(tousCandidats.map((c) => c.annee_rentree).filter(Boolean))].sort().map((a) => <option key={a} value={String(a)}>{a}</option>)}
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
@@ -717,7 +717,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                         </form>
                         {c.motif_admission && ["refus", "abandon"].includes(c.statut_admission ?? "") && <div className="mt-1 max-w-[180px] truncate text-xs text-muted" title={c.motif_admission}>Motif : {c.motif_admission}</div>}
                       </td>
-                      <td className="p-3">{c.formation ? <>{c.formation}{c.diplome_annee ? <div className="text-xs text-muted">📅 {c.diplome_annee}</div> : null}</> : <span className="chip chip-minus">À compléter</span>}</td>
+                      <td className="p-3">{c.formation ? <>{c.formation}{c.annee_rentree ? <div className="text-xs text-muted">📅 Rentrée {c.annee_rentree}</div> : null}</> : <span className="chip chip-minus">À compléter</span>}</td>
                       <td className="p-3 text-muted">{ecoles.find((x) => x.id === c.ecole_id)?.nom ?? "—"}</td>
                       <td className="p-3">{c.cv_chemin ? <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">📄 Ouvrir</a> : <span className="chip chip-minus">Sans CV</span>}</td>
                       <td className="p-3">{best != null ? <span className={`chip ${best >= 70 ? "chip-plus" : "chip-tag"}`}>{best} %</span> : <span className="text-muted">—</span>}</td>

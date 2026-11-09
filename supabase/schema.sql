@@ -430,3 +430,4 @@ alter table public.leads add column if not exists situation text not null defaul
 alter table public.leads add column if not exists entreprise text not null default '';
 alter table public.leads add column if not exists recrute boolean not null default false;
 alter table public.leads add column if not exists entreprise_id uuid references public.entreprises(id) on delete set null;
+alter table public.candidats add column if not exists annee_rentree integer;

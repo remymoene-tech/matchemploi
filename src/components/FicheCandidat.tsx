@@ -291,10 +291,10 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
               </fieldset>
               <div className="flex flex-wrap items-end gap-3">
                 <label className="flex flex-col gap-1 text-sm">
-                  <span className="font-semibold">Année du diplôme</span>
-                  <select className="input" name="diplome_annee" defaultValue={c.diplome_annee ?? ""}>
+                  <span className="font-semibold">Année de rentrée</span>
+                  <select className="input" name="annee_rentree" defaultValue={c.annee_rentree ?? ""}>
                     <option value="">—</option>
-                    {Array.from({ length: 8 }, (_, i) => anMaintenant - 1 + i).map((a) => <option key={a} value={a}>{a}</option>)}
+                    {Array.from({ length: 8 }, (_, i) => anMaintenant - 5 + i).map((a) => <option key={a} value={a}>Septembre {a}</option>)}
                   </select>
                 </label>
                 <button className="btn btn-primary">Enregistrer</button>

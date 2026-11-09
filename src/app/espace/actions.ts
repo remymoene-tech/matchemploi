@@ -39,7 +39,8 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
     annee_cursus: null as number | null,
     preferences: lirePreferences(f),
     rythme_cursus: null as string | null,
-    diplome_annee: (() => { const a = Number(f.get("diplome_annee")); return Number.isInteger(a) && a >= 2000 && a <= 2100 ? a : null; })(),
+    annee_rentree: (() => { const a = Number(f.get("annee_rentree")); return Number.isInteger(a) && a >= 2000 && a <= 2100 ? a : null; })(),
+    diplome_annee: null as number | null,
     poste_vise: texte(f, "poste_vise", 200),
     contrats,
     code_postal: texte(f, "code_postal", 10),
@@ -72,7 +73,10 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
       donnees.rythme_cursus = cat.alternance.includes(an) ? "alternance" : "initial";
     }
   }
-  if (!donnees.formation || !donnees.diplome_annee) return { erreur: "Indique le nom du diplôme que tu prépares et son année." };
+  if (!donnees.formation || !donnees.annee_rentree) return { erreur: "Indique le diplôme que tu prépares et ton année de rentrée." };
+  // Année du diplôme déduite : rentrée + durée de la formation (ex. EGC 2026 → 2029)
+  const duree = catalogue.find((x) => x.nom === donnees.formation)?.duree;
+  donnees.diplome_annee = duree ? donnees.annee_rentree + duree : null;
   if (!contrats.length) return { erreur: "Choisis au moins un type de contrat." };
   if (!donnees.consentement) return { erreur: "Coche la case d'accord pour que l'on puisse chercher des offres pour toi." };
 
@@ -127,7 +131,9 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
   after(async () => {
     try {
       const db = createAdminClient();
-      const { data: liens } = await db.from("leads").update({ candidat_id: user.id }).eq("email", (user.email ?? "").toLowerCase()).is("candidat_id", null).select("id, statut");
+      const { data: liens } = await db.from("leads").update({ candidat_id: user.id }).eq("email", (user.email ?? "").toLowerCase()).is("candidat_id", null).select("id, statut, annee_rentree");
+      const rentree = (liens ?? []).map((l) => l.annee_rentree as number | null).find(Boolean);
+      if (rentree) await db.from("candidats").update({ annee_rentree: rentree }).eq("user_id", user.id).is("annee_rentree", null);
       // Ses fiches d'entretien d'admission le suivent dans son espace (visibles par l'équipe seulement)
       const ids = (liens ?? []).map((l) => l.id as string);
       if (ids.length) await db.from("entretiens_conseil").update({ candidat_id: user.id }).in("lead_id", ids).is("candidat_id", null);

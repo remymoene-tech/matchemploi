@@ -140,7 +140,8 @@ alter table public.leads add column if not exists cv_chemin text;
 alter table public.leads add column if not exists situation text not null default '';
 alter table public.leads add column if not exists entreprise text not null default '';
 alter table public.leads add column if not exists recrute boolean not null default false;
-alter table public.leads add column if not exists entreprise_id uuid references public.entreprises(id) on delete set null;`;
+alter table public.leads add column if not exists entreprise_id uuid references public.entreprises(id) on delete set null;
+alter table public.candidats add column if not exists annee_rentree integer;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -205,6 +206,7 @@ async function verifierBase() {
     db.from("equipe").select("id, poste, acces").limit(1),
     db.from("leads").select("attribue_a, attribue_le").limit(1),
     db.from("leads").select("categorie, message, cv_chemin, situation, entreprise, recrute, entreprise_id").limit(1),
+    db.from("candidats").select("annee_rentree").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -267,6 +269,7 @@ async function verifierBase() {
     "Équipe du tableau de bord",
     "Leads attribués à l'équipe",
     "Alumni et intervenants (formulaires)",
+    "Année de rentrée des étudiants",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

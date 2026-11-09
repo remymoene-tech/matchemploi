@@ -8,7 +8,7 @@ import { anneeLabel, type Formation } from "@/lib/formations";
 import { PREFERENCES_ETUDIANT, type CleePreference } from "@/lib/attentes";
 
 const ANNEE = new Date().getFullYear();
-const ANNEES = Array.from({ length: 7 }, (_, i) => ANNEE - 1 + i);
+const ANNEES = Array.from({ length: 7 }, (_, i) => ANNEE - 4 + i);
 
 function Champ({ id, label, hint, children }: { id: string; label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -108,10 +108,10 @@ export function FormProfil({ c, codeEcole, nomEcole, formations = [] }: { c: Par
               </fieldset>
             )}
           </div>
-          <Champ id="diplome_annee" label="📅 Année du diplôme" hint="L'année où tu l'obtiendras">
-            <select className="input" id="diplome_annee" name="diplome_annee" defaultValue={c.diplome_annee ?? ""} required>
+          <Champ id="annee_rentree" label="📅 Année de rentrée" hint="La rentrée de septembre où tu as commencé (ou commenceras) cette formation">
+            <select className="input" id="annee_rentree" name="annee_rentree" defaultValue={c.annee_rentree ?? ""} required>
               <option value="" disabled>Choisir…</option>
-              {ANNEES.map((a) => <option key={a} value={a}>{a}</option>)}
+              {ANNEES.map((a) => <option key={a} value={a}>Septembre {a}</option>)}
             </select>
           </Champ>
         </div>

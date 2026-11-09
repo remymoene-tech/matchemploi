@@ -188,9 +188,9 @@ export default async function Espace() {
           On lit les offres et on les compare à ton profil. Ça prend en général moins d&apos;une minute ; la page se met à jour toute seule.
         </div>
       )}
-      {(!c.formation || !c.diplome_annee) && (
+      {(!c.formation || (!c.annee_rentree && !c.diplome_annee)) && (
         <p className="rounded-xl bg-warn-soft p-4 text-sm">
-          🎓 Indique le <b>nom du diplôme que tu prépares</b> et son <b>année</b> : ça aide à te proposer les bonnes offres. <Link className="font-semibold underline" href="/espace/profil">Compléter mon profil</Link>
+          🎓 Indique le <b>nom du diplôme que tu prépares</b> et ton <b>année de rentrée</b> : ça aide à te proposer les bonnes offres. <Link className="font-semibold underline" href="/espace/profil">Compléter mon profil</Link>
         </p>
       )}
       {!c.cv_chemin && (

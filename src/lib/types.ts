@@ -43,8 +43,10 @@ export type Candidat = {
   nom: string;
   telephone: string;
   formation: string;
-  /** Année d'obtention du diplôme préparé. */
+  /** Année d'obtention du diplôme préparé (calculée : rentrée + durée de la formation). */
   diplome_annee?: number | null;
+  /** Année de rentrée dans la formation (septembre). */
+  annee_rentree?: number | null;
   /** prospect | admis | admis_condition | liste_attente (choisi par l'équipe). */
   statut_admission?: string | null;
   /** Motif du refus ou de l'abandon. */
@@ -198,9 +200,9 @@ export type CvConseils = {
 };
 
 /** « BTS NDRC (2027) » : diplôme préparé et son année. */
-export const diplomeLabel = (c: { formation?: string | null; diplome_annee?: number | null; annee_cursus?: number | null; rythme_cursus?: string | null }) =>
+export const diplomeLabel = (c: { formation?: string | null; diplome_annee?: number | null; annee_rentree?: number | null; annee_cursus?: number | null; rythme_cursus?: string | null }) =>
   [
     c.formation,
     c.annee_cursus ? `· ${c.annee_cursus === 1 ? "1re" : `${c.annee_cursus}e`} année${c.rythme_cursus ? ` (${c.rythme_cursus === "alternance" ? "alternance" : "initial"})` : ""}` : "",
-    c.diplome_annee ? `· diplôme ${c.diplome_annee}` : "",
+    c.annee_rentree ? `· rentrée ${c.annee_rentree}` : c.diplome_annee ? `· diplôme ${c.diplome_annee}` : "",
   ].filter(Boolean).join(" ");
