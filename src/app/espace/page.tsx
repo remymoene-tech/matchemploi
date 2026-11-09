@@ -171,7 +171,7 @@ export default async function Espace() {
           <h2 className="text-base font-semibold">Tes entretiens à préparer</h2>
           <div className="flex flex-wrap gap-2">
             {entretiens.map((e) => (
-              <Link key={e.offre_id} href={`/entretien/${user.id}/${e.offre_id}`} className="btn btn-sm">
+              <Link key={e.offre_id} href={`/entretien/${user.id}/${e.offre_id}`} className="btn btn-sm h-auto max-w-full whitespace-normal text-left">
                 {e.meta?.intitule}{e.meta?.entreprise ? ` · ${e.meta.entreprise}` : ""} →
               </Link>
             ))}

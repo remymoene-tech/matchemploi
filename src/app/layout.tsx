@@ -45,6 +45,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               {user ? (
                 <>
                   <Link className="btn btn-ghost btn-sm" href="/espace">Mes offres</Link>
+                  <Link className="btn btn-ghost btn-sm" href="/espace/carte">📇 Ma carte de visite</Link>
                   <Link className="btn btn-ghost btn-sm" href="/espace/profil">Mon profil</Link>
                   {monEcole || estAdmin(user.email)
                     ? <Cloche lien={estAdmin(user.email) ? "/admin?vue=relances" : "/ecole?vue=relances"} />
