@@ -20,14 +20,14 @@ import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
 import { BROCHURES_PAR_DEFAUT, anneeLabel, lireFormations } from "@/lib/formations";
-import { MOTIFS_PERTE, ORIGINES_LEAD, STATUTS_LEAD, estLeadAdmis, listeLeads, nomLead, premierContact, statutLead, type EchangeLead } from "@/lib/leads";
+import { MOTIFS_PERTE, ORIGINES_LEAD, STATUTS_LEAD, isoVersParis, estLeadAdmis, listeLeads, nomLead, premierContact, statutLead, type EchangeLead } from "@/lib/leads";
 import { StatsRecrutement } from "@/components/StatsRecrutement";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe } from "@/lib/entreprises";
 import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { renvoyerInvitation, changerStatutLead, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -487,10 +487,13 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                         {l.candidat_id && <span className="chip chip-plus mt-1">🎓 Espace étudiant créé</span>}
                       </td>
                       <td className="p-3">
-                        <form action={changerStatutLead}>
+                        <form action={changerStatutLeadFiche}>
                           <input type="hidden" name="id" value={l.id} />
+                          <input type="hidden" name="retour" value="/admin?vue=leads" />
+                          <input type="hidden" name="convocation" value="on" />
                           <SelectEnregistrer name="statut" label={`Statut de ${nomLead(l)}`} defaultValue={statutLead(l.statut).id} options={STATUTS_LEAD}
-                            motif={{ pour: ["perdu"], champ: "motif_perte", actuel: l.motif_perte ?? "", suggestions: MOTIFS_PERTE }} />
+                            motif={{ pour: ["perdu"], champ: "motif_perte", actuel: l.motif_perte ?? "", suggestions: MOTIFS_PERTE }}
+                            date={{ pour: ["convoque"], champ: "entretien_a", actuelle: isoVersParis(l.entretien_a), aide: "Date de l'entretien : la convocation part par email" }} />
                           {l.statut === "perdu" && l.motif_perte && <div className="mt-1 max-w-[220px] truncate text-xs text-muted" title={l.motif_perte}>Motif : {l.motif_perte}</div>}
                         </form>
                       </td>

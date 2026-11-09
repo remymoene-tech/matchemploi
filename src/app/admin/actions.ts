@@ -504,6 +504,7 @@ export async function enregistrerLead(f: FormData) {
   const d = lireLead(f);
   if (!d.email && !d.telephone && !d.nom) redirect(`/admin/leads/${id || "nouveau"}?erreur=champs`);
   if (d.statut === "perdu" && d.motif_perte.length < 3) redirect(`/admin/leads/${id || "nouveau"}?erreur=motif`);
+  if (d.statut === "convoque" && !id) redirect("/admin/leads/nouveau?erreur=date");
   const db = createAdminClient();
   if (id) {
     const avant = await leadParId(id);
@@ -530,6 +531,7 @@ export async function changerStatutLead(f: FormData) {
   const id = t(f, "id", 60);
   const motif = t(f, "motif_perte", 500);
   if (statut === "perdu" && motif.length < 3) return; // le motif est obligatoire
+  if (statut === "convoque") return; // la date de l'entretien est obligatoire : passer par la fiche
   const avant = await leadParId(id);
   const maj = { statut, updated_at: new Date().toISOString(), ...(statut === "perdu" ? { motif_perte: motif } : {}) };
   const { error } = await createAdminClient().from("leads").update({ ...maj, ...datesEtapes(avant, statut) }).eq("id", id);
@@ -622,4 +624,46 @@ export async function planifierEntretienLead(f: FormData) {
   });
   const ok = f.get("convocation") === "on" ? await envoyerConvocation(l, quand) : false;
   redirect(`/admin/leads/${id}?onglet=entretien&${ok ? "convocation=1" : "ok=1"}`);
+}
+
+/** Barre de statut de la fiche lead : statut + motif (perdu) + date d'entretien (convoqué) + invitation (admis). */
+export async function changerStatutLeadFiche(f: FormData) {
+  const { user } = await exigerAdmin();
+  const id = t(f, "id", 60);
+  const statut = t(f, "statut", 30);
+  const retour = t(f, "retour", 200);
+  const l = await leadParId(id);
+  if (!l || !STATUTS_LEAD.some((x) => x.id === statut)) redirect("/admin?vue=leads");
+  // Convoqué au concours : la date et l'heure de l'entretien sont obligatoires
+  if (statut === "convoque" && !t(f, "entretien_a", 20) && !(l.statut === "convoque" && l.entretien_a)) redirect(`/admin/leads/${id}?erreur=date`);
+  const db = createAdminClient();
+  const messages: string[] = [];
+  if (statut === "perdu") {
+    const motif = t(f, "motif_perte", 500);
+    if (motif.length < 3) redirect(`/admin/leads/${id}?erreur=motif`);
+    let { error } = await db.from("leads").update({ statut, motif_perte: motif, updated_at: new Date().toISOString() }).eq("id", id);
+    if (error) ({ error } = await db.from("leads").update({ statut, updated_at: new Date().toISOString() }).eq("id", id));
+  } else if (statut === "convoque" && t(f, "entretien_a", 20)) {
+    const quand = parisVersISO(t(f, "entretien_a", 20));
+    if (!quand) redirect(`/admin/leads/${id}?erreur=date`);
+    const { error } = await db.from("leads").update({ entretien_a: quand, rappel_entretien_envoye: false, statut, ...datesEtapes(l, statut), updated_at: new Date().toISOString() }).eq("id", id);
+    if (error) redirect(`/admin/leads/${id}?erreur=base`);
+    if (l.entretien_a !== quand) {
+      await db.from("echanges").insert({
+        lead_id: id, type: "rdv", date_echange: new Date().toISOString(),
+        resume: `📨 Convoqué à l'entretien d'admission : ${dateEntretienTexte(quand)}.`,
+        action: `🗣️ Entretien d'admission de ${nomLead(l)} à ${new Date(quand).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}`,
+        action_le: quand.slice(0, 10), action_a: new Date(new Date(quand).getTime() - 3600e3).toISOString(),
+        auteur: user.email ?? "",
+      });
+      if (f.get("convocation") === "on" && (await envoyerConvocation(l, quand))) messages.push("convocation=1");
+    }
+  } else {
+    const { error } = await db.from("leads").update({ statut, updated_at: new Date().toISOString(), ...datesEtapes(l, statut) }).eq("id", id);
+    if (error) await db.from("leads").update({ statut, updated_at: new Date().toISOString() }).eq("id", id);
+    if (statut === "admis" && !estLeadAdmis(l) && !l.candidat_id && (await envoyerInvitation(l))) messages.push("invitation=1");
+  }
+  revalidatePath("/admin");
+  if (retour.startsWith("/admin")) redirect(retour);
+  redirect(`/admin/leads/${id}?${messages.join("&") || "ok=1"}`);
 }

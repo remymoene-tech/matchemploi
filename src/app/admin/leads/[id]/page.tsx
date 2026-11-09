@@ -6,9 +6,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { echangesDuLead, echeance, maintenantMs } from "@/lib/echanges";
 import { formationsDeLEcole } from "@/lib/ecoles";
 import { OngletsCartes } from "@/components/OngletsCartes";
+import { StatutLeadRapide } from "@/components/StatutLeadRapide";
 import { FormEchange } from "@/components/FormEchange";
 import { JournalEchanges } from "@/components/JournalEchanges";
-import { planifierEntretienLead, renvoyerInvitation, actionFaiteLead, ajouterEchangeLead, enregistrerLead, renvoyerBrochure, supprimerEchangeLead, supprimerLead } from "../../actions";
+import { changerStatutLeadFiche, planifierEntretienLead, renvoyerInvitation, actionFaiteLead, ajouterEchangeLead, enregistrerLead, renvoyerBrochure, supprimerEchangeLead, supprimerLead } from "../../actions";
 
 export const metadata = { title: "Lead · MagnusMatch" };
 
@@ -77,9 +78,14 @@ export default async function FicheLead({ params, searchParams }: {
         )}
       </header>
 
+      {l && (
+        <StatutLeadRapide id={l.id} statut={statutLead(l.statut).id} statuts={STATUTS_LEAD} motifs={MOTIFS_PERTE}
+          motifActuel={l.motif_perte ?? ""} entretienLocal={isoVersParis(l.entretien_a)} email={l.email} action={changerStatutLeadFiche} />
+      )}
+
       {sp.ok && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Enregistré ✓</p>}
       {sp.convocation && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">📨 Convocation envoyée par email ✓ Le rappel partira automatiquement la veille.</p>}
-      {sp.erreur === "date" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Indique la date et l&apos;heure de l&apos;entretien.</p>}
+      {sp.erreur === "date" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">📅 Pour « Convoqué au concours », indique la date et l&apos;heure de l&apos;entretien d&apos;admission.</p>}
       {sp.invitation && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">🎉 Admis : le lien pour créer son espace MagnusMatch est parti par email ✓</p>}
       {l && estLeadAdmis(l) && !l.candidat_id && !sp.invitation && <p className="rounded-xl bg-accent-soft p-4 text-sm">✅ Admis à l&apos;entretien : il apparaît dans Étudiants → Mes candidats en attendant qu&apos;il crée son espace avec <b>{l.email}</b>.</p>}
       {sp.brochure && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">📬 Brochure envoyée ✓</p>}
@@ -133,12 +139,14 @@ export default async function FicheLead({ params, searchParams }: {
                 {[annee - 1, annee, annee + 1, annee + 2].map((a) => <option key={a} value={a}>{a}</option>)}
               </select>
             </label>
-            <label className="flex flex-col gap-1 text-sm">
-              <span className="font-semibold">Où on en est</span>
-              <select className="input" name="statut" defaultValue={l ? statutLead(l.statut).id : "nouveau"}>
-                {STATUTS_LEAD.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
-              </select>
-            </label>
+            {l ? <input type="hidden" name="statut" value={statutLead(l.statut).id} /> : (
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-semibold">Où on en est</span>
+                <select className="input" name="statut" defaultValue="nouveau">
+                  {STATUTS_LEAD.filter((x) => ["nouveau", "contacte", "rdv", "dossier"].includes(x.id)).map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+                </select>
+              </label>
+            )}
             <label className="flex flex-col gap-1 text-sm">
               <span className="font-semibold">Origine</span>
               <select className="input" name="origine" defaultValue={l?.origine ?? "Journée portes ouvertes"}>
@@ -146,11 +154,7 @@ export default async function FicheLead({ params, searchParams }: {
               </select>
             </label>
           </div>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="font-semibold">Motif si ❌ Perdu <span className="font-normal text-muted">(obligatoire pour ce statut)</span></span>
-            <input className="input" name="motif_perte" list="motifs-perte" defaultValue={l?.motif_perte ?? ""} placeholder="Ex. A choisi une autre école" />
-            <datalist id="motifs-perte">{MOTIFS_PERTE.map((x) => <option key={x} value={x} />)}</datalist>
-          </label>
+          {l?.statut === "perdu" && <input type="hidden" name="motif_perte" value={l.motif_perte ?? ""} />}
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-semibold">Notes</span>
             <textarea className="input min-h-24" name="notes" defaultValue={l?.notes ?? ""} placeholder="Son projet, ses questions, ses parents…" />

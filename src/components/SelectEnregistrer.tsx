@@ -13,13 +13,16 @@ function Bouton({ modifie }: { modifie: boolean }) {
 }
 
 /** Liste déroulante + bouton « Enregistrer » (le choix n'est validé qu'au clic). */
-export function SelectEnregistrer({ name, defaultValue, options, label, motif }: {
+export function SelectEnregistrer({ name, defaultValue, options, label, motif, date }: {
   name: string; defaultValue: string; options: readonly { id: string; label: string }[]; label: string;
   /** Statuts qui demandent un motif écrit (ex. « perdu »), nom du champ et suggestions. */
   motif?: { pour: string[]; champ: string; actuel?: string; suggestions?: readonly string[] };
+  /** Statuts qui demandent une date et une heure (ex. « convoqué au concours »). */
+  date?: { pour: string[]; champ: string; actuelle?: string; aide?: string };
 }) {
   const [valeur, setValeur] = useState(defaultValue);
   const demandeMotif = !!motif && motif.pour.includes(valeur) && valeur !== defaultValue;
+  const demandeDate = !!date && date.pour.includes(valeur) && valeur !== defaultValue;
   return (
     <span className="flex flex-col gap-1.5">
       <span className="flex items-center gap-2">
@@ -28,6 +31,12 @@ export function SelectEnregistrer({ name, defaultValue, options, label, motif }:
         </select>
         <Bouton modifie={valeur !== defaultValue} />
       </span>
+      {demandeDate && date && (
+        <>
+          <input className="input py-1.5 text-sm" type="datetime-local" name={date.champ} required defaultValue={date.actuelle ?? ""} aria-label="Date et heure (obligatoire)" />
+          {date.aide && <span className="text-xs text-muted">{date.aide}</span>}
+        </>
+      )}
       {demandeMotif && motif && (
         <>
           <input className="input py-1.5 text-sm" name={motif.champ} required minLength={3} autoFocus defaultValue={motif.actuel ?? ""}
