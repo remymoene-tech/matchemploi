@@ -29,7 +29,7 @@ export const POSTE_ADMIN = "Directeur campus";
 
 /** Accès qu'on peut donner à chaque membre de l'équipe (cases à cocher dans ⚙️). */
 export const ACCES = [
-  { id: "accueil", label: "Accueil et chiffres", icone: "🏠", aide: "Statistiques et graphiques" },
+  { id: "accueil", label: "Chiffres et statistiques", icone: "🏠", aide: "Chiffres clés et graphiques de l'Accueil (l'activité de l'équipe est visible par tous)" },
   { id: "leads", label: "Leads", icone: "🧲", aide: "Demandes de brochure, entretiens d'admission, attribution des leads" },
   { id: "candidats", label: "Candidats", icone: "👥", aide: "Fiches, admissions, CV, tests, briefing, entretiens" },
   { id: "alumni", label: "Alumni", icone: "🎓", aide: "Parcours des alumni et leurs propositions d'aide" },

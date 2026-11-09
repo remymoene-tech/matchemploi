@@ -68,7 +68,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const vueDemandee = sp.vue === "offres" || sp.vue === "correspondances" ? "entreprises" : [...VUES, ...AUTRES].some((v) => v.id === sp.vue) ? sp.vue! : "accueil";
   // Chaque vue demande un accès (l'administrateur a tout) ; sinon on ouvre la première vue permise
   const ACCES_VUE: Record<string, Acces | null> = { accueil: "accueil", leads: "leads", candidats: "candidats", alumni: "alumni", entreprises: "entreprises", planning: "planning", evenements: "evenements", briefing: "candidats", entretiens: "candidats", relances: null, ecoles: null, reglages: null };
-  const permise = (v: string) => (RESERVEES_ADMIN.includes(v) ? superAdmin : ACCES_VUE[v] == null || peut(moi.droits, ACCES_VUE[v]!));
+  const permise = (v: string) => v === "accueil" || (RESERVEES_ADMIN.includes(v) ? superAdmin : ACCES_VUE[v] == null || peut(moi.droits, ACCES_VUE[v]!));
   const premiere = ["accueil", "leads", "candidats", "alumni", "entreprises", "planning", "evenements"].find(permise) ?? "relances";
   const vue = permise(vueDemandee) ? vueDemandee : premiere;
   const a = (x: Acces) => peut(moi.droits, x);
@@ -254,7 +254,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
       <div className="flex flex-col gap-2">
         <OngletsCartes label="Espace équipe" onglets={[
-          ...(a("accueil") ? [{ href: "/admin", icone: "🏠", label: "Accueil", sous: "Mes chiffres", actif: vue === "accueil" }] : []),
+          { href: "/admin", icone: "🏠", label: "Accueil", sous: a("accueil") ? "Mes chiffres" : "Activité de l'équipe", actif: vue === "accueil" },
           ...(a("leads") || a("candidats") || a("alumni") ? [{ href: `/admin?vue=${a("leads") ? "leads" : a("candidats") ? "candidats" : "alumni"}`, icone: "🎓", label: "Étudiants", sous: `${nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""} lead${nouveauxLeads > 1 ? "s" : ""}` : `${nbLeads} leads`} · ${C.size} candidat${C.size > 1 ? "s" : ""}`, actif: vue === "leads" || vue === "candidats" || vue === "alumni" }] : []),
           ...(a("entreprises") ? [{ href: "/admin?vue=entreprises", icone: "🏢", label: "Mes entreprises", sous: entreprises ? `${nbEntreprises} rencontrée${nbEntreprises > 1 ? "s" : ""}` : `${mesOffresOuvertes} offre${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "entreprises" }] : []),
           ...(a("planning") ? [{ href: "/admin?vue=planning", icone: "📅", label: "Planning", sous: "Entretiens programmés", actif: vue === "planning" }] : []),
@@ -271,7 +271,9 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
       {vue === "accueil" && a("entreprises") && <AnnoncesAValider offres={offresEquipe} valider={validerAnnonceAlumni} refuser={refuserAnnonceAlumni} retour="/admin" />}
 
-      {vue === "accueil" && (
+      {vue === "accueil" && !a("accueil") && <ActiviteEquipe periode={sp.aperiode} date={sp.adate} historique={superAdmin} leads={leads} />}
+
+      {vue === "accueil" && a("accueil") && (
         <div className="flex flex-col gap-6">
           <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Chiffres clés">
             {([
