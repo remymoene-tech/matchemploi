@@ -92,7 +92,7 @@ export type Candidat = {
 
 export type Offre = {
   id: string;
-  source: "partenaire" | "externe" | "france_travail" | "adzuna" | "la_bonne_alternance";
+  source: "partenaire" | "externe" | "france_travail" | "adzuna" | "la_bonne_alternance" | "alumni";
   source_id: string | null;
   entreprise: string;
   intitule: string;
@@ -160,13 +160,16 @@ export const SCORE_ORANGE = 65; // en dessous : l'offre n'est pas montrée au ca
 export const tonScore = (score: number) => (score >= SCORE_VERT ? "good" : score >= SCORE_ORANGE ? "warn" : "bad");
 
 export const sourceLabel = (s: string) =>
-  s === "france_travail" ? "France Travail" : s === "adzuna" ? "Adzuna" : s === "la_bonne_alternance" ? "La bonne alternance" : s === "externe" ? "Annonce externe" : "Entreprise partenaire";
+  s === "france_travail" ? "France Travail" : s === "adzuna" ? "Adzuna" : s === "la_bonne_alternance" ? "La bonne alternance" : s === "externe" ? "Annonce externe" : s === "alumni" ? "Annonce d'un alumni" : "Entreprise partenaire";
 
 /** Sources récupérées automatiquement (les autres sont saisies par l'équipe). */
 export const SOURCES_AUTO = ["france_travail", "adzuna", "la_bonne_alternance"];
 
 /** Offres saisies par l'équipe (admin ou école) : jamais montrées aux candidats, l'équipe fait le lien. */
 export const estOffreEquipe = (source: string) => !SOURCES_AUTO.includes(source);
+
+/** Offres montrées aux étudiants : sources automatiques + annonces d'alumni validées par l'équipe. */
+export const estVisibleCandidat = (source: string) => SOURCES_AUTO.includes(source) || source === "alumni";
 
 /** Coordonnées obligatoires pour une offre de l'équipe. Renvoie un message d'erreur ou null. */
 export function contactManquant(o: { source: string; contact_nom: string; contact_email: string; contact_tel?: string; lien: string }) {

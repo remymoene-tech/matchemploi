@@ -19,6 +19,7 @@ import { Copier } from "@/components/Copier";
 import { FormBrochure } from "@/components/FormBrochure";
 import { ADMISSIONS, admission } from "@/lib/admission";
 import { VueAlumni } from "@/components/VueAlumni";
+import { AnnoncesAValider } from "@/components/AnnoncesAValider";
 import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
@@ -30,7 +31,7 @@ import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { creerEvenement, supprimerEvenement, basculerAccueilEvenement, changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { creerEvenement, supprimerEvenement, basculerAccueilEvenement, validerAnnonceAlumni, refuserAnnonceAlumni, changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -92,7 +93,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     : { data: [] };
   const O = new Map(((offresMatch ?? []) as Offre[]).map((o) => [o.id, o]));
   const toutes = M.filter((m) => C.has(m.candidat_id) && O.get(m.offre_id)?.ouverte);
-  const equipe = toutes.filter((m) => estOffreEquipe(O.get(m.offre_id)!.source));
+  // Les alumni ne sont pas proposés sur les offres de l'école
+  const equipe = toutes.filter((m) => estOffreEquipe(O.get(m.offre_id)!.source) && C.get(m.candidat_id)?.statut_admission !== "alumni");
   const voirToutes = false; // seules les offres de l'équipe
   // À traiter d'abord, puis les meilleures notes
   const filtreSuivi = SUIVIS.find((x) => x.id === sp.suivi) ?? null;
@@ -248,6 +250,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           ))}
         </nav>
       </div>
+
+      {vue === "accueil" && <AnnoncesAValider offres={offresEquipe} valider={validerAnnonceAlumni} refuser={refuserAnnonceAlumni} retour="/admin" />}
 
       {vue === "accueil" && (
         <div className="flex flex-col gap-6">
@@ -946,6 +950,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
         </form>
       )}
+
+      {vue === "entreprises" && <AnnoncesAValider offres={offresEquipe} valider={validerAnnonceAlumni} refuser={refuserAnnonceAlumni} retour="/admin?vue=entreprises" />}
 
       {vue === "entreprises" && (
         <nav className="flex flex-wrap gap-2" aria-label="Mes entreprises">

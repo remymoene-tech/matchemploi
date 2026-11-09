@@ -125,7 +125,9 @@ alter table public.candidats add column if not exists carte_options jsonb;
 alter table public.candidats add column if not exists carte_vues integer not null default 0;
 alter table public.candidats add column if not exists carte_vue_le timestamptz;
 alter table public.candidats add column if not exists parcours jsonb;
-alter table public.candidats add column if not exists alumni_rappel_le timestamptz;`;
+alter table public.candidats add column if not exists alumni_rappel_le timestamptz;
+alter table public.offres add column if not exists validation text;
+alter table public.offres add column if not exists proposee_par uuid references auth.users(id) on delete set null;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -186,6 +188,7 @@ async function verifierBase() {
     db.from("evenements").select("sur_accueil").limit(1),
     db.from("candidats").select("carte_jeton, carte_options, carte_vues, carte_vue_le").limit(1),
     db.from("candidats").select("parcours, alumni_rappel_le").limit(1),
+    db.from("offres").select("validation, proposee_par").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -244,6 +247,7 @@ async function verifierBase() {
     "Événements sur la page d'accueil",
     "Carte de visite des candidats",
     "Alumni (parcours)",
+    "Annonces déposées par les alumni",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

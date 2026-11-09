@@ -8,7 +8,7 @@ import { estAlumni, lireParcours } from "@/lib/alumni";
 import { estAdmis } from "@/lib/admission";
 import { OffresEspace, type LigneOffre } from "@/components/OffresEspace";
 import { relancerRecherche } from "./actions";
-import { SCORE_ORANGE, SCORE_VERT, SEUIL, contratLabel, estOffreEquipe, sourceLabel, type Candidat, type Piste } from "@/lib/types";
+import { SCORE_ORANGE, SCORE_VERT, SEUIL, contratLabel, estVisibleCandidat, sourceLabel, type Candidat, type Piste } from "@/lib/types";
 import { adopterPiste, ecarterPiste } from "./actions";
 import { Chips, Score } from "@/components/Score";
 
@@ -69,8 +69,9 @@ export default async function Espace() {
   const autresRecherches = (rechData ?? []) as { id: string; poste: string; active: boolean }[];
   const pistes = ((c.pistes ?? []) as Piste[]).filter((p) => !p.ecartee);
 
-  // Les offres saisies par l'équipe ne sont jamais montrées : c'est l'équipe qui fait le lien
-  const visibles = (data ?? []).filter((l) => l.offres?.ouverte && !estOffreEquipe(l.offres.source));
+  // Les offres saisies par l'équipe ne sont jamais montrées : c'est l'équipe qui fait le lien.
+  // Les annonces d'alumni, une fois validées par l'équipe, sont montrées aux étudiants.
+  const visibles = (data ?? []).filter((l) => l.offres?.ouverte && estVisibleCandidat(l.offres.source));
   // Seules les offres à 65 % ou plus sont proposées (orange de 65 à 69 %, vert à partir de 70 %)
   const ouvertes = visibles.filter((l) => !l.piste && l.score >= SCORE_ORANGE); // les pistes ont leur propre encadré
   const suggestions = visibles.filter((l) => l.piste && l.score >= SCORE_VERT && l.avis_candidat !== "pas_interesse" && pistes.some((p) => p.metier === l.piste));

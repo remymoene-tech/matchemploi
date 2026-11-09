@@ -466,3 +466,41 @@ export async function monEntrepriseRecrute() {
   const lien = await lienBesoinEntreprise(p.entreprise_id);
   redirect(lien ?? "/espace/parcours?recrute=1");
 }
+
+/** Alumni recruteur : dépose une annonce, l'équipe la valide avant qu'elle soit proposée aux étudiants. */
+export async function deposerAnnonceAlumni(f: FormData) {
+  const { user } = await exigerUtilisateur();
+  const { lireParcours } = await import("@/lib/alumni");
+  const { notifierEquipe } = await import("@/lib/alumni-serveur");
+  const { localiserLieu } = await import("@/lib/geo");
+  const db = createAdminClient();
+  const { data: c } = await db.from("candidats").select("nom, email, telephone, statut_admission, parcours, ecole_id").eq("user_id", user.id).maybeSingle();
+  const p = lireParcours(c?.parcours);
+  if (!c || c.statut_admission !== "alumni") redirect("/espace");
+  if (!p?.entreprise) redirect("/espace/parcours?erreur=entreprise#annonce");
+  const contrat = texte(f, "contrat", 20);
+  const ligne = {
+    source: "alumni",
+    entreprise: p.entreprise,
+    intitule: texte(f, "intitule", 150),
+    contrat: CONTRATS.some((x) => x.id === contrat) ? contrat : "alternance",
+    contrat_libelle: CONTRATS.find((x) => x.id === contrat)?.label ?? "Alternance",
+    lieu: texte(f, "lieu", 120) || p.ville,
+    description: [texte(f, "description", 6000), texte(f, "debut", 80) && `Début : ${texte(f, "debut", 80)}`].filter(Boolean).join("\n\n"),
+    contact_nom: c.nom,
+    contact_email: c.email,
+    contact_tel: c.telephone ?? "",
+    ouverte: false,
+    publiee_le: new Date().toISOString(),
+    ecole_id: c.ecole_id ?? null,
+    entreprise_id: p.entreprise_id ?? null,
+    validation: "a_valider",
+    proposee_par: user.id,
+  };
+  if (!ligne.intitule || ligne.description.length < 20) redirect("/espace/parcours?erreur=annonce#annonce");
+  const position = ligne.lieu ? await localiserLieu(ligne.lieu) : null;
+  const { error } = await db.from("offres").insert({ ...ligne, latitude: position?.latitude ?? null, longitude: position?.longitude ?? null });
+  if (error) redirect("/espace/parcours?erreur=base#annonce");
+  await notifierEquipe(user.id, `📝 ${c.nom || c.email} (alumni) a déposé une annonce : « ${ligne.intitule} » chez ${ligne.entreprise}. À valider dans le tableau de bord.`, `📝 Annonce à valider : ${ligne.intitule} (${ligne.entreprise})`);
+  redirect("/espace/parcours?annonce=1#annonce");
+}

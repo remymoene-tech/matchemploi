@@ -5,11 +5,18 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { OngletsEspace } from "@/components/OngletsEspace";
 import { AIDES, AVEC_ENTREPRISE, SITUATIONS, estAlumni, lireParcours, moisTexte } from "@/lib/alumni";
 import type { Candidat } from "@/lib/types";
-import { enregistrerParcours, monEntrepriseRecrute } from "../actions";
+import { CONTRATS } from "@/lib/types";
+import { deposerAnnonceAlumni, enregistrerParcours, monEntrepriseRecrute } from "../actions";
 
 export const metadata = { title: "Mon parcours · MagnusMatch" };
 
-type SP = { ok?: string; erreur?: string; recrute?: string };
+type SP = { ok?: string; erreur?: string; recrute?: string; annonce?: string };
+type Annonce = { id: string; intitule: string; contrat_libelle: string; lieu: string; ouverte: boolean; validation: string | null; created_at: string };
+
+const ETAT = (a: Annonce) =>
+  a.validation === "refusee" ? { t: "❌ Pas retenue", c: "chip-minus" }
+  : a.validation === "a_valider" ? { t: "⏳ En attente de validation", c: "chip-tag" }
+  : a.ouverte ? { t: "✅ Publiée : proposée aux étudiants", c: "chip-plus" } : { t: "Fermée", c: "" };
 
 export default async function MonParcours({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
@@ -18,6 +25,8 @@ export default async function MonParcours({ searchParams }: { searchParams: Prom
   if (!c) redirect("/espace/profil");
   if (!estAlumni(c)) redirect("/espace");
   const p = lireParcours(c.parcours);
+  const { data: annoncesData } = await createAdminClient().from("offres").select("id, intitule, contrat_libelle, lieu, ouverte, validation, created_at").eq("proposee_par", user.id).order("created_at", { ascending: false });
+  const annonces = (annoncesData ?? []) as Annonce[];
   const promo = [c.formation, c.diplome_annee].filter(Boolean).join(" ");
 
   return (
@@ -83,6 +92,49 @@ export default async function MonParcours({ searchParams }: { searchParams: Prom
           </section>
         </div>
       </div>
+
+      <section id="annonce" className="grid scroll-mt-6 gap-5 rounded-2xl border-2 p-5 sm:p-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]" style={{ borderColor: "var(--sauge)" }}>
+        <div className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-2xl font-extrabold">🧑‍💼 Je suis recruteur, je cherche un alternant !</h2>
+            <p className="text-sm text-muted">Dépose ton annonce : l&apos;équipe du Campus la vérifie, puis MagnusMatch la propose aux étudiants admis qui correspondent.</p>
+          </div>
+          {sp.annonce && <p className="rounded-xl bg-good-soft p-3 text-sm text-good">✅ Merci ! Ton annonce est envoyée à l&apos;équipe pour validation.</p>}
+          {sp.erreur === "annonce" && <p className="rounded-xl bg-bad-soft p-3 text-sm text-bad">Indique au moins l&apos;intitulé du poste et une description (missions, profil).</p>}
+          {sp.erreur === "entreprise" && <p className="rounded-xl bg-bad-soft p-3 text-sm text-bad">Indique d&apos;abord ton entreprise dans « Où j&apos;en suis aujourd&apos;hui ».</p>}
+          {p?.entreprise ? (
+            <form action={deposerAnnonceAlumni} className="flex flex-col gap-3">
+              <p className="text-sm">Entreprise : <b>{p.entreprise}</b></p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="flex flex-col gap-1 text-sm sm:col-span-2"><span className="font-semibold">Intitulé du poste <span className="text-bad">*</span></span><input className="input" name="intitule" required maxLength={150} placeholder="Ex. Assistant(e) commercial(e) en alternance" /></label>
+                <label className="flex flex-col gap-1 text-sm"><span className="font-semibold">Type de contrat</span>
+                  <select className="input" name="contrat" defaultValue="alternance">{CONTRATS.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}</select>
+                </label>
+                <label className="flex flex-col gap-1 text-sm"><span className="font-semibold">Lieu</span><input className="input" name="lieu" defaultValue={p.ville} placeholder="Ex. Arles" /></label>
+                <label className="flex flex-col gap-1 text-sm sm:col-span-2"><span className="font-semibold">Début souhaité</span><input className="input" name="debut" maxLength={80} placeholder="Ex. Septembre 2027" /></label>
+                <label className="flex flex-col gap-1 text-sm sm:col-span-2"><span className="font-semibold">Missions et profil recherché <span className="text-bad">*</span></span><textarea className="input min-h-32" name="description" required maxLength={6000} placeholder={"Missions : …\nProfil : …\nRythme : 2 j école / 3 j entreprise"} /></label>
+              </div>
+              <button className="btn btn-primary w-fit">📨 Envoyer mon annonce</button>
+              <p className="text-xs text-muted">Tes coordonnées ({c.email}) seront transmises à l&apos;équipe pour te mettre en relation avec les étudiants.</p>
+            </form>
+          ) : (
+            <p className="rounded-xl bg-warn-soft p-3 text-sm text-warn">Indique d&apos;abord ton entreprise dans « Où j&apos;en suis aujourd&apos;hui » pour déposer une annonce.</p>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          <h3 className="font-semibold">Mes annonces</h3>
+          {annonces.length ? annonces.map((a) => {
+            const e = ETAT(a);
+            return (
+              <div key={a.id} className="card flex flex-col gap-1 p-3 text-sm">
+                <p className="font-semibold">{a.intitule}</p>
+                <p className="text-xs text-muted">{[a.contrat_libelle, a.lieu, new Date(a.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Paris" })].filter(Boolean).join(" · ")}</p>
+                <span className={`chip w-fit text-xs ${e.c}`}>{e.t}</span>
+              </div>
+            );
+          }) : <p className="text-sm text-muted">Aucune annonce pour le moment.</p>}
+        </div>
+      </section>
     </div>
   );
 }

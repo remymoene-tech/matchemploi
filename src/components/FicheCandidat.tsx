@@ -445,7 +445,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
                   <p className="text-sm">{m.resume}</p>
                   <Chips forts={m.forts} manques={m.manques} />
                   <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className={`chip ${estOffreEquipe(o.source) ? "chip-tag" : ""}`}>{estOffreEquipe(o.source) ? "Offre de l'équipe" : sourceLabel(o.source)}</span>
+                    <span className={`chip ${estOffreEquipe(o.source) ? "chip-tag" : ""}`}>{o.source === "alumni" ? "Annonce d'un alumni" : estOffreEquipe(o.source) ? "Offre de l'équipe" : sourceLabel(o.source)}</span>
                     <span className="chip">{nomRecherche(m)}</span>
                     {o.lien && <a className="font-semibold text-accent" href={o.lien} target="_blank" rel="noopener noreferrer">Voir l&apos;annonce</a>}
                     <a className="font-semibold text-accent" href={`/entretien/${candidatId}/${o.id}`}>{m.preparation_le ? "Fiche entretien ✓" : "Fiche entretien"}</a>

@@ -706,3 +706,23 @@ export async function refaireQrCarteAdmin(f: FormData) {
   await changerJetonCarte(id);
   redirect(`/admin/candidats/${id}?carte=nouveau`);
 }
+
+/** Annonce déposée par un alumni : validée, elle est ouverte et comparée aux étudiants admis. */
+export async function validerAnnonceAlumni(f: FormData) {
+  await exigerAdmin();
+  const id = t(f, "id", 60);
+  const db = createAdminClient();
+  const expire = new Date(Date.now() + 60 * 864e5).toISOString();
+  let { error } = await db.from("offres").update({ ouverte: true, validation: "validee", expire_le: expire, publiee_le: new Date().toISOString() }).eq("id", id).eq("source", "alumni");
+  if (error) ({ error } = await db.from("offres").update({ ouverte: true, validation: "validee" }).eq("id", id).eq("source", "alumni"));
+  if (!error) after(() => noterOffrePourTous(id));
+  revalidatePath("/admin");
+  redirect(t(f, "retour", 200) || "/admin");
+}
+
+export async function refuserAnnonceAlumni(f: FormData) {
+  await exigerAdmin();
+  await createAdminClient().from("offres").update({ ouverte: false, validation: "refusee" }).eq("id", t(f, "id", 60)).eq("source", "alumni");
+  revalidatePath("/admin");
+  redirect(t(f, "retour", 200) || "/admin");
+}

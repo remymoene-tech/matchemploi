@@ -9,7 +9,7 @@ import { estExpiree } from "@/lib/expiration";
 import { envoyerEmail, echapper } from "@/lib/email";
 import { distanceKm, localiserLieu } from "@/lib/geo";
 import { avecDisc } from "@/lib/tests-serveur";
-import { SEUIL, SOURCES_AUTO, type Candidat, type Offre, type Correspondance, type Piste, type Recherche } from "@/lib/types";
+import { SEUIL, SOURCES_AUTO, estOffreEquipe, type Candidat, type Offre, type Correspondance, type Piste, type Recherche } from "@/lib/types";
 
 const PAR_APPEL = 8;      // offres notées par appel à l'IA
 const MAX_PAR_RUN = 32;   // offres notées au maximum par recherche (maîtrise des coûts)
@@ -34,6 +34,7 @@ function jobEtudiant(c: Candidat, o: Offre) {
 function compatible(c: Candidat, o: Offre) {
   if (!o.ouverte || estExpiree(o)) return false;
   if (o.ecole_id && o.ecole_id !== c.ecole_id) return false; // offre partenaire réservée aux étudiants de cette école
+  if (c.statut_admission === "alumni" && estOffreEquipe(o.source)) return false; // les offres de l'école sont pour les étudiants, pas les alumni
   if (c.contrats.length && o.contrat && !c.contrats.includes(o.contrat) && !jobEtudiant(c, o)) return false;
   if (c.latitude != null && c.longitude != null && o.latitude != null && o.longitude != null) {
     const km = distanceKm({ latitude: c.latitude, longitude: c.longitude }, { latitude: o.latitude, longitude: o.longitude });
@@ -75,7 +76,7 @@ async function notifier(c: Candidat) {
     let q = db
       .from("correspondances")
       .select("score, offre_id, offres!inner(intitule, entreprise, lieu, contrat_libelle, source)")
-      .in("offres.source", SOURCES_AUTO) // les offres de l'équipe passent par l'équipe, pas par l'email
+      .in("offres.source", [...SOURCES_AUTO, "alumni"]) // les offres de l'équipe passent par l'équipe, pas par l'email
       .eq("candidat_id", c.user_id)
       .gte("score", SEUIL)
       .is("notifie_le", null);

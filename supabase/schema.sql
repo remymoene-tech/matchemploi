@@ -415,3 +415,5 @@ alter table public.candidats add column if not exists carte_vues integer not nul
 alter table public.candidats add column if not exists carte_vue_le timestamptz;
 alter table public.candidats add column if not exists parcours jsonb;
 alter table public.candidats add column if not exists alumni_rappel_le timestamptz;
+alter table public.offres add column if not exists validation text;
+alter table public.offres add column if not exists proposee_par uuid references auth.users(id) on delete set null;
