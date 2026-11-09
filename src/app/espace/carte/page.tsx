@@ -5,7 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { estAdmis } from "@/lib/admission";
 import { AttenteAdmission } from "@/components/AttenteAdmission";
 import { PartagerCarte } from "@/components/PartagerCarte";
-import { formationCarte, jetonCarte, lienCarte, optionsCarte, qrCarte, type CandidatCarte } from "@/lib/carte";
+import { avecPoste, formationCarte, jetonCarte, lienCarte, optionsCarte, qrCarte, type CandidatCarte } from "@/lib/carte";
 import { enregistrerCarte } from "../actions";
 
 export const metadata = { title: "Ma carte de visite · MagnusMatch" };
@@ -15,9 +15,10 @@ type SP = { ok?: string; erreur?: string };
 export default async function MaCarte({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const { user } = await exigerUtilisateur();
-  const { data: c } = await createAdminClient().from("candidats").select("*").eq("user_id", user.id).maybeSingle<CandidatCarte>();
-  if (!c) redirect("/espace/profil");
-  if (!estAdmis(c)) return <AttenteAdmission c={c} />;
+  const { data: brut } = await createAdminClient().from("candidats").select("*").eq("user_id", user.id).maybeSingle<CandidatCarte>();
+  if (!brut) redirect("/espace/profil");
+  const c = await avecPoste(brut);
+  if (!c.poste_equipe && !estAdmis(c)) return <AttenteAdmission c={c} />;
 
   const jeton = await jetonCarte(c);
   if (!jeton) {

@@ -31,7 +31,7 @@ export default async function Carte({ params }: { params: Promise<{ jeton: strin
   return (
     <div className="mx-auto flex w-full max-w-sm flex-col overflow-hidden rounded-3xl border border-line bg-surface shadow-sm">
       <div className="relative bg-[#111] px-5 pb-14 pt-7 text-center text-white">
-        <p className="text-[10px] font-semibold uppercase tracking-[.24em] text-[#c3cdb8]">{c.formation === "EGC" ? "EGC Business School · " : ""}Campus Magnus</p>
+        <p className="text-[10px] font-semibold uppercase tracking-[.24em] text-[#c3cdb8]">{c.formation === "EGC" && !c.poste_equipe ? "EGC Business School · " : ""}Campus Magnus</p>
         <div className="mx-auto mt-2.5 flex h-[3px] w-28 gap-1.5" aria-hidden>{TRAITS.map((t) => <span key={t} className="flex-1 rounded-full" style={{ background: t }} />)}</div>
         <div className="absolute bottom-0 left-1/2 grid h-24 w-24 -translate-x-1/2 translate-y-1/2 place-items-center rounded-full border-4 border-surface font-display text-3xl font-medium text-[#111]" style={{ background: "var(--sauge)" }} aria-hidden>
           {initiales(c.nom)}
@@ -41,8 +41,8 @@ export default async function Carte({ params }: { params: Promise<{ jeton: strin
         <div>
           <h1 className="text-2xl font-semibold">{c.nom || c.email}</h1>
           {formation && <p className="mt-1 text-xs font-semibold uppercase tracking-[.1em] text-muted">{formation}</p>}
-          {intitule && c.formation !== "EGC" && !formation.includes(intitule) && <p className="text-xs text-muted">{intitule}</p>}
-          {c.statut_admission === "alumni" && posteChez(lireParcours((c as { parcours?: unknown }).parcours)) && (
+          {intitule && !c.poste_equipe && c.formation !== "EGC" && !formation.includes(intitule) && <p className="text-xs text-muted">{intitule}</p>}
+          {c.statut_admission === "alumni" && !c.poste_equipe && posteChez(lireParcours((c as { parcours?: unknown }).parcours)) && (
             <p className="mt-2 text-sm font-medium">💼 {posteChez(lireParcours((c as { parcours?: unknown }).parcours))}</p>
           )}
         </div>

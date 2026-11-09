@@ -14,7 +14,16 @@ export type CandidatCarte = Candidat & {
   carte_options?: Partial<OptionsCarte> | null;
   carte_vues?: number | null;
   carte_vue_le?: string | null;
+  /** Membre de l'équipe (ex. « Directeur campus ») : son poste remplace la formation sur la carte. */
+  poste_equipe?: string | null;
 };
+
+/** Ajoute le poste si la personne fait partie de l'équipe du Campus. */
+export async function avecPoste<T extends CandidatCarte>(c: T): Promise<T> {
+  const { droitsDe } = await import("@/lib/equipe");
+  const d = await droitsDe(c.email).catch(() => null);
+  return d?.poste ? { ...c, poste_equipe: d.poste } : c;
+}
 
 export const SITE = () => process.env.NEXT_PUBLIC_SITE_URL || "https://magnusmatch.vercel.app";
 export const lienCarte = (jeton: string) => `${SITE()}/carte/${jeton}`;
@@ -35,14 +44,15 @@ export function optionsCarte(c: CandidatCarte): OptionsCarte {
     tel: o.tel ?? !!c.telephone,
     email: o.email ?? true,
     linkedin: o.linkedin ?? !!c.linkedin_url,
-    recherche: typeof o.recherche === "string" ? o.recherche : c.statut_admission === "alumni" ? "" : rechercheParDefaut(c),
+    recherche: typeof o.recherche === "string" ? o.recherche : c.statut_admission === "alumni" || c.poste_equipe ? "" : rechercheParDefaut(c),
     active: o.active ?? true,
   };
 }
 
 /** « Bachelor EGC · 2e année » */
 const NOM_COURT: Record<string, string> = { EGC: "Bachelor EGC", GUC: "GUC · Bac+2", AMLHR: "AMLHR · Bac+2" };
-export function formationCarte(c: Candidat) {
+export function formationCarte(c: Candidat & { poste_equipe?: string | null }) {
+  if (c.poste_equipe) return c.poste_equipe;
   const nom = NOM_COURT[c.formation] ?? c.formation;
   if (c.statut_admission === "alumni") return ["Alumni", nom, c.diplome_annee ? `promo ${c.diplome_annee}` : ""].filter(Boolean).join(" · ");
   return [nom, c.annee_cursus ? anneeLabel(c.annee_cursus) : ""].filter(Boolean).join(" · ");
@@ -71,8 +81,9 @@ export async function changerJetonCarte(userId: string) {
 export async function candidatParCarte(jeton: string): Promise<CandidatCarte | null> {
   if (!/^[A-Za-z0-9_-]{8,32}$/.test(jeton)) return null;
   const { data } = await createAdminClient().from("candidats").select("*").eq("carte_jeton", jeton).maybeSingle<CandidatCarte>();
-  if (!data || !estAdmis(data) || !optionsCarte(data).active) return null;
-  return data;
+  const c = data ? await avecPoste(data) : null;
+  if (!c || (!c.poste_equipe && !estAdmis(c)) || !optionsCarte(c).active) return null;
+  return c;
 }
 
 export async function compterVue(c: CandidatCarte) {
@@ -96,7 +107,7 @@ export function vcard(c: CandidatCarte) {
     `N:${esc(nom)};${esc(prenom)};;;`,
     `FN:${esc(c.nom.trim() || c.email)}`,
     "ORG:Campus Magnus",
-    formation ? `TITLE:${esc(c.statut_admission === "alumni" ? formation : `Étudiant(e) ${formation}`)}` : "",
+    formation ? `TITLE:${esc(c.poste_equipe || c.statut_admission === "alumni" ? formation : `Étudiant(e) ${formation}`)}` : "",
     o.tel && c.telephone ? `TEL;TYPE=CELL:${esc(c.telephone)}` : "",
     o.email ? `EMAIL;TYPE=INTERNET:${esc(c.email)}` : "",
     o.linkedin && c.linkedin_url ? `URL:${esc(c.linkedin_url)}` : "",
