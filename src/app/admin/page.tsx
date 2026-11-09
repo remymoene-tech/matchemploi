@@ -176,6 +176,14 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   // 🧲 Leads (CRM)
   const leads = vue === "leads" || vue === "accueil" || vue === "candidats" || vue === "evenements" || vue === "alumni" || vue === "intervenants" ? await listeLeads() : [];
   const evenements = vue === "evenements" ? await listeEvenements() : [];
+  // Année de rentrée : celle du candidat, sinon celle choisie dans son lead (et on la recopie sur sa fiche)
+  const rentreeLead = new Map<string, number>();
+  for (const l of leads ?? []) if (l.annee_rentree) { if (l.candidat_id) rentreeLead.set(l.candidat_id, l.annee_rentree); rentreeLead.set(`@${l.email.toLowerCase()}`, l.annee_rentree); }
+  const rentreeDe = (c: Candidat) => c.annee_rentree ?? rentreeLead.get(c.user_id) ?? rentreeLead.get(`@${(c.email ?? "").toLowerCase()}`) ?? null;
+  if (vue === "candidats") {
+    const aRecopier = tousCandidats.filter((c) => !c.annee_rentree && rentreeDe(c));
+    for (const c of aRecopier.slice(0, 20)) await db.from("candidats").update({ annee_rentree: rentreeDe(c) }).eq("user_id", c.user_id).is("annee_rentree", null);
+  }
   // Leads admis à l'entretien qui n'ont pas encore créé leur espace : déjà candidats
   const admisSansEspace = (leads ?? []).filter((l) => estLeadAdmis(l) && !l.candidat_id);
   const { data: echLeadsData } = (vue === "accueil" || vue === "leads") && leads?.length
@@ -227,7 +235,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     if (sp.cv && (sp.cv === "avec") !== !!c.cv_chemin) return false;
     if (sp.entretien && (sp.entretien === "fait") !== dernierEntretien.has(c.user_id)) return false;
     if (sp.bilan && bilanDe(c.user_id) !== sp.bilan) return false;
-    if (sp.annee && String(c.annee_rentree ?? "") !== sp.annee) return false;
+    if (sp.annee && String(rentreeDe(c) ?? "") !== sp.annee) return false;
     if (sp.admission && admission(c.statut_admission).id !== sp.admission) return false;
     return true;
   });
@@ -644,7 +652,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               <span className="font-semibold">📅 Rentrée</span>
               <select className="input" name="annee" defaultValue={sp.annee ?? ""}>
                 <option value="">Toutes</option>
-                {[...new Set(tousCandidats.map((c) => c.annee_rentree).filter(Boolean))].sort().map((a) => <option key={a} value={String(a)}>{a}</option>)}
+                {[...new Set(tousCandidats.map((c) => rentreeDe(c)).filter(Boolean))].sort().map((a) => <option key={a} value={String(a)}>{a}</option>)}
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
@@ -687,7 +695,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 <tr>
                   <th className="p-3 font-semibold">Candidat</th>
                   <th className="p-3 font-semibold">Admission</th>
-                  <th className="p-3 font-semibold">Diplôme préparé</th>
+                  <th className="p-3 font-semibold">Diplôme · rentrée</th>
                   <th className="p-3 font-semibold">École</th>
                   <th className="p-3 font-semibold">CV</th>
                   <th className="p-3 font-semibold">Meilleure offre</th>
@@ -717,7 +725,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                         </form>
                         {c.motif_admission && ["refus", "abandon"].includes(c.statut_admission ?? "") && <div className="mt-1 max-w-[180px] truncate text-xs text-muted" title={c.motif_admission}>Motif : {c.motif_admission}</div>}
                       </td>
-                      <td className="p-3">{c.formation ? <>{c.formation}{c.annee_rentree ? <div className="text-xs text-muted">📅 Rentrée {c.annee_rentree}</div> : null}</> : <span className="chip chip-minus">À compléter</span>}</td>
+                      <td className="p-3">{c.formation ? <><span className="font-semibold">{c.formation}</span>{c.annee_cursus ? <span className="text-muted"> · {c.annee_cursus === 1 ? "1re" : `${c.annee_cursus}e`} année</span> : null}{rentreeDe(c) ? <div className="mt-0.5 whitespace-nowrap">📅 Rentrée {rentreeDe(c)}</div> : <div className="text-xs text-warn">Rentrée à compléter</div>}</> : <span className="chip chip-minus">À compléter</span>}</td>
                       <td className="p-3 text-muted">{ecoles.find((x) => x.id === c.ecole_id)?.nom ?? "—"}</td>
                       <td className="p-3">{c.cv_chemin ? <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">📄 Ouvrir</a> : <span className="chip chip-minus">Sans CV</span>}</td>
                       <td className="p-3">{best != null ? <span className={`chip ${best >= 70 ? "chip-plus" : "chip-tag"}`}>{best} %</span> : <span className="text-muted">—</span>}</td>
