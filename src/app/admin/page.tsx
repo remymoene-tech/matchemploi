@@ -18,6 +18,7 @@ import { listeEvenements } from "@/lib/evenements";
 import { Copier } from "@/components/Copier";
 import { FormBrochure } from "@/components/FormBrochure";
 import { ADMISSIONS, admission } from "@/lib/admission";
+import { VueAlumni } from "@/components/VueAlumni";
 import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
@@ -41,6 +42,7 @@ const VUES = [
   { id: "leads", label: "Leads" },
   { id: "entreprises", label: "Mes entreprises" },
   { id: "candidats", label: "Mes candidats" },
+  { id: "alumni", label: "Alumni" },
   { id: "planning", label: "Planning" },
   { id: "evenements", label: "Événements" },
 ] as const;
@@ -53,7 +55,7 @@ const AUTRES = [
   { id: "reglages", label: "⚙️ Réglages" },
 ] as const;
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -235,7 +237,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       <div className="flex flex-col gap-2">
         <OngletsCartes label="Espace équipe" onglets={[
           { href: "/admin", icone: "🏠", label: "Accueil", sous: "Mes chiffres", actif: vue === "accueil" },
-          { href: "/admin?vue=leads", icone: "🎓", label: "Étudiants", sous: `${nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""} lead${nouveauxLeads > 1 ? "s" : ""}` : `${nbLeads} leads`} · ${C.size} candidat${C.size > 1 ? "s" : ""}`, actif: vue === "leads" || vue === "candidats" },
+          { href: "/admin?vue=leads", icone: "🎓", label: "Étudiants", sous: `${nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""} lead${nouveauxLeads > 1 ? "s" : ""}` : `${nbLeads} leads`} · ${C.size} candidat${C.size > 1 ? "s" : ""}`, actif: vue === "leads" || vue === "candidats" || vue === "alumni" },
           { href: "/admin?vue=entreprises", icone: "🏢", label: "Mes entreprises", sous: entreprises ? `${nbEntreprises} rencontrée${nbEntreprises > 1 ? "s" : ""}` : `${mesOffresOuvertes} offre${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "entreprises" },
           { href: "/admin?vue=planning", icone: "📅", label: "Planning", sous: "Entretiens programmés", actif: vue === "planning" },
           { href: "/admin?vue=evenements", icone: "🎪", label: "Événements", sous: "JPO, salons · QR code", actif: vue === "evenements" },
@@ -371,11 +373,12 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
         </div>
       )}
 
-      {(vue === "leads" || vue === "candidats") && (
+      {(vue === "leads" || vue === "candidats" || vue === "alumni") && (
         <nav className="flex flex-wrap gap-2" aria-label="Étudiants">
           {([
             ["leads", "🧲", "Leads", nbLeads],
             ["candidats", "👥", "Mes candidats", C.size + admisSansEspace.length],
+            ["alumni", "🎓", "Alumni", tousCandidats.filter((c) => c.statut_admission === "alumni").length],
           ] as const).map(([id, icone, label, n]) => (
             <Link key={id} href={`/admin?vue=${id}`} aria-current={vue === id ? "page" : undefined}
               className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${vue === id ? "border-accent bg-accent-soft text-ink" : "border-line bg-surface text-muted hover:text-ink"}`}>
@@ -384,6 +387,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           ))}
           <span className="self-center text-xs text-muted">Un lead devient candidat quand il est admis à l&apos;entretien.</span>
         </nav>
+      )}
+
+      {vue === "alumni" && (
+        <VueAlumni candidats={tousCandidats} entreprises={(entreprises ?? []).map((e) => ({ id: e.id, nom: e.nom, statut: e.statut }))} promo={sp.apromo} aide={sp.aaide} />
       )}
 
       {vue === "leads" && (

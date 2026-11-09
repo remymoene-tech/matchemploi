@@ -413,3 +413,5 @@ alter table public.candidats add column if not exists carte_jeton text unique;
 alter table public.candidats add column if not exists carte_options jsonb;
 alter table public.candidats add column if not exists carte_vues integer not null default 0;
 alter table public.candidats add column if not exists carte_vue_le timestamptz;
+alter table public.candidats add column if not exists parcours jsonb;
+alter table public.candidats add column if not exists alumni_rappel_le timestamptz;

@@ -3,7 +3,8 @@ import { exigerUtilisateur } from "@/lib/auth";
 import { echeance, maintenantMs } from "@/lib/echanges";
 import { RECRUTE, TYPES_PROSPECTION, echangesDeProspections, prospectionsDe } from "@/lib/prospections";
 import { FormProspection } from "@/components/FormProspection";
-import { OngletsCartes } from "@/components/OngletsCartes";
+import { OngletsEspace } from "@/components/OngletsEspace";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const metadata = { title: "Mes prospections · MagnusMatch" };
 
@@ -14,13 +15,12 @@ export default async function MesProspections({ searchParams }: { searchParams: 
   const echanges = await echangesDeProspections((liste ?? []).map((p) => p.id));
   const maintenant = maintenantMs();
   const oui = (liste ?? []).filter((p) => p.recrute === "oui").length;
+  const { data: moi } = await createAdminClient().from("candidats").select("statut_admission").eq("user_id", user.id).maybeSingle();
+  const alumni = moi?.statut_admission === "alumni";
 
   return (
     <div className="flex flex-col gap-5">
-      <OngletsCartes label="Mes recherches" onglets={[
-        { href: "/espace", icone: "💼", label: "Mes offres", sous: "Proposées par MagnusMatch", actif: false },
-        { href: "/espace/prospections", icone: "🚪", label: "Mes prospections", sous: `${liste?.length ?? 0} entreprise${(liste?.length ?? 0) > 1 ? "s" : ""}`, actif: true },
-      ]} />
+      <OngletsEspace actif="prospections" alumni={alumni} sousProspections={`${liste?.length ?? 0} entreprise${(liste?.length ?? 0) > 1 ? "s" : ""}`} />
 
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>

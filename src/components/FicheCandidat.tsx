@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { OngletsCartes } from "@/components/OngletsCartes";
 import { ADMISSIONS, AVEC_MOTIF, admission } from "@/lib/admission";
+import { AIDES, lireParcours, moisTexte, posteChez, situation as situationAlumni } from "@/lib/alumni";
 import { formationsDeLEcole } from "@/lib/ecoles";
 import { RECRUTE, echangesDeProspections, prospectionsDe } from "@/lib/prospections";
 import { HistoriqueProspection } from "@/components/HistoriqueProspection";
@@ -150,7 +151,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         const actuel = admission(c.statut_admission);
         const choisi = ADMISSIONS.find((a) => a.id === admissionDemandee) ?? actuel;
         return (
-          <form id="admission" action={changerAdmission} className={`flex flex-col gap-3 rounded-2xl border-2 p-3 ${actuel.id === "admis" ? "border-accent bg-accent-soft" : AVEC_MOTIF.includes(actuel.id) ? "border-bad bg-bad-soft" : "border-line bg-surface"}`}>
+          <form id="admission" action={changerAdmission} className={`flex flex-col gap-3 rounded-2xl border-2 p-3 ${actuel.id === "admis" || actuel.id === "alumni" ? "border-accent bg-accent-soft" : AVEC_MOTIF.includes(actuel.id) ? "border-bad bg-bad-soft" : "border-line bg-surface"}`}>
             <input type="hidden" name="candidat_id" value={candidatId} />
             <div className="flex flex-wrap items-center gap-3">
               <span className="text-sm font-semibold">🎓 Admission :</span>
@@ -173,7 +174,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
               <p className="rounded-lg bg-warn-soft px-3 py-2 text-sm">Indique le motif de « {choisi.label} » puis clique sur Enregistrer.</p>
             )}
             <span className="text-xs text-muted">
-              {actuel.id === "admis" ? "L'étudiant a accès à ses offres." : "Tant qu'il n'est pas « Admis », l'étudiant ne voit pas d'offres (il peut remplir son profil, son CV et ses tests)."}
+              {actuel.id === "admis" ? "L'étudiant a accès à ses offres." : actuel.id === "alumni" ? "🎓 Alumni : il garde son espace à vie (offres, CV, carte de visite) et peut mettre à jour son parcours." : "Tant qu'il n'est pas « Admis », l'étudiant ne voit pas d'offres (il peut remplir son profil, son CV et ses tests)."}
               {AVEC_MOTIF.includes(actuel.id) && c.motif_admission ? ` Motif enregistré : ${c.motif_admission}` : ""}
             </span>
           </form>
@@ -207,6 +208,23 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
           <span className="text-xs text-muted">{carteRefaite ? "✅ Nouveau QR code créé : l'ancien ne marche plus." : "L'ancien QR code ne marchera plus."}</span>
         </div>
       )}
+
+      {c.statut_admission === "alumni" && (() => {
+        const pa = lireParcours((c as { parcours?: unknown }).parcours);
+        return (
+          <section className="flex flex-col gap-2 rounded-xl border-2 p-4 text-sm" style={{ borderColor: "var(--sauge)" }}>
+            <p className="font-semibold">🎓 Parcours alumni{c.diplome_annee ? ` · promo ${c.diplome_annee}` : ""}</p>
+            {pa?.situation ? (
+              <>
+                <p>{situationAlumni(pa.situation)?.icone} {situationAlumni(pa.situation)?.label}{posteChez(pa) ? ` · ${posteChez(pa)}` : ""}{pa.ville ? ` · ${pa.ville}` : ""}{pa.depuis ? ` · depuis ${moisTexte(pa.depuis)}` : ""}</p>
+                {pa.entreprise_id && baseFiche.startsWith("/admin") && <Link href={`/admin/entreprises/${pa.entreprise_id}`} className="w-fit text-accent underline">🏢 Voir la fiche de {pa.entreprise}</Link>}
+                {pa.aides.length > 0 && <div className="flex flex-wrap gap-1.5">{AIDES.filter((a) => pa.aides.includes(a.id)).map((a) => <span key={a.id} className="chip chip-plus">{a.icone} {a.label}</span>)}</div>}
+                {pa.maj_le && <p className="text-xs text-muted">Mis à jour le {new Date(pa.maj_le).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Paris" })}</p>}
+              </>
+            ) : <p className="text-muted">Pas encore renseigné par l&apos;alumni.</p>}
+          </section>
+        );
+      })()}
 
       {(relances.length > 0 || dernierEchange) && (
         <div className="flex flex-wrap items-center gap-2 text-sm">

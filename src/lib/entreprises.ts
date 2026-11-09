@@ -12,7 +12,7 @@ export const STATUTS_ENTREPRISE = [
   { id: "pas_maintenant", label: "Pas pour le moment", chip: "" },
 ] as const;
 
-export const ORIGINES_ENTREPRISE = ["Salon ou forum", "Job dating", "Démarchage", "Recommandation", "Ancien alternant", "Autre"] as const;
+export const ORIGINES_ENTREPRISE = ["Salon ou forum", "Job dating", "Démarchage", "Recommandation", "Ancien alternant", "Alumni", "Autre"] as const;
 
 export type Entreprise = {
   id: string;

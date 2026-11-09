@@ -417,3 +417,52 @@ export async function enregistrerCarte(f: FormData) {
   const { error } = await createAdminClient().from("candidats").update({ carte_options: options }).eq("user_id", user.id);
   redirect(error ? "/espace/carte?erreur=base" : "/espace/carte?ok=1");
 }
+
+/* ---------- Alumni : mon parcours ---------- */
+
+export async function enregistrerParcours(f: FormData) {
+  const { user } = await exigerUtilisateur();
+  const { lireParcours, AIDES, SITUATIONS, AVEC_ENTREPRISE } = await import("@/lib/alumni");
+  const { lierEntrepriseAlumni, notifierEquipe, texteAides } = await import("@/lib/alumni-serveur");
+  const db = createAdminClient();
+  const { data: c } = await db.from("candidats").select("user_id, nom, email, telephone, diplome_annee, formation, statut_admission, parcours").eq("user_id", user.id).maybeSingle();
+  if (!c || c.statut_admission !== "alumni") redirect("/espace");
+  const avant = lireParcours(c.parcours);
+  const situation = texte(f, "situation", 30);
+  const p = {
+    situation: SITUATIONS.some((s) => s.id === situation) ? situation : "",
+    poste: texte(f, "poste", 150),
+    entreprise: AVEC_ENTREPRISE.includes(situation) ? texte(f, "entreprise", 150) : "",
+    ville: texte(f, "ville", 100),
+    depuis: /^\d{4}-\d{2}$/.test(texte(f, "depuis", 7)) ? texte(f, "depuis", 7) : "",
+    aides: f.getAll("aides").map(String).filter((a) => AIDES.some((x) => x.id === a)),
+    entreprise_id: avant?.entreprise_id ?? null,
+    maj_le: new Date().toISOString(),
+  };
+  if (!p.situation) redirect("/espace/parcours?erreur=situation");
+  const nouvelleEntreprise = !!p.entreprise && (!avant || avant.entreprise.trim().toLowerCase() !== p.entreprise.trim().toLowerCase());
+  if (nouvelleEntreprise) p.entreprise_id = await lierEntrepriseAlumni(c, p);
+  if (!p.entreprise) p.entreprise_id = null;
+  const { error } = await db.from("candidats").update({ parcours: p }).eq("user_id", user.id);
+  if (error) redirect("/espace/parcours?erreur=base");
+  const nom = c.nom || c.email;
+  if (nouvelleEntreprise) await notifierEquipe(user.id, `🎓 ${nom} (alumni) travaille maintenant chez ${p.entreprise}${p.poste ? ` comme ${p.poste}` : ""}. L'entreprise est dans Mes entreprises.`, `🎓 Alumni : ${nom} est chez ${p.entreprise}`);
+  const nouvellesAides = p.aides.filter((a) => !(avant?.aides ?? []).includes(a));
+  if (nouvellesAides.length) await notifierEquipe(user.id, `🎓 ${nom} (alumni) propose d'aider le Campus : ${texteAides(nouvellesAides)}.`, `🎓 ${nom} peut aider : ${texteAides(nouvellesAides)}`);
+  redirect("/espace/parcours?ok=1");
+}
+
+/** « Mon entreprise recrute » : l'équipe est prévenue et l'alumni remplit la fiche besoin. */
+export async function monEntrepriseRecrute() {
+  const { user } = await exigerUtilisateur();
+  const { lireParcours } = await import("@/lib/alumni");
+  const { lienBesoinEntreprise, notifierEquipe } = await import("@/lib/alumni-serveur");
+  const db = createAdminClient();
+  const { data: c } = await db.from("candidats").select("nom, email, statut_admission, parcours").eq("user_id", user.id).maybeSingle();
+  const p = lireParcours(c?.parcours);
+  if (!c || c.statut_admission !== "alumni" || !p?.entreprise_id) redirect("/espace/parcours");
+  await db.from("entreprises").update({ statut: "recrute" }).eq("id", p.entreprise_id).in("statut", ["rencontree", "en_discussion", "pas_maintenant"]);
+  await notifierEquipe(user.id, `🎯 ${c.nom || c.email} (alumni) signale que ${p.entreprise} recrute. Fiche besoin en cours de remplissage.`, `🎯 ${p.entreprise} recrute (alumni ${c.nom || c.email}) : à traiter`);
+  const lien = await lienBesoinEntreprise(p.entreprise_id);
+  redirect(lien ?? "/espace/parcours?recrute=1");
+}

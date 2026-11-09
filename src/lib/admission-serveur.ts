@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerEmail, moyenEnvoi, texteEnHtml } from "@/lib/email";
 import { rechercherPourCandidat } from "@/lib/matching";
 import { ADMISSIONS, AVEC_MOTIF, type Admission } from "@/lib/admission";
+import { bienvenueAlumni } from "@/lib/alumni-serveur";
 
 /** Change le statut d'admission. Passage à « admis » : recherche d'offres lancée + email de bienvenue. */
 export async function changerAdmission(candidatId: string, statut: string, motif = ""): Promise<{ erreur?: string }> {
@@ -21,6 +22,10 @@ export async function changerAdmission(candidatId: string, statut: string, motif
       after(() => envoyerEmail(avant.email, "Bonne nouvelle : tu es admis 🎉",
         texteEnHtml(`Bonjour ${avant.nom || ""},\n\nBonne nouvelle : ton admission est confirmée. Tes offres sont en train d'arriver sur MagnusMatch.\n\nVoir mes offres : ${site}/espace\n\nÀ très vite,\nL'équipe MagnusMatch`)).then(() => undefined));
     }
+  }
+  if (statut === "alumni" && avant?.statut_admission !== "alumni") {
+    await db.from("candidats").update({ alumni_rappel_le: new Date().toISOString() }).eq("user_id", candidatId);
+    if (avant?.email) after(() => bienvenueAlumni({ email: avant.email, nom: avant.nom }).then(() => undefined));
   }
   return {};
 }

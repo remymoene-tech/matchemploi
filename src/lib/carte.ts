@@ -35,7 +35,7 @@ export function optionsCarte(c: CandidatCarte): OptionsCarte {
     tel: o.tel ?? !!c.telephone,
     email: o.email ?? true,
     linkedin: o.linkedin ?? !!c.linkedin_url,
-    recherche: typeof o.recherche === "string" ? o.recherche : rechercheParDefaut(c),
+    recherche: typeof o.recherche === "string" ? o.recherche : c.statut_admission === "alumni" ? "" : rechercheParDefaut(c),
     active: o.active ?? true,
   };
 }
@@ -44,6 +44,7 @@ export function optionsCarte(c: CandidatCarte): OptionsCarte {
 const NOM_COURT: Record<string, string> = { EGC: "Bachelor EGC", GUC: "GUC · Bac+2", AMLHR: "AMLHR · Bac+2" };
 export function formationCarte(c: Candidat) {
   const nom = NOM_COURT[c.formation] ?? c.formation;
+  if (c.statut_admission === "alumni") return ["Alumni", nom, c.diplome_annee ? `promo ${c.diplome_annee}` : ""].filter(Boolean).join(" · ");
   return [nom, c.annee_cursus ? anneeLabel(c.annee_cursus) : ""].filter(Boolean).join(" · ");
 }
 
@@ -95,7 +96,7 @@ export function vcard(c: CandidatCarte) {
     `N:${esc(nom)};${esc(prenom)};;;`,
     `FN:${esc(c.nom.trim() || c.email)}`,
     "ORG:Campus Magnus",
-    formation ? `TITLE:${esc(`Étudiant(e) ${formation}`)}` : "",
+    formation ? `TITLE:${esc(c.statut_admission === "alumni" ? formation : `Étudiant(e) ${formation}`)}` : "",
     o.tel && c.telephone ? `TEL;TYPE=CELL:${esc(c.telephone)}` : "",
     o.email ? `EMAIL;TYPE=INTERNET:${esc(c.email)}` : "",
     o.linkedin && c.linkedin_url ? `URL:${esc(c.linkedin_url)}` : "",
