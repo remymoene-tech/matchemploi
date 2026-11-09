@@ -62,7 +62,7 @@ const AUTRES = [
 /** Pages réservées à l'administrateur (accessibles depuis ⚙️). */
 const RESERVEES_ADMIN = ["ecoles", "reglages"];
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string; specialite?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string; specialite?: string; ltraite?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -120,7 +120,6 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const tousCandidats = [...C.values()] as (Candidat & { created_at?: string })[];
   const maintenant = maintenantMs();
   const SEMAINE = 7 * 864e5;
-  const nouveaux = tousCandidats.filter((c) => c.created_at && new Date(c.created_at).getTime() >= maintenant - SEMAINE).length;
   const mesOffresOuvertes = ((offres ?? []) as Offre[]).filter((o) => o.ouverte).length;
   // Nouveaux candidats sur les 8 dernières semaines (de la plus ancienne à la plus récente)
   const semaines = Array.from({ length: 8 }, (_, i) => {
@@ -178,6 +177,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     : { data: [] };
   const nbLeads = leads?.length ?? 0;
   const nouveauxLeads = (leads ?? []).filter((l) => l.statut === "nouveau").length;
+  // Non traités : toujours « Nouveau » et aucun appel, mail, SMS ou rendez-vous noté (les plus récents d'abord)
+  const leadsNonTraites = (leads ?? []).filter((l) => statutLead(l.statut).id === "nouveau" && !premierContact(l, (echLeadsData ?? []) as EchangeLead[]));
   const ql = (sp.q ?? "").trim().toLowerCase();
   const leadsAffiches = (leads ?? []).filter((l) =>
     (!ql || [l.prenom, l.nom, l.email, l.telephone, l.notes].some((x) => (x ?? "").toLowerCase().includes(ql)))
@@ -185,8 +186,9 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     && (!sp.lformation || l.formation === sp.lformation)
     && (!sp.lannee || String(l.annee_rentree ?? "") === sp.lannee)
     && (!sp.lorigine || l.origine === sp.lorigine)
+    && (sp.ltraite !== "non" || leadsNonTraites.some((x) => x.id === l.id))
     && (!sp.lsuivi || (sp.lsuivi === "libre" ? !l.attribue_a : sp.lsuivi === "moi" ? l.attribue_a === (moi.user.email ?? "").toLowerCase() : l.attribue_a === sp.lsuivi)));
-  const filtresLeadsActifs = !!(ql || sp.lstatut || sp.lformation || sp.lannee || sp.lorigine || sp.lsuivi);
+  const filtresLeadsActifs = !!(ql || sp.lstatut || sp.lformation || sp.lannee || sp.lorigine || sp.lsuivi || sp.ltraite);
   const personnes = vue === "leads" ? await personnesEquipe() : [];
   const libres = (leads ?? []).filter((l) => !l.attribue_a && !["perdu", "admis", "inscrit"].includes(l.statut)).length;
   const lienBrochure = `${site || "https://magnusmatch.vercel.app"}/brochure`;
@@ -279,20 +281,20 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
       {vue === "accueil" && a("accueil") && (
         <div className="flex flex-col gap-6">
-          <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Chiffres clés">
-            {([
-              ["👥 Candidats", C.size, (() => { const p = tousCandidats.filter((c) => c.statut_admission === "prospect").length; return p ? `🌱 ${p} prospect${p > 1 ? "s" : ""} à étudier` : nouveaux ? `+${nouveaux} cette semaine` : "inscrits"; })(), tousCandidats.some((c) => c.statut_admission === "prospect") ? "/admin?vue=candidats&admission=prospect" : "/admin?vue=candidats"],
-              ["🏢 Entreprises", nbEntreprises, `${avecOffre.length} avec une offre`, "/admin?vue=entreprises"],
-              ["📥 À traiter", aTraiter, `candidats à ${SEUIL} % ou plus`, "/admin?vue=entreprises&sous=candidats&suivi=a_traiter#a-traiter"],
-              ["🎉 Candidats placés", places.length, "candidats embauchés", "/admin?vue=entreprises&sous=candidats&suivi=embauche#a-traiter"],
-            ] as const).map(([l, v, sous, href]) => (
-              <Link key={l} href={href} className="card group flex flex-col gap-0.5 p-5 transition-colors hover:border-accent">
-                <span className="eyebrow flex justify-between">{l}<span className="opacity-0 transition-opacity group-hover:opacity-100">→</span></span>
-                <b className="text-4xl font-semibold tabular-nums">{v}</b>
-                <span className="text-sm text-muted">{sous}</span>
+          {(() => {
+            const nonTraites = leadsNonTraites.length;
+            const plusVieux = leadsNonTraites[leadsNonTraites.length - 1];
+            return (
+              <Link href="/admin?vue=leads&ltraite=non" className={`card group flex flex-wrap items-center justify-between gap-4 p-5 transition-colors hover:border-accent ${nonTraites ? "border-2 border-bad" : ""}`}>
+                <span className="flex flex-col gap-0.5">
+                  <span className="eyebrow">🧲 Leads non traités</span>
+                  <b className={`text-5xl font-semibold tabular-nums ${nonTraites ? "text-bad" : ""}`}>{nonTraites}</b>
+                  <span className="text-sm text-muted">{nonTraites ? `Nouveaux leads sans appel, mail, SMS ni rendez-vous noté${plusVieux ? ` · le plus ancien est arrivé le ${new Date(plusVieux.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "long", timeZone: "Europe/Paris" })}` : ""}` : "Bravo : tous les leads ont été contactés 🎉"}</span>
+                </span>
+                <span className="btn btn-primary">Voir les leads non traités →</span>
               </Link>
-            ))}
-          </section>
+            );
+          })()}
 
           <ActiviteEquipe periode={sp.aperiode} date={sp.adate} historique={superAdmin} leads={leads} />
 
@@ -513,6 +515,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </form>
 
 
+          {sp.ltraite === "non" && <p className="rounded-xl border-2 border-bad bg-bad-soft p-3 text-sm">🧲 <b>Leads non traités</b> : toujours « Nouveau » et aucun appel, mail, SMS ou rendez-vous noté. Note ton premier contact dans « 💬 Échanges » pour qu&apos;il sorte de cette liste. <Link href="/admin?vue=leads" className="underline">Voir tous les leads</Link></p>}
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted"><b className="text-ink">{leadsAffiches.length}</b> lead{leadsAffiches.length > 1 ? "s" : ""}{filtresLeadsActifs ? ` sur ${nbLeads}` : ", les plus récents en premier"}</p>
             <Link href="/admin/leads/nouveau" className="btn btn-primary">➕ Ajouter un lead</Link>
