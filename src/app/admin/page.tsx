@@ -176,6 +176,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     ? await db.from("echanges").select("lead_id, date_echange, auteur, resume, type").not("lead_id", "is", null).limit(5000)
     : { data: [] };
   const nbLeads = leads?.length ?? 0;
+  // Admis : ils deviennent candidats et quittent la liste des leads (mais restent dans les calculs du recrutement)
+  const nbLeadsEnCours = (leads ?? []).filter((l) => !estLeadAdmis(l)).length;
   const nouveauxLeads = (leads ?? []).filter((l) => l.statut === "nouveau").length;
   // Non traités : toujours « Nouveau » et aucun appel, mail, SMS ou rendez-vous noté (les plus récents d'abord)
   const leadsNonTraites = (leads ?? []).filter((l) => statutLead(l.statut).id === "nouveau" && !premierContact(l, (echLeadsData ?? []) as EchangeLead[]));
@@ -187,6 +189,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     && (!sp.lannee || String(l.annee_rentree ?? "") === sp.lannee)
     && (!sp.lorigine || l.origine === sp.lorigine)
     && (sp.ltraite !== "non" || leadsNonTraites.some((x) => x.id === l.id))
+    && (!estLeadAdmis(l) || sp.lstatut === "admis")
     && (!sp.lsuivi || (sp.lsuivi === "libre" ? !l.attribue_a : sp.lsuivi === "moi" ? l.attribue_a === (moi.user.email ?? "").toLowerCase() : l.attribue_a === sp.lsuivi)));
   const filtresLeadsActifs = !!(ql || sp.lstatut || sp.lformation || sp.lannee || sp.lorigine || sp.lsuivi || sp.ltraite);
   const personnes = vue === "leads" ? await personnesEquipe() : [];
@@ -259,7 +262,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       <div className="flex flex-col gap-2">
         <OngletsCartes label="Espace équipe" onglets={[
           { href: "/admin", icone: "🏠", label: "Accueil", sous: a("accueil") ? "Mes chiffres" : "Activité de l'équipe", actif: vue === "accueil" },
-          ...(a("leads") || a("candidats") || a("alumni") ? [{ href: `/admin?vue=${a("leads") ? "leads" : a("candidats") ? "candidats" : "alumni"}`, icone: "🎓", label: "Étudiants", sous: `${nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""} lead${nouveauxLeads > 1 ? "s" : ""}` : `${nbLeads} leads`} · ${C.size} candidat${C.size > 1 ? "s" : ""}`, actif: vue === "leads" || vue === "candidats" || vue === "alumni" }] : []),
+          ...(a("leads") || a("candidats") || a("alumni") ? [{ href: `/admin?vue=${a("leads") ? "leads" : a("candidats") ? "candidats" : "alumni"}`, icone: "🎓", label: "Étudiants", sous: `${nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""} lead${nouveauxLeads > 1 ? "s" : ""}` : `${nbLeadsEnCours} leads`} · ${C.size} candidat${C.size > 1 ? "s" : ""}`, actif: vue === "leads" || vue === "candidats" || vue === "alumni" }] : []),
           ...(a("entreprises") ? [{ href: "/admin?vue=entreprises", icone: "🏢", label: "Mes entreprises", sous: entreprises ? `${nbEntreprises} rencontrée${nbEntreprises > 1 ? "s" : ""}` : `${mesOffresOuvertes} offre${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "entreprises" }] : []),
           ...(a("planning") ? [{ href: "/admin?vue=planning", icone: "📅", label: "Planning", sous: "Entretiens programmés", actif: vue === "planning" }] : []),
           ...(a("evenements") ? [{ href: "/admin?vue=evenements", icone: "🎪", label: "Événements", sous: "JPO, salons · QR code", actif: vue === "evenements" }] : []),
@@ -408,7 +411,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       {(vue === "leads" || vue === "candidats" || vue === "alumni") && (
         <nav className="flex flex-wrap gap-2" aria-label="Étudiants">
           {([
-            ["leads", "🧲", "Leads", nbLeads],
+            ["leads", "🧲", "Leads", nbLeadsEnCours],
             ["candidats", "👥", "Mes candidats", C.size + admisSansEspace.length],
             ["alumni", "🎓", "Alumni", tousCandidats.filter((c) => c.statut_admission === "alumni").length],
           ] as const).filter(([id]) => permise(id)).map(([id, icone, label, n]) => (
@@ -607,7 +610,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             </div>
           )}
           {leads && !leadsAffiches.length && (
-            <p className="card border-dashed p-6 text-sm text-muted">{nbLeads ? "Aucun lead ne correspond à ces filtres." : "Pas encore de lead. Ils arriveront ici dès qu'une personne demandera la brochure, ou ajoute-les toi-même (JPO, salon…)."}</p>
+            <p className="card border-dashed p-6 text-sm text-muted">{filtresLeadsActifs ? "Aucun lead ne correspond à ces filtres." : nbLeads ? "Aucun lead en cours : les admis sont dans 👥 Mes candidats." : "Pas encore de lead. Ils arriveront ici dès qu'une personne demandera la brochure, ou ajoute-les toi-même (JPO, salon…)."}</p>
           )}
         </div>
       )}
