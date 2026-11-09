@@ -4,6 +4,14 @@ import { aEteAdmis, aEteConvoque, aEtePresent, nomLead, premierContact, statutLe
 /** Tableaux de recrutement : délai de rappel des leads et conversion lead → convoqué → présent → admis. */
 export function StatsRecrutement({ leads, echanges, maintenant, annee, annees }: { leads: Lead[]; echanges: EchangeLead[]; maintenant: number; annee?: string; annees: number[] }) {
   const liste = annee ? leads.filter((l) => String(l.annee_rentree ?? "") === annee) : leads;
+  if (!leads.length) {
+    return (
+      <section id="recrutement" className="card flex flex-col gap-1 p-5">
+        <h2 className="text-lg font-semibold">📊 Recrutement : du lead à l&apos;admission</h2>
+        <p className="text-sm text-muted">⏱️ Pas encore de lead : le temps moyen de réponse et les taux de conversion s&apos;afficheront ici dès le premier lead (formulaire brochure ou ➕ Ajouter un lead).</p>
+      </section>
+    );
+  }
   const duree = (h: number) => (h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${Math.round(h * 10) / 10} h` : `${Math.round((h / 24) * 10) / 10} j`);
   const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)} %` : "—");
 
@@ -39,7 +47,7 @@ export function StatsRecrutement({ leads, echanges, maintenant, annee, annees }:
   const th = "p-3 font-semibold";
   const td = "p-3 tabular-nums";
   return (
-    <section className="card flex flex-col gap-5 p-5">
+    <section id="recrutement" className="card flex scroll-mt-4 flex-col gap-5 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-lg font-semibold">📊 Recrutement : du lead à l&apos;admission</h2>
         <form method="get" action="/admin" className="flex items-center gap-2 text-sm">

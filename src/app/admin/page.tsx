@@ -19,7 +19,7 @@ import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
 import { BROCHURES_PAR_DEFAUT, anneeLabel, lireFormations } from "@/lib/formations";
-import { ORIGINES_LEAD, STATUTS_LEAD, estLeadAdmis, listeLeads, nomLead, statutLead, type EchangeLead } from "@/lib/leads";
+import { ORIGINES_LEAD, STATUTS_LEAD, estLeadAdmis, listeLeads, nomLead, premierContact, statutLead, type EchangeLead } from "@/lib/leads";
 import { StatsRecrutement } from "@/components/StatsRecrutement";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe } from "@/lib/entreprises";
 import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
@@ -150,7 +150,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const leads = vue === "leads" || vue === "accueil" || vue === "candidats" ? await listeLeads() : [];
   // Leads admis à l'entretien qui n'ont pas encore créé leur espace : déjà candidats
   const admisSansEspace = (leads ?? []).filter((l) => estLeadAdmis(l) && !l.candidat_id);
-  const { data: echLeadsData } = vue === "accueil" && leads?.length
+  const { data: echLeadsData } = (vue === "accueil" || vue === "leads") && leads?.length
     ? await db.from("echanges").select("lead_id, date_echange, auteur, resume").not("lead_id", "is", null).limit(5000)
     : { data: [] };
   const nbLeads = leads?.length ?? 0;
@@ -256,7 +256,12 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             ))}
           </section>
 
-          {leads && leads.length > 0 && (
+          {leads === null ? (
+            <section className="card flex flex-col gap-1 p-5">
+              <h2 className="text-lg font-semibold">📊 Recrutement : du lead à l&apos;admission</h2>
+              <p className="text-sm text-muted">⏱️ Le temps moyen de réponse aux leads et les taux de conversion apparaîtront ici : exécute d&apos;abord la mise à jour SQL de la page /diagnostic (lignes « Leads »).</p>
+            </section>
+          ) : (
             <StatsRecrutement leads={leads} echanges={(echLeadsData ?? []) as EchangeLead[]} maintenant={maintenant} annee={sp.stat_annee}
               annees={[...new Set(leads.map((l) => l.annee_rentree).filter((a): a is number => !!a))].sort()} />
           )}
@@ -436,6 +441,20 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               {filtresLeadsActifs && <Link href="/admin?vue=leads" className="btn btn-ghost">Effacer</Link>}
             </div>
           </form>
+
+          {leads && leads.length > 0 && (() => {
+            const delais = leads.map((l) => { const c = premierContact(l, (echLeadsData ?? []) as EchangeLead[]); return c ? (new Date(c).getTime() - new Date(l.created_at).getTime()) / 3600e3 : null; }).filter((h): h is number => h != null);
+            const moy = delais.length ? delais.reduce((a, b) => a + b, 0) / delais.length : null;
+            const fmt = (h: number) => (h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${Math.round(h * 10) / 10} h` : `${Math.round((h / 24) * 10) / 10} j`);
+            const attente = leads.filter((l) => statutLead(l.statut).id === "nouveau" && !premierContact(l, (echLeadsData ?? []) as EchangeLead[])).length;
+            return (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="card flex flex-col p-4"><span className="eyebrow">⏱️ Temps moyen de réponse</span><b className="text-3xl font-semibold tabular-nums">{moy != null ? fmt(moy) : "—"}</b><span className="text-xs text-muted">entre l&apos;arrivée du lead et ton 1er échange</span></div>
+                <Link href="/admin?vue=leads&lstatut=nouveau" className={`card flex flex-col p-4 hover:border-accent ${attente ? "border-bad" : ""}`}><span className="eyebrow">📞 Pas encore rappelés</span><b className={`text-3xl font-semibold tabular-nums ${attente ? "text-bad" : ""}`}>{attente}</b><span className="text-xs text-muted">nouveaux leads sans échange</span></Link>
+                <Link href="/admin#recrutement" className="card flex flex-col p-4 hover:border-accent"><span className="eyebrow">📊 Tous les chiffres</span><b className="text-lg font-semibold">Conversion →</b><span className="text-xs text-muted">convoqués, présents, admis</span></Link>
+              </div>
+            );
+          })()}
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted"><b className="text-ink">{leadsAffiches.length}</b> lead{leadsAffiches.length > 1 ? "s" : ""}{filtresLeadsActifs ? ` sur ${nbLeads}` : ", les plus récents en premier"}</p>
