@@ -381,6 +381,20 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       {vue === "leads" && (
         <div className="flex flex-col gap-3">
           {leads === null && <p className="rounded-xl bg-warn-soft p-4 text-sm">Les leads ne sont pas encore activés : exécute la mise à jour SQL affichée sur la page /diagnostic.</p>}
+          {leads && leads.length > 0 && (() => {
+            const delais = leads.map((l) => { const c = premierContact(l, (echLeadsData ?? []) as EchangeLead[]); return c ? (new Date(c).getTime() - new Date(l.created_at).getTime()) / 3600e3 : null; }).filter((h): h is number => h != null);
+            const moy = delais.length ? delais.reduce((a, b) => a + b, 0) / delais.length : null;
+            const fmt = (h: number) => (h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${Math.round(h * 10) / 10} h` : `${Math.round((h / 24) * 10) / 10} j`);
+            const attente = leads.filter((l) => statutLead(l.statut).id === "nouveau" && !premierContact(l, (echLeadsData ?? []) as EchangeLead[])).length;
+            return (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <div className="card flex flex-col p-4"><span className="eyebrow">⏱️ Temps moyen de réponse</span><b className="text-3xl font-semibold tabular-nums">{moy != null ? fmt(moy) : "—"}</b><span className="text-xs text-muted">entre l&apos;arrivée du lead et ton 1er échange</span></div>
+                <Link href="/admin?vue=leads&lstatut=nouveau" className={`card flex flex-col p-4 hover:border-accent ${attente ? "border-bad" : ""}`}><span className="eyebrow">📞 Pas encore rappelés</span><b className={`text-3xl font-semibold tabular-nums ${attente ? "text-bad" : ""}`}>{attente}</b><span className="text-xs text-muted">nouveaux leads sans échange</span></Link>
+                <Link href="/admin#recrutement" className="card flex flex-col p-4 hover:border-accent"><span className="eyebrow">📊 Tous les chiffres</span><b className="text-lg font-semibold">Conversion →</b><span className="text-xs text-muted">convoqués, présents, admis</span></Link>
+              </div>
+            );
+          })()}
+
           <section className="card flex flex-col gap-2 p-4">
             <b>🔗 Lien du formulaire « Recevoir la brochure »</b>
             <p className="text-sm text-muted">À donner à la personne qui gère campus-magnus.fr pour le bouton « Brochure ». Utilisable aussi dans tes posts, emails ou en QR code au salon.</p>
@@ -442,19 +456,6 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             </div>
           </form>
 
-          {leads && leads.length > 0 && (() => {
-            const delais = leads.map((l) => { const c = premierContact(l, (echLeadsData ?? []) as EchangeLead[]); return c ? (new Date(c).getTime() - new Date(l.created_at).getTime()) / 3600e3 : null; }).filter((h): h is number => h != null);
-            const moy = delais.length ? delais.reduce((a, b) => a + b, 0) / delais.length : null;
-            const fmt = (h: number) => (h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${Math.round(h * 10) / 10} h` : `${Math.round((h / 24) * 10) / 10} j`);
-            const attente = leads.filter((l) => statutLead(l.statut).id === "nouveau" && !premierContact(l, (echLeadsData ?? []) as EchangeLead[])).length;
-            return (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <div className="card flex flex-col p-4"><span className="eyebrow">⏱️ Temps moyen de réponse</span><b className="text-3xl font-semibold tabular-nums">{moy != null ? fmt(moy) : "—"}</b><span className="text-xs text-muted">entre l&apos;arrivée du lead et ton 1er échange</span></div>
-                <Link href="/admin?vue=leads&lstatut=nouveau" className={`card flex flex-col p-4 hover:border-accent ${attente ? "border-bad" : ""}`}><span className="eyebrow">📞 Pas encore rappelés</span><b className={`text-3xl font-semibold tabular-nums ${attente ? "text-bad" : ""}`}>{attente}</b><span className="text-xs text-muted">nouveaux leads sans échange</span></Link>
-                <Link href="/admin#recrutement" className="card flex flex-col p-4 hover:border-accent"><span className="eyebrow">📊 Tous les chiffres</span><b className="text-lg font-semibold">Conversion →</b><span className="text-xs text-muted">convoqués, présents, admis</span></Link>
-              </div>
-            );
-          })()}
 
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-muted"><b className="text-ink">{leadsAffiches.length}</b> lead{leadsAffiches.length > 1 ? "s" : ""}{filtresLeadsActifs ? ` sur ${nbLeads}` : ", les plus récents en premier"}</p>
