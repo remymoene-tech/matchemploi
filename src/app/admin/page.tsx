@@ -111,6 +111,12 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const offresEquipe = (offres ?? []) as Offre[];
   const parEntreprise = new Map((entreprises ?? []).map((e) => [e.id, offresDe(e, offresEquipe)]));
   const avecOffre = (entreprises ?? []).filter((e) => parEntreprise.get(e.id)!.some((o) => o.ouverte));
+  // Une entreprise qui a une offre ouverte n'est plus seulement « Rencontrée » : elle passe en « Recrute »
+  const aCorriger = avecOffre.filter((e) => e.statut === "rencontree");
+  if (aCorriger.length) {
+    await db.from("entreprises").update({ statut: "recrute" }).in("id", aCorriger.map((e) => e.id));
+    for (const e of aCorriger) e.statut = "recrute";
+  }
   const nbEntreprises = entreprises?.length ?? 0;
   const { data: echEnt } = vue === "entreprises" && sous === "entreprises" && entreprises?.length
     ? await db.from("echanges").select("entreprise_id, date_echange, action, action_a, action_le, action_faite").not("entreprise_id", "is", null).order("date_echange", { ascending: false }).limit(1000)
@@ -237,16 +243,15 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
             <section className="card flex flex-col gap-4 p-5">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold">🏢 Mes entreprises</h2>
+                <h2 className="text-lg font-semibold">🏢 Mes entreprises{entreprises ? ` (${nbEntreprises})` : ""}</h2>
                 <Link href="/admin?vue=entreprises" className="text-sm font-semibold text-accent">Détail →</Link>
               </div>
               {entreprises === null ? (
                 <p className="text-sm text-muted">Exécute la mise à jour SQL de la page /diagnostic pour activer « Mes entreprises ».</p>
               ) : (
-                <Barres resume="Entreprises rencontrées, avec ou sans offre" donnees={[
-                  { label: "🤝 Rencontrées", valeur: nbEntreprises, href: "/admin?vue=entreprises" },
+                <Barres resume="Entreprises avec une offre, et rencontrées sans offre" donnees={[
                   { label: "💼 Avec une offre", valeur: avecOffre.length, href: "/admin?vue=entreprises&offre=avec" },
-                  { label: "🕓 Sans offre pour l'instant", valeur: nbEntreprises - avecOffre.length, href: "/admin?vue=entreprises&offre=sans" },
+                  { label: "🤝 Rencontrées, sans offre", valeur: nbEntreprises - avecOffre.length, href: "/admin?vue=entreprises&offre=sans" },
                   { label: "⭐ Partenaires", valeur: (entreprises ?? []).filter((e) => e.statut === "partenaire").length, href: "/admin?vue=entreprises&statut=partenaire" },
                   { label: "🎓 Trouvées par les étudiants", valeur: (entreprises ?? []).filter((e) => decouvreurs.get(e.id)?.length).length, href: "/admin?vue=entreprises&trouvee=etudiant" },
                 ]} />
