@@ -268,7 +268,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       <div className="flex flex-col gap-2">
         <OngletsCartes label="Espace équipe" onglets={[
           { href: "/admin", icone: "🏠", label: "Accueil", sous: a("accueil") ? "Mes chiffres" : "Activité de l'équipe", actif: vue === "accueil" },
-          ...(a("leads") || a("candidats") || a("alumni") ? [{ href: `/admin?vue=${a("leads") ? "leads" : a("candidats") ? "candidats" : "alumni"}`, icone: "🎓", label: "Étudiants", sous: `${nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""} lead${nouveauxLeads > 1 ? "s" : ""}` : `${nbLeadsEnCours} leads`} · ${C.size} candidat${C.size > 1 ? "s" : ""}`, actif: vue === "leads" || vue === "candidats" || vue === "alumni" }] : []),
+          ...(a("leads") || a("candidats") || a("alumni") ? [{ href: `/admin?vue=${a("leads") ? "leads" : a("candidats") ? "candidats" : "alumni"}`, icone: "🎓", label: "Étudiants", sous: `${nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""} lead${nouveauxLeads > 1 ? "s" : ""}` : `${nbLeadsEnCours} leads`} · ${C.size + admisSansEspace.length} candidat${C.size + admisSansEspace.length > 1 ? "s" : ""}`, actif: vue === "leads" || vue === "candidats" || vue === "alumni" }] : []),
           ...(a("entreprises") ? [{ href: "/admin?vue=entreprises", icone: "🏢", label: "Mes entreprises", sous: entreprises ? `${nbEntreprises} rencontrée${nbEntreprises > 1 ? "s" : ""}` : `${mesOffresOuvertes} offre${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "entreprises" }] : []),
           ...(a("planning") ? [{ href: "/admin?vue=planning", icone: "📅", label: "Planning", sous: "Entretiens programmés", actif: vue === "planning" }] : []),
           ...(a("evenements") ? [{ href: "/admin?vue=evenements", icone: "🎪", label: "Événements", sous: "JPO, salons · QR code", actif: vue === "evenements" }] : []),
@@ -415,19 +415,11 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       )}
 
       {(vue === "leads" || vue === "candidats" || vue === "alumni") && (
-        <nav className="flex flex-wrap gap-2" aria-label="Étudiants">
-          {([
-            ["leads", "🧲", "Leads", nbLeadsEnCours],
-            ["candidats", "👥", "Mes candidats", C.size + admisSansEspace.length],
-            ["alumni", "🎓", "Alumni", tousCandidats.filter((c) => c.statut_admission === "alumni").length],
-          ] as const).filter(([id]) => permise(id)).map(([id, icone, label, n]) => (
-            <Link key={id} href={`/admin?vue=${id}`} aria-current={vue === id ? "page" : undefined}
-              className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${vue === id ? "border-accent bg-accent-soft text-ink" : "border-line bg-surface text-muted hover:text-ink"}`}>
-              <span aria-hidden>{icone}</span>{label}<span className="rounded-full bg-bg px-2 text-xs tabular-nums">{n}</span>
-            </Link>
-          ))}
-          <span className="self-center text-xs text-muted">Un lead devient candidat quand il est admis à l&apos;entretien.</span>
-        </nav>
+        <OngletsCartes label="Étudiants" onglets={([
+          ["leads", "🧲", "Leads", `${nbLeadsEnCours} en cours`],
+          ["candidats", "👥", "Mes candidats", `${C.size + admisSansEspace.length} candidat${C.size + admisSansEspace.length > 1 ? "s" : ""}`],
+          ["alumni", "🎓", "Alumni", `${tousCandidats.filter((c) => c.statut_admission === "alumni").length} ancien${tousCandidats.filter((c) => c.statut_admission === "alumni").length > 1 ? "s" : ""} élève${tousCandidats.filter((c) => c.statut_admission === "alumni").length > 1 ? "s" : ""}`],
+        ] as const).filter(([id]) => permise(id)).map(([id, icone, label, sous]) => ({ href: `/admin?vue=${id}`, icone, label, sous, actif: vue === id }))} />
       )}
 
       {vue === "intervenants" && <VueIntervenants contacts={await listeContacts("intervenant")} personnes={await personnesEquipe()} q={sp.q} specialite={sp.specialite} />}
@@ -439,19 +431,6 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       {vue === "leads" && (
         <div className="flex flex-col gap-3">
           {leads === null && <p className="rounded-xl bg-warn-soft p-4 text-sm">Les leads ne sont pas encore activés : exécute la mise à jour SQL affichée sur la page /diagnostic.</p>}
-          {leads && leads.length > 0 && (() => {
-            const delais = leads.map((l) => { const c = premierContact(l, (echLeadsData ?? []) as EchangeLead[]); return c ? (new Date(c).getTime() - new Date(l.created_at).getTime()) / 3600e3 : null; }).filter((h): h is number => h != null);
-            const moy = delais.length ? delais.reduce((a, b) => a + b, 0) / delais.length : null;
-            const fmt = (h: number) => (h < 1 ? `${Math.round(h * 60)} min` : h < 48 ? `${Math.round(h * 10) / 10} h` : `${Math.round((h / 24) * 10) / 10} j`);
-            const attente = leads.filter((l) => statutLead(l.statut).id === "nouveau" && !premierContact(l, (echLeadsData ?? []) as EchangeLead[])).length;
-            return (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <div className="card flex flex-col p-4"><span className="eyebrow">⏱️ Temps moyen de réponse</span><b className="text-3xl font-semibold tabular-nums">{moy != null ? fmt(moy) : "—"}</b><span className="text-xs text-muted">entre l&apos;arrivée du lead et ton 1er échange</span></div>
-                <Link href="/admin?vue=leads&lstatut=nouveau" className={`card flex flex-col p-4 hover:border-accent ${attente ? "border-bad" : ""}`}><span className="eyebrow">📞 Pas encore rappelés</span><b className={`text-3xl font-semibold tabular-nums ${attente ? "text-bad" : ""}`}>{attente}</b><span className="text-xs text-muted">nouveaux leads sans échange</span></Link>
-                <Link href="/admin#recrutement" className="card flex flex-col p-4 hover:border-accent"><span className="eyebrow">📊 Tous les chiffres</span><b className="text-lg font-semibold">Conversion →</b><span className="text-xs text-muted">convoqués, présents, admis</span></Link>
-              </div>
-            );
-          })()}
 
           <section className="card flex flex-col gap-2 p-4">
             <b>🔗 Lien du formulaire « Recevoir la brochure »</b>
