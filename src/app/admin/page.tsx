@@ -19,6 +19,7 @@ import { Copier } from "@/components/Copier";
 import { FormBrochure } from "@/components/FormBrochure";
 import { ADMISSIONS, admission } from "@/lib/admission";
 import { VueAlumni } from "@/components/VueAlumni";
+import { ActiviteEquipe } from "@/components/ActiviteEquipe";
 import { nomPersonne, personnesEquipe, peut, type Acces } from "@/lib/equipe";
 import { AnnoncesAValider } from "@/components/AnnoncesAValider";
 import { estExpiree, texteExpiration } from "@/lib/expiration";
@@ -59,7 +60,7 @@ const AUTRES = [
 /** Pages réservées à l'administrateur (accessibles depuis ⚙️). */
 const RESERVEES_ADMIN = ["ecoles", "reglages"];
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -286,6 +287,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               </Link>
             ))}
           </section>
+
+          <ActiviteEquipe periode={sp.aperiode} date={sp.adate} historique={superAdmin} leads={leads} />
 
           {leads === null ? (
             <section className="card flex flex-col gap-1 p-5">

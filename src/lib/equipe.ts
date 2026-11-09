@@ -113,11 +113,15 @@ export async function emailsEquipe(acces?: Acces[]): Promise<string[]> {
 
 export type Personne = { email: string; nom: string; poste: string };
 
+/** « remy.moene@… » → « Remy Moene » (quand on n'a pas de nom). */
+export const nomDepuisEmail = (email: string) =>
+  email.split("@")[0].split(/[._-]+/).filter(Boolean).map((m) => m[0]!.toUpperCase() + m.slice(1)).join(" ");
+
 /** Tout le monde dans l'équipe (administrateur + membres actifs), pour attribuer un lead. */
 export async function personnesEquipe(): Promise<Personne[]> {
-  const admins: Personne[] = emailsAdmins().map((email) => ({ email, nom: "", poste: POSTE_ADMIN }));
+  const admins: Personne[] = emailsAdmins().map((email) => ({ email, nom: nomDepuisEmail(email), poste: POSTE_ADMIN }));
   const membres = ((await listeEquipe()) ?? []).filter((m) => m.actif).map((m) => ({ email: m.email.toLowerCase(), nom: m.nom, poste: m.poste || roleEquipe(m.role)?.label || "" }));
   return [...admins, ...membres.filter((m) => !admins.some((a) => a.email === m.email))];
 }
 
-export const nomPersonne = (p: Personne | undefined, email?: string | null) => (p ? p.nom || p.email.split("@")[0] : email ? email.split("@")[0] : "");
+export const nomPersonne = (p: Personne | undefined, email?: string | null) => (p ? p.nom || nomDepuisEmail(p.email) : email ? nomDepuisEmail(email) : "");
