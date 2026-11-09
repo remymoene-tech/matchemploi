@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { AIDES, AVEC_ENTREPRISE, lireParcours, moisTexte, situation } from "@/lib/alumni";
 import type { Candidat } from "@/lib/types";
+import { nomLead, type Lead } from "@/lib/leads";
 
 type Ent = { id: string; nom: string; statut: string };
 
 /** Tableau de bord : les alumni, ce qu'ils deviennent et ce qu'ils peuvent apporter au Campus. */
-export function VueAlumni({ candidats, entreprises, promo, aide }: { candidats: Candidat[]; entreprises: Ent[]; promo?: string; aide?: string }) {
+export function VueAlumni({ contacts = [], candidats, entreprises, promo, aide }: { contacts?: Lead[]; candidats: Candidat[]; entreprises: Ent[]; promo?: string; aide?: string }) {
   const alumni = candidats.filter((c) => c.statut_admission === "alumni").map((c) => ({ c, p: lireParcours((c as { parcours?: unknown }).parcours) }));
   const promos = [...new Set(alumni.map((a) => a.c.diplome_annee).filter(Boolean))].sort((a, b) => b! - a!) as number[];
   const liste = alumni
@@ -39,6 +40,21 @@ export function VueAlumni({ candidats, entreprises, promo, aide }: { candidats: 
           </div>
         ))}
       </section>
+
+      {contacts.length > 0 && (
+        <section className="card flex flex-col gap-2 p-4">
+          <h3 className="font-semibold">📬 Alumni qui veulent être recontactés ({contacts.length})</h3>
+          <p className="text-xs text-muted">Ils ont cliqué sur « Je suis alumni » dans le formulaire brochure. Ils ne comptent dans aucun chiffre du recrutement.</p>
+          <ul className="flex flex-col divide-y divide-line text-sm">
+            {contacts.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <span><Link href={`/admin/leads/${c.id}`} className="font-semibold hover:text-accent hover:underline">🎓 {nomLead(c)}</Link> <span className="text-muted">· {[c.formation, c.message].filter(Boolean).join(" · ")}</span></span>
+                <span className="text-xs text-muted">{c.email}{c.telephone ? ` · ${c.telephone}` : ""} · {new Date(c.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" })}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <form className="flex flex-wrap items-end gap-2 text-sm">
         <input type="hidden" name="vue" value="alumni" />

@@ -18,7 +18,7 @@ export default async function FicheLead({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ onglet?: string; ok?: string; erreur?: string; brochure?: string; invitation?: string; convocation?: string; attribue?: string }>;
 }) {
-  const { user } = await exigerAcces("leads");
+  const { user } = await exigerAcces("leads", "intervenants", "alumni");
   const equipe = await personnesEquipe();
   const { id } = await params;
   const sp = await searchParams;
@@ -44,10 +44,13 @@ export default async function FicheLead({ params, searchParams }: {
 
   return (
     <div className="mx-auto flex max-w-4xl flex-col gap-6">
-      <Link href="/admin?vue=leads" className="text-sm text-muted">← Mes leads</Link>
+      {(() => {
+        const r = l?.categorie === "intervenant" ? ["/admin?vue=intervenants", "Intervenants"] : l?.categorie === "alumni" ? ["/admin?vue=alumni", "Alumni"] : ["/admin?vue=leads", "Mes leads"];
+        return <Link href={r[0]} className="text-sm text-muted">← {r[1]}</Link>;
+      })()}
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <span className="eyebrow">🧲 Fiche contact</span>
+          <span className="eyebrow">{l?.categorie === "intervenant" ? "🧑‍🏫 Intervenant · hors recrutement" : l?.categorie === "alumni" ? "🎓 Alumni à recontacter · hors recrutement" : "🧲 Fiche contact"}</span>
           <h1 className="text-3xl font-extrabold">{l ? nomLead(l) : "Nouveau lead"}</h1>
           {l && (
             <p className="text-muted">
@@ -63,7 +66,7 @@ export default async function FicheLead({ params, searchParams }: {
         </div>
         {l && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className={`chip ${st.chip}`}>{st.label}</span>
+            {!l.categorie && <span className={`chip ${st.chip}`}>{st.label}</span>}
             {l.statut === "perdu" && l.motif_perte && <span className="chip">Motif : {l.motif_perte}</span>}
             {l.candidat_id && <Link href={`/admin/candidats/${l.candidat_id}`} className="chip chip-plus">🎓 A créé son espace étudiant →</Link>}
             {estLeadAdmis(l) && !l.candidat_id && (
@@ -72,10 +75,10 @@ export default async function FicheLead({ params, searchParams }: {
                 <button className="btn btn-sm btn-primary">✉️ Renvoyer le lien pour créer son espace</button>
               </form>
             )}
-            <form action={renvoyerBrochure}>
+            {!l.categorie && <form action={renvoyerBrochure}>
               <input type="hidden" name="id" value={l.id} />
               <button className="btn btn-sm">📄 {l.brochure_envoyee_le ? "Renvoyer la brochure" : "Envoyer la brochure"}</button>
-            </form>
+            </form>}
           </div>
         )}
       </header>
@@ -108,7 +111,16 @@ export default async function FicheLead({ params, searchParams }: {
         );
       })()}
 
-      {l && (
+      {l && l.categorie && (
+        <section className="flex flex-col gap-2 rounded-2xl border-2 p-4 text-sm" style={{ borderColor: "var(--sauge)" }}>
+          <p className="font-semibold">{l.categorie === "intervenant" ? `🧑‍🏫 Domaine : ${l.formation || "—"}` : `🎓 Diplôme : ${[l.formation, l.message].filter(Boolean).join(" · ") || "—"}`}</p>
+          {l.categorie === "intervenant" && l.message && <p className="whitespace-pre-line">{l.message}</p>}
+          {l.cv_chemin && <a href={`/admin/intervenants/cv/${l.id}`} target="_blank" className="btn btn-sm btn-primary w-fit">📄 Voir le CV</a>}
+          <p className="text-xs text-muted">Ce contact ne compte dans aucun chiffre ni graphique du recrutement.</p>
+        </section>
+      )}
+
+      {l && !l.categorie && (
         <StatutLeadRapide id={l.id} statut={statutLead(l.statut).id} statuts={STATUTS_LEAD} motifs={MOTIFS_PERTE}
           motifActuel={l.motif_perte ?? ""} entretienLocal={isoVersParis(l.entretien_a)} email={l.email} action={changerStatutLeadFiche} />
       )}
@@ -128,7 +140,7 @@ export default async function FicheLead({ params, searchParams }: {
       {l && (
         <OngletsCartes label="Fiche contact" onglets={[
           { href: base, icone: "🪪", label: "Infos", sous: "Contact et suivi", actif: onglet === "infos" },
-          { href: `${base}?onglet=entretien`, icone: "🗣️", label: "Entretien d'admission", sous: l.entretien_a ? new Date(l.entretien_a).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }) : "à planifier", actif: onglet === "entretien" },
+          ...(l.categorie ? [] : [{ href: `${base}?onglet=entretien`, icone: "🗣️", label: "Entretien d'admission", sous: l.entretien_a ? new Date(l.entretien_a).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }) : "à planifier", actif: onglet === "entretien" }]),
           { href: `${base}?onglet=echanges`, icone: "💬", label: "Échanges", sous: rappels.length ? `${rappels.length} rappel${rappels.length > 1 ? "s" : ""}` : `${echanges.length} noté${echanges.length > 1 ? "s" : ""}`, actif: onglet === "echanges" },
         ]} />
       )}
@@ -151,6 +163,17 @@ export default async function FicheLead({ params, searchParams }: {
             {champ("email", "Email", "email")}
             {champ("telephone", "Téléphone", "tel")}
           </div>
+          {l?.categorie ? (
+            <>
+              <input type="hidden" name="statut" value={statutLead(l.statut).id} />
+              <input type="hidden" name="origine" value={l.origine} />
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-semibold">{l.categorie === "intervenant" ? "🧑‍🏫 Domaine d'intervention" : "🎓 Diplôme obtenu"}</span>
+                <input className="input" name="formation" defaultValue={l.formation} />
+              </label>
+            </>
+          ) : (
+            <>
           <fieldset className="flex flex-col gap-2 text-sm">
             <legend className="mb-1 font-semibold">🎓 Diplôme visé</legend>
             <div className="flex flex-wrap gap-2">
@@ -184,6 +207,8 @@ export default async function FicheLead({ params, searchParams }: {
               </select>
             </label>
           </div>
+            </>
+          )}
           {l?.statut === "perdu" && <input type="hidden" name="motif_perte" value={l.motif_perte ?? ""} />}
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-semibold">Notes</span>

@@ -60,6 +60,12 @@ export type Lead = {
   /** Membre de l'équipe qui suit ce lead (email) : il est le seul à recevoir ses notifications. */
   attribue_a?: string | null;
   attribue_le?: string | null;
+  /** « alumni » ou « intervenant » : contacts hors recrutement, jamais comptés dans les chiffres. */
+  categorie?: string | null;
+  /** Message libre (intervenant : présentation ; alumni : promo). */
+  message?: string | null;
+  /** CV déposé par un intervenant (stockage privé « cv »). */
+  cv_chemin?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -70,9 +76,32 @@ export const nomLead = (l: Pick<Lead, "prenom" | "nom" | "email">) => [l.prenom,
 
 const db = () => createAdminClient();
 
+export const CATEGORIES_HORS_RECRUTEMENT = ["alumni", "intervenant"];
+export const estProspect = (l: Pick<Lead, "categorie">) => !l.categorie || !CATEGORIES_HORS_RECRUTEMENT.includes(l.categorie);
+
+/** Leads du recrutement (sans les alumni ni les intervenants, qui ne comptent dans aucun chiffre). */
 export async function listeLeads(): Promise<Lead[] | null> {
   const { data, error } = await db().from("leads").select("*").order("created_at", { ascending: false }).limit(2000);
-  return error ? null : ((data ?? []) as Lead[]);
+  return error ? null : ((data ?? []) as Lead[]).filter(estProspect);
+}
+
+/** Contacts hors recrutement : alumni qui veulent être recontactés, carnet d'adresses des intervenants. */
+export async function listeContacts(categorie: "alumni" | "intervenant"): Promise<Lead[]> {
+  const { data, error } = await db().from("leads").select("*").eq("categorie", categorie).order("created_at", { ascending: false }).limit(2000);
+  return error ? [] : ((data ?? []) as Lead[]);
+}
+
+/** Notification 🔔 : un alumni veut être recontacté (toute l'équipe) ou un intervenant propose ses services (pédagogie et direction). */
+export async function notifierContact(l: Lead) {
+  const { emailsEquipe, emailsPedagogieDirection } = await import("@/lib/equipe");
+  const intervenant = l.categorie === "intervenant";
+  const dest = intervenant ? await emailsPedagogieDirection() : await emailsEquipe();
+  if (!dest.length) return;
+  const maintenant = new Date().toISOString();
+  const qui = nomLead(l);
+  const resume = intervenant ? `🧑‍🏫 Nouvel intervenant : ${qui}${l.formation ? ` (${l.formation})` : ""}.` : `🎓 Alumni à recontacter : ${qui}${l.formation ? ` (${l.formation}${l.message ? `, ${l.message}` : ""})` : ""}.`;
+  const action = intervenant ? `🧑‍🏫 Nouvel intervenant : ${qui}${l.formation ? ` · ${l.formation}` : ""} → à étudier` : `🎓 Alumni à recontacter : ${qui}${l.formation ? ` · ${l.formation}` : ""}`;
+  await db().from("echanges").insert(dest.map((auteur) => ({ lead_id: l.id, type: "autre", date_echange: maintenant, resume, action, action_le: maintenant.slice(0, 10), action_a: maintenant, auteur })));
 }
 
 export async function leadParId(id: string): Promise<Lead | null> {
@@ -268,7 +297,8 @@ export async function attribuerLead(leadId: string, email: string, par: string):
   if (error) return false;
   if (!cle) return true;
   // Les autres n'ont plus la notification « Nouveau lead » : seul le responsable du lead la garde
-  await base.from("echanges").update({ action_faite: true }).eq("lead_id", leadId).eq("action_faite", false).like("action", "🧲 Nouveau lead%").neq("auteur", cle);
+  for (const debut of ["🧲 Nouveau lead%", "🎓 Alumni à recontacter%", "🧑‍🏫 Nouvel intervenant%"])
+    await base.from("echanges").update({ action_faite: true }).eq("lead_id", leadId).eq("action_faite", false).like("action", debut).neq("auteur", cle);
   const maintenant = new Date().toISOString();
   const moi = cle === par.trim().toLowerCase();
   await base.from("echanges").insert({

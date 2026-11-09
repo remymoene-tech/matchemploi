@@ -19,6 +19,7 @@ import { Copier } from "@/components/Copier";
 import { FormBrochure } from "@/components/FormBrochure";
 import { ADMISSIONS, admission } from "@/lib/admission";
 import { VueAlumni } from "@/components/VueAlumni";
+import { VueIntervenants } from "@/components/VueIntervenants";
 import { ActiviteEquipe } from "@/components/ActiviteEquipe";
 import { nomPersonne, personnesEquipe, peut, type Acces } from "@/lib/equipe";
 import { AnnoncesAValider } from "@/components/AnnoncesAValider";
@@ -26,7 +27,7 @@ import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
 import { BROCHURES_PAR_DEFAUT, anneeLabel, lireFormations } from "@/lib/formations";
-import { MOTIFS_PERTE, ORIGINES_LEAD, STATUTS_LEAD, isoVersParis, estLeadAdmis, listeLeads, nomLead, premierContact, statutLead, type EchangeLead } from "@/lib/leads";
+import { listeContacts, MOTIFS_PERTE, ORIGINES_LEAD, STATUTS_LEAD, isoVersParis, estLeadAdmis, listeLeads, nomLead, premierContact, statutLead, type EchangeLead } from "@/lib/leads";
 import { StatsRecrutement } from "@/components/StatsRecrutement";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe } from "@/lib/entreprises";
 import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
@@ -54,6 +55,7 @@ const AUTRES = [
   { id: "briefing", label: "📋 Briefing" },
   { id: "relances", label: "🔔 Relances" },
   { id: "entretiens", label: "🗣️ Entretiens" },
+  { id: "intervenants", label: "🧑‍🏫 Intervenants" },
   { id: "ecoles", label: "🏫 Écoles" },
   { id: "reglages", label: "⚙️ Réglages" },
 ] as const;
@@ -67,7 +69,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const superAdmin = moi.role === "admin";
   const vueDemandee = sp.vue === "offres" || sp.vue === "correspondances" ? "entreprises" : [...VUES, ...AUTRES].some((v) => v.id === sp.vue) ? sp.vue! : "accueil";
   // Chaque vue demande un accès (l'administrateur a tout) ; sinon on ouvre la première vue permise
-  const ACCES_VUE: Record<string, Acces | null> = { accueil: "accueil", leads: "leads", candidats: "candidats", alumni: "alumni", entreprises: "entreprises", planning: "planning", evenements: "evenements", briefing: "candidats", entretiens: "candidats", relances: null, ecoles: null, reglages: null };
+  const ACCES_VUE: Record<string, Acces | null> = { accueil: "accueil", leads: "leads", candidats: "candidats", alumni: "alumni", entreprises: "entreprises", planning: "planning", evenements: "evenements", briefing: "candidats", entretiens: "candidats", intervenants: "intervenants", relances: null, ecoles: null, reglages: null };
   const permise = (v: string) => v === "accueil" || (RESERVEES_ADMIN.includes(v) ? superAdmin : ACCES_VUE[v] == null || peut(moi.droits, ACCES_VUE[v]!));
   const premiere = ["accueil", "leads", "candidats", "alumni", "entreprises", "planning", "evenements"].find(permise) ?? "relances";
   const vue = permise(vueDemandee) ? vueDemandee : premiere;
@@ -167,7 +169,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const filtresEntActifs = !!(q || fStatut || fOffre || fOrigine || fTrouvee);
 
   // 🧲 Leads (CRM)
-  const leads = vue === "leads" || vue === "accueil" || vue === "candidats" || vue === "evenements" ? await listeLeads() : [];
+  const leads = vue === "leads" || vue === "accueil" || vue === "candidats" || vue === "evenements" || vue === "alumni" || vue === "intervenants" ? await listeLeads() : [];
   const evenements = vue === "evenements" ? await listeEvenements() : [];
   // Leads admis à l'entretien qui n'ont pas encore créé leur espace : déjà candidats
   const admisSansEspace = (leads ?? []).filter((l) => estLeadAdmis(l) && !l.candidat_id);
@@ -415,8 +417,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
         </nav>
       )}
 
+      {vue === "intervenants" && <VueIntervenants contacts={await listeContacts("intervenant")} personnes={await personnesEquipe()} q={sp.q} />}
+
       {vue === "alumni" && (
-        <VueAlumni candidats={tousCandidats} entreprises={(entreprises ?? []).map((e) => ({ id: e.id, nom: e.nom, statut: e.statut }))} promo={sp.apromo} aide={sp.aaide} />
+        <VueAlumni contacts={await listeContacts("alumni")} candidats={tousCandidats} entreprises={(entreprises ?? []).map((e) => ({ id: e.id, nom: e.nom, statut: e.statut }))} promo={sp.apromo} aide={sp.aaide} />
       )}
 
       {vue === "leads" && (

@@ -423,3 +423,6 @@ alter table public.equipe add column if not exists poste text not null default '
 alter table public.equipe add column if not exists acces jsonb;
 alter table public.leads add column if not exists attribue_a text;
 alter table public.leads add column if not exists attribue_le timestamptz;
+alter table public.leads add column if not exists categorie text;
+alter table public.leads add column if not exists message text not null default '';
+alter table public.leads add column if not exists cv_chemin text;

@@ -133,7 +133,10 @@ alter table public.equipe enable row level security;
 alter table public.equipe add column if not exists poste text not null default '';
 alter table public.equipe add column if not exists acces jsonb;
 alter table public.leads add column if not exists attribue_a text;
-alter table public.leads add column if not exists attribue_le timestamptz;`;
+alter table public.leads add column if not exists attribue_le timestamptz;
+alter table public.leads add column if not exists categorie text;
+alter table public.leads add column if not exists message text not null default '';
+alter table public.leads add column if not exists cv_chemin text;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -197,6 +200,7 @@ async function verifierBase() {
     db.from("offres").select("validation, proposee_par").limit(1),
     db.from("equipe").select("id, poste, acces").limit(1),
     db.from("leads").select("attribue_a, attribue_le").limit(1),
+    db.from("leads").select("categorie, message, cv_chemin").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -258,6 +262,7 @@ async function verifierBase() {
     "Annonces déposées par les alumni",
     "Équipe du tableau de bord",
     "Leads attribués à l'équipe",
+    "Alumni et intervenants (formulaires)",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

@@ -500,7 +500,7 @@ function lireLead(f: FormData) {
 }
 
 export async function enregistrerLead(f: FormData) {
-  await exigerAcces("leads");
+  await exigerAcces("leads", "intervenants", "alumni");
   const id = t(f, "id", 60);
   const d = lireLead(f);
   if (!d.email && !d.telephone && !d.nom) redirect(`/admin/leads/${id || "nouveau"}?erreur=champs`);
@@ -570,7 +570,7 @@ export async function renvoyerBrochure(f: FormData) {
 }
 
 export async function ajouterEchangeLead(_: { erreur?: string; ok?: boolean }, f: FormData): Promise<{ erreur?: string; ok?: boolean }> {
-  const { user } = await exigerAcces("leads");
+  const { user } = await exigerAcces("leads", "intervenants", "alumni");
   const id = t(f, "lead_id", 60);
   const r = await ajouterEchange({ lead: id }, f, user.email ?? "");
   if (r.erreur) return r;
@@ -580,14 +580,14 @@ export async function ajouterEchangeLead(_: { erreur?: string; ok?: boolean }, f
 }
 
 export async function supprimerEchangeLead(f: FormData) {
-  await exigerAcces("leads");
+  await exigerAcces("leads", "intervenants", "alumni");
   const id = t(f, "lead_id", 60);
   await createAdminClient().from("echanges").delete().eq("id", t(f, "id", 60)).eq("lead_id", id);
   revalidatePath(`/admin/leads/${id}`);
 }
 
 export async function actionFaiteLead(f: FormData) {
-  await exigerAcces("leads");
+  await exigerAcces("leads", "intervenants", "alumni");
   const id = t(f, "lead_id", 60);
   await createAdminClient().from("echanges").update({ action_faite: true }).eq("id", t(f, "id", 60)).eq("lead_id", id);
   revalidatePath(`/admin/leads/${id}`);
@@ -782,7 +782,7 @@ export async function supprimerMembre(f: FormData) {
 
 /** « Je m'en occupe » ou attribution à un membre de l'équipe. */
 export async function attribuerLeadAction(f: FormData) {
-  const { user } = await exigerAcces("leads");
+  const { user } = await exigerAcces("leads", "intervenants", "alumni");
   const { attribuerLead } = await import("@/lib/leads");
   const id = t(f, "lead_id", 60);
   const choix = t(f, "attribue_a", 200);

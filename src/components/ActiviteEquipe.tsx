@@ -59,12 +59,14 @@ export async function ActiviteEquipe({ periode: p, date, historique, leads }: {
   const [debut, fin] = bornes(periode, jour);
 
   const db = createAdminClient();
-  const { data } = await db.from("echanges").select("auteur, type, date_echange")
+  const { data: horsData } = await db.from("leads").select("id").in("categorie", ["alumni", "intervenant"]);
+  const hors = new Set((horsData ?? []).map((x) => x.id as string));
+  const { data } = await db.from("echanges").select("auteur, type, date_echange, lead_id")
     .in("type", TYPES.map((t) => t.id)).neq("auteur", "")
     .gte("date_echange", `${plusJours(debut, -1)}T00:00:00Z`).lte("date_echange", `${plusJours(fin, 1)}T23:59:59Z`)
     .limit(20000);
-  const echanges = ((data ?? []) as { auteur: string; type: string; date_echange: string }[])
-    .filter((e) => { const j = jourParis(e.date_echange); return j >= debut && j <= fin; });
+  const echanges = ((data ?? []) as { auteur: string; type: string; date_echange: string; lead_id: string | null }[])
+    .filter((e) => { const j = jourParis(e.date_echange); return j >= debut && j <= fin && !(e.lead_id && hors.has(e.lead_id)); });
 
   const personnes = await personnesEquipe();
   const nom = (email: string) => nomPersonne(personnes.find((x) => x.email === email.toLowerCase()), email);
