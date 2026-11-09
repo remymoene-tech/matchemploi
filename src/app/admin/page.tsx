@@ -98,8 +98,13 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     db.from("offres").select("*").not("source", "in", `(${SOURCES_AUTO.join(",")})`).order("created_at", { ascending: false }),
     db.from("correspondances").select("*").gte("score", SEUIL).order("score", { ascending: false }).limit(500),
   ]);
-  // Requalifiés en intervenants : ils ne sont plus des candidats (carnet d'adresses des intervenants)
-  const C = new Map(((candidats ?? []) as Candidat[]).filter((c) => c.statut_admission !== "intervenant").map((c) => [c.user_id, c]));
+  // Requalifiés en intervenants (sur leur fiche candidat ou sur leur lead) : ils ne sont plus des candidats.
+  // Rattrapage : un lead passé en intervenant met aussi son compte candidat à jour.
+  const { data: leadsIntervenants } = await db.from("leads").select("candidat_id").eq("categorie", "intervenant").not("candidat_id", "is", null);
+  const comptesIntervenants = new Set((leadsIntervenants ?? []).map((x) => x.candidat_id as string));
+  const comptesACorriger = ((candidats ?? []) as Candidat[]).filter((c) => comptesIntervenants.has(c.user_id) && c.statut_admission !== "intervenant").map((c) => c.user_id);
+  if (comptesACorriger.length) await db.from("candidats").update({ statut_admission: "intervenant" }).in("user_id", comptesACorriger);
+  const C = new Map(((candidats ?? []) as Candidat[]).filter((c) => c.statut_admission !== "intervenant" && !comptesIntervenants.has(c.user_id)).map((c) => [c.user_id, c]));
   const M = (matchs ?? []) as Correspondance[];
   const idsOffres = [...new Set(M.map((m) => m.offre_id))];
   const { data: offresMatch } = idsOffres.length

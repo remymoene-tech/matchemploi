@@ -321,3 +321,49 @@ export async function notifierSuiviLead(l: Pick<Lead, "id" | "attribue_a">, resu
   const maintenant = new Date().toISOString();
   await db().from("echanges").insert(dest.map((auteur) => ({ lead_id: l.id, type: "autre", date_echange: maintenant, resume, action, action_le: maintenant.slice(0, 10), action_a: maintenant, auteur })));
 }
+
+/* ---------- Synchronisation lead ↔ compte candidat ---------- */
+
+/** Le lead change de catégorie : son compte candidat (s'il en a un) suit. */
+export async function synchroniserCandidatDuLead(l: Pick<Lead, "candidat_id" | "statut">, categorie: string | null) {
+  if (!l.candidat_id) return;
+  const base = db();
+  const { data: c } = await base.from("candidats").select("statut_admission").eq("user_id", l.candidat_id).maybeSingle();
+  if (!c) return;
+  const statut = categorie === "intervenant" ? "intervenant"
+    : categorie === "alumni" ? "alumni"
+    : c.statut_admission === "intervenant" ? (estLeadAdmis(l) ? "admis" : "prospect")
+    : null;
+  if (statut && statut !== c.statut_admission) await base.from("candidats").update({ statut_admission: statut }).eq("user_id", l.candidat_id);
+}
+
+/** Le compte candidat passe (ou n'est plus) « Intervenant » : son lead suit (pas de doublon). Renvoie le lead intervenant. */
+export async function synchroniserLeadDuCandidat(candidatId: string, intervenant: boolean): Promise<Lead | null> {
+  const base = db();
+  const { data: c } = await base.from("candidats").select("nom, email, telephone, cv_chemin, linkedin_url").eq("user_id", candidatId).maybeSingle();
+  if (!c?.email) return null;
+  const email = (c.email as string).toLowerCase();
+  const { data: lies } = await base.from("leads").select("*").or(`candidat_id.eq.${candidatId},email.eq."${email}"`).order("created_at", { ascending: false }).limit(10);
+  const liste = (lies ?? []) as Lead[];
+  const lie = liste.find((l) => l.candidat_id === candidatId) ?? liste.find((l) => l.categorie === "intervenant") ?? liste[0] ?? null;
+  if (!intervenant) {
+    if (lie?.categorie === "intervenant" && lie.candidat_id === candidatId) await base.from("leads").update({ categorie: null, updated_at: new Date().toISOString() }).eq("id", lie.id);
+    return null;
+  }
+  const cv = c.cv_chemin ? `${candidatId}/cv.pdf` : null;
+  if (lie) {
+    if (lie.categorie === "intervenant") return lie;
+    const { data } = await base.from("leads").update({ categorie: "intervenant", annee_rentree: null, attribue_a: null, cv_chemin: lie.cv_chemin ?? cv, candidat_id: lie.candidat_id ?? candidatId, updated_at: new Date().toISOString() }).eq("id", lie.id).select("*").single();
+    await base.from("echanges").update({ action_faite: true }).eq("lead_id", lie.id).eq("action_faite", false).like("action", "🧲 Nouveau lead%");
+    await base.from("echanges").insert({ lead_id: lie.id, type: "autre", date_echange: new Date().toISOString(), auteur: "", resume: "🔁 Requalifié en 🧑‍🏫 intervenant depuis sa fiche candidat." });
+    return (data as Lead) ?? null;
+  }
+  const mots = (c.nom ?? "").trim().split(/\s+/);
+  const { data } = await base.from("leads").insert({
+    prenom: mots.length > 1 ? mots.slice(0, -1).join(" ") : mots[0] ?? "", nom: mots.length > 1 ? mots[mots.length - 1] : "",
+    email, telephone: c.telephone ?? "", formation: "", categorie: "intervenant", candidat_id: candidatId,
+    origine: "Requalifié depuis un compte candidat", consentement: true, annee_rentree: null, cv_chemin: cv,
+    message: c.linkedin_url ? `LinkedIn : ${c.linkedin_url}` : "",
+  }).select("*").single();
+  return (data as Lead) ?? null;
+}

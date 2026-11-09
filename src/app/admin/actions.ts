@@ -851,6 +851,9 @@ export async function requalifierLead(f: FormData) {
     updated_at: new Date().toISOString(),
   }).eq("id", id);
   if (error) redirect(`/admin/leads/${id}?erreur=base`);
+  // Son compte candidat (s'il a créé son espace) suit : intervenant, alumni, ou retour candidat
+  const { synchroniserCandidatDuLead } = await import("@/lib/leads");
+  await synchroniserCandidatDuLead(l, categorie).catch(() => undefined);
   // Les notifications « Nouveau lead » n'ont plus lieu d'être
   await db.from("echanges").update({ action_faite: true }).eq("lead_id", id).eq("action_faite", false).like("action", "🧲 Nouveau lead%");
   const libelle = categorie === "intervenant" ? "🧑‍🏫 intervenant" : categorie === "alumni" ? "🎓 alumni" : "🧲 lead du recrutement";
