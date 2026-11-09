@@ -6,11 +6,11 @@ import { estAdmis } from "@/lib/admission";
 import { AttenteAdmission } from "@/components/AttenteAdmission";
 import { PartagerCarte } from "@/components/PartagerCarte";
 import { formationCarte, jetonCarte, lienCarte, optionsCarte, qrCarte, type CandidatCarte } from "@/lib/carte";
-import { enregistrerCarte, nouveauQrCarte } from "../actions";
+import { enregistrerCarte } from "../actions";
 
 export const metadata = { title: "Ma carte de visite · MagnusMatch" };
 
-type SP = { ok?: string; erreur?: string; nouveau?: string };
+type SP = { ok?: string; erreur?: string };
 
 export default async function MaCarte({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
@@ -45,8 +45,7 @@ export default async function MaCarte({ searchParams }: { searchParams: Promise<
         </div>
       </div>
       {sp.ok && <p className="rounded-xl bg-good-soft p-3 text-sm text-good">✅ Ta carte est à jour.</p>}
-      {sp.nouveau && <p className="rounded-xl bg-good-soft p-3 text-sm text-good">✅ Nouveau QR code créé : l&apos;ancien ne fonctionne plus.</p>}
-      {sp.erreur && <p className="rounded-xl bg-bad-soft p-3 text-sm text-bad">Impossible d&apos;enregistrer pour le moment. Réessaie dans un instant.</p>}
+            {sp.erreur && <p className="rounded-xl bg-bad-soft p-3 text-sm text-bad">Impossible d&apos;enregistrer pour le moment. Réessaie dans un instant.</p>}
 
       <div className="grid gap-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <section className="card flex flex-col items-center gap-3 p-6 text-center">
@@ -87,11 +86,7 @@ export default async function MaCarte({ searchParams }: { searchParams: Promise<
         </form>
       </div>
 
-      <form action={nouveauQrCarte} className="flex flex-wrap items-center gap-3 text-sm text-muted">
-        <span>Ta carte a trop circulé ?</span>
-        <button className="btn btn-sm btn-ghost">🔄 Créer un nouveau QR code</button>
-        <span className="text-xs">(l&apos;ancien ne marchera plus)</span>
-      </form>
+      <p className="text-sm text-muted">Ta carte a trop circulé ? Demande à l&apos;équipe du Campus de te refaire un QR code : l&apos;ancien ne marchera plus.</p>
     </div>
   );
 }

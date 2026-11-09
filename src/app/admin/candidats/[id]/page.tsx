@@ -1,11 +1,11 @@
 import { exigerAdmin } from "@/lib/auth";
 import { FicheCandidat } from "@/components/FicheCandidat";
-import { ajouterProspectionAuxEntreprises, changerDiplomeAdmin, changerAdmissionAdmin, autoriserTestAdmin, changerSuivi, ajouterEchangeAdmin, actionFaiteAdmin, genererCvAmelioreAdmin, supprimerEchangeAdmin, genererSyntheseAdmin } from "../../actions";
+import { ajouterProspectionAuxEntreprises, changerDiplomeAdmin, changerAdmissionAdmin, autoriserTestAdmin, changerSuivi, ajouterEchangeAdmin, actionFaiteAdmin, genererCvAmelioreAdmin, supprimerEchangeAdmin, genererSyntheseAdmin, refaireQrCarteAdmin } from "../../actions";
 
 export const metadata = { title: "Fiche candidat · MagnusMatch" };
 
-export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string; admission?: string }> }) {
-  const { onglet, admission: admissionDemandee } = await searchParams;
+export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string; admission?: string; carte?: string }> }) {
+  const { onglet, admission: admissionDemandee, carte } = await searchParams;
   await exigerAdmin();
   const { id } = await params;
   return (
@@ -26,6 +26,8 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       cheminCV={`/admin/cv/${id}`}
       retour={{ href: "/admin?vue=candidats", libelle: "Tous les candidats" }}
       changerSuivi={changerSuivi}
+      refaireQrCarte={refaireQrCarteAdmin}
+      carteRefaite={carte === "nouveau"}
     />
   );
 }

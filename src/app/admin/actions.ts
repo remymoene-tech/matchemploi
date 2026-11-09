@@ -697,3 +697,12 @@ export async function supprimerEvenement(f: FormData) {
   revalidatePath("/");
   redirect("/admin?vue=evenements");
 }
+
+/** Carte de visite : nouveau QR code pour un candidat (l'ancien lien ne marche plus). Réservé à l'administrateur. */
+export async function refaireQrCarteAdmin(f: FormData) {
+  await exigerAdmin();
+  const id = t(f, "candidat_id", 60);
+  const { changerJetonCarte } = await import("@/lib/carte");
+  await changerJetonCarte(id);
+  redirect(`/admin/candidats/${id}?carte=nouveau`);
+}

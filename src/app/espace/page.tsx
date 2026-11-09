@@ -139,7 +139,6 @@ export default async function Espace() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Link href="/espace/carte" className="btn" style={{ background: "#111", color: "#fff", borderColor: "#111" }}>📇 Ma carte de visite</Link>
           <Link href="/espace/recherches" className="btn">Mes recherches ({1 + autresRecherches.filter((r) => r.active).length})</Link>
           <form action={relancerRecherche}>
             <button className="btn btn-primary" disabled={c.recherche_en_cours}>

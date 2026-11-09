@@ -46,7 +46,10 @@ const Ligne = ({ l, v }: { l: string; v: React.ReactNode }) => (
  * Fiche complète d'un candidat pour l'équipe : profil, CV, recherches, offres.
  * Les droits sont vérifiés par la page qui l'affiche.
  */
-export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite, changerAdmission, changerDiplome, ajouterAuxEntreprises, admissionDemandee }: {
+export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite, changerAdmission, changerDiplome, ajouterAuxEntreprises, admissionDemandee, refaireQrCarte, carteRefaite }: {
+  /** Administrateur : refaire le QR code de la carte de visite. */
+  refaireQrCarte?: (f: FormData) => Promise<void>;
+  carteRefaite?: boolean;
   changerAdmission?: (f: FormData) => Promise<void>;
   changerDiplome?: (f: FormData) => Promise<void>;
   /** Statut choisi depuis le tableau mais qui demande un motif. */
@@ -192,6 +195,18 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
           {c.cv_chemin && <a className="btn btn-primary" href={cheminCV} target="_blank">Ouvrir le CV (PDF)</a>}
         </div>
       </header>
+
+      {refaireQrCarte && (c as { carte_jeton?: string | null }).carte_jeton && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <span className="font-semibold">📇 Carte de visite :</span>
+          <a href={`/carte/${(c as { carte_jeton?: string | null }).carte_jeton}`} target="_blank" rel="noopener" className="btn btn-sm">👁️ Voir</a>
+          <form action={refaireQrCarte}>
+            <input type="hidden" name="candidat_id" value={candidatId} />
+            <button className="btn btn-sm">🔄 Refaire le QR code</button>
+          </form>
+          <span className="text-xs text-muted">{carteRefaite ? "✅ Nouveau QR code créé : l'ancien ne marche plus." : "L'ancien QR code ne marchera plus."}</span>
+        </div>
+      )}
 
       {(relances.length > 0 || dernierEchange) && (
         <div className="flex flex-wrap items-center gap-2 text-sm">

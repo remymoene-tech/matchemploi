@@ -417,11 +417,3 @@ export async function enregistrerCarte(f: FormData) {
   const { error } = await createAdminClient().from("candidats").update({ carte_options: options }).eq("user_id", user.id);
   redirect(error ? "/espace/carte?erreur=base" : "/espace/carte?ok=1");
 }
-
-/** Nouveau QR code : l'ancien lien ne fonctionne plus (utile si la carte a trop circulé). */
-export async function nouveauQrCarte() {
-  const { user } = await exigerUtilisateur();
-  const { changerJetonCarte } = await import("@/lib/carte");
-  await changerJetonCarte(user.id);
-  redirect("/espace/carte?nouveau=1");
-}
