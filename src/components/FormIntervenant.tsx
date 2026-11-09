@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { deposerIntervenant, preparerDepotIntervenant } from "@/app/intervenant/actions";
-import { SITUATIONS_INTERVENANT } from "@/lib/intervenants";
+import { SITUATIONS_INTERVENANT, SPECIALITES } from "@/lib/intervenants";
 
 const TAILLE_MAX = 10 * 1024 * 1024;
 
@@ -65,10 +65,17 @@ export function FormIntervenant() {
           </label>
         ))}
       </div>
-      <label className="flex flex-col gap-1 text-sm">
-        <span className="font-semibold">Matière(s) enseignée(s) <span className="text-bad">*</span></span>
-        <input className="input" name="domaine" required maxLength={200} placeholder="Ex. Marketing digital, droit commercial, management, anglais…" />
-      </label>
+      <fieldset className="flex flex-col gap-2 text-sm">
+        <legend className="mb-1 font-semibold">🎯 Votre ou vos spécialités <span className="text-bad">*</span></legend>
+        <div className="flex flex-wrap gap-2">
+          {SPECIALITES.map((x) => (
+            <label key={x} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-4 py-2 has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
+              <input type="checkbox" name="specialites" value={x} className="sr-only" />{x}
+            </label>
+          ))}
+        </div>
+        <input className="input" name="autre_specialite" maxLength={80} placeholder="Autre spécialité (facultatif)" />
+      </fieldset>
       <label className="flex flex-col gap-1 text-sm">
         <span className="font-semibold">Présentez-vous <span className="text-bad">*</span></span>
         <textarea className="input min-h-36" name="presentation" required minLength={20} maxLength={4000} placeholder="Votre parcours, votre expérience, ce que vous aimeriez transmettre aux étudiants, les formats possibles (cours, atelier, conférence…)." />

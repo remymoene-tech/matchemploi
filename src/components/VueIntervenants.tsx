@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { nomLead, type Lead } from "@/lib/leads";
-import { SITUATIONS_INTERVENANT } from "@/lib/intervenants";
+import { SITUATIONS_INTERVENANT, SPECIALITES, specialitesDe } from "@/lib/intervenants";
 import { nomPersonne, type Personne } from "@/lib/equipe";
 
 /** Carnet d'adresses des intervenants (questionnaire /intervenant). Ne compte dans aucun chiffre du recrutement. */
-export function VueIntervenants({ contacts, personnes, q }: { contacts: Lead[]; personnes: Personne[]; q?: string }) {
+export function VueIntervenants({ contacts, personnes, q, specialite }: { contacts: Lead[]; personnes: Personne[]; q?: string; specialite?: string }) {
   const cherche = (q ?? "").trim().toLowerCase();
-  const liste = contacts.filter((c) => !cherche || [c.prenom, c.nom, c.email, c.formation, c.message].some((x) => (x ?? "").toLowerCase().includes(cherche)));
+  const liste = contacts
+    .filter((c) => !cherche || [c.prenom, c.nom, c.email, c.formation, c.message, c.entreprise].some((x) => (x ?? "").toLowerCase().includes(cherche)))
+    .filter((c) => !specialite || specialitesDe(c.formation).includes(specialite));
+  const nb = (x: string) => contacts.filter((c) => specialitesDe(c.formation).includes(x)).length;
   const site = process.env.NEXT_PUBLIC_SITE_URL || "https://magnusmatch.vercel.app";
   return (
     <div className="flex flex-col gap-4">
@@ -17,10 +20,16 @@ export function VueIntervenants({ contacts, personnes, q }: { contacts: Lead[]; 
         </div>
         <form className="flex gap-2">
           <input type="hidden" name="vue" value="intervenants" />
-          <input className="input py-1.5" name="q" defaultValue={q ?? ""} placeholder="🔎 Nom, matière…" />
+          <input className="input py-1.5" name="q" defaultValue={q ?? ""} placeholder="🔎 Nom, spécialité…" />
           <button className="btn btn-sm">Chercher</button>
         </form>
       </div>
+      <nav className="flex flex-wrap gap-2 text-sm" aria-label="Spécialités">
+        <Link href="/admin?vue=intervenants" className={`rounded-full border px-3 py-1 ${!specialite ? "border-accent bg-accent-soft font-semibold" : "border-line text-muted hover:text-ink"}`}>Toutes ({contacts.length})</Link>
+        {SPECIALITES.map((x) => (
+          <Link key={x} href={`/admin?vue=intervenants&specialite=${encodeURIComponent(x)}`} className={`rounded-full border px-3 py-1 ${specialite === x ? "border-accent bg-accent-soft font-semibold" : "border-line text-muted hover:text-ink"}`}>{x} ({nb(x)})</Link>
+        ))}
+      </nav>
       {liste.length === 0 ? (
         <p className="card border-dashed p-6 text-sm text-muted">{contacts.length ? "Aucun intervenant ne correspond." : "Pas encore d'intervenant. Partage le lien du questionnaire : il est aussi en haut du formulaire brochure."}</p>
       ) : (
@@ -30,7 +39,7 @@ export function VueIntervenants({ contacts, personnes, q }: { contacts: Lead[]; 
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <Link href={`/admin/leads/${c.id}`} className="text-lg font-semibold hover:text-accent hover:underline">{nomLead(c)}</Link>
-                  <p className="text-sm font-medium text-accent">{c.formation}</p>
+                  <div className="mt-1 flex flex-wrap gap-1">{specialitesDe(c.formation).map((x) => <span key={x} className="chip chip-tag text-xs">🎯 {x}</span>)}</div>
                   {(c.entreprise || c.situation) && <p className="text-xs text-muted">💼 {[c.situation && SITUATIONS_INTERVENANT[c.situation], c.entreprise].filter(Boolean).join(" · ")}</p>}
                   {c.recrute && (c.entreprise_id
                     ? <Link href={`/admin/entreprises/${c.entreprise_id}`} className="chip chip-plus mt-1 text-xs">🧑‍💼 Recrute → fiche entreprise</Link>

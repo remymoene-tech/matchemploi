@@ -6,7 +6,7 @@ import { notifierContact, type Lead } from "@/lib/leads";
 import { memeEntreprise } from "@/lib/prospections";
 import { emailsEquipe } from "@/lib/equipe";
 import { lienBesoinEntreprise } from "@/lib/alumni-serveur";
-import { SITUATIONS_INTERVENANT } from "@/lib/intervenants";
+import { SITUATIONS_INTERVENANT, SPECIALITES } from "@/lib/intervenants";
 
 const txt = (f: FormData, k: string, max = 200) => String(f.get(k) ?? "").trim().slice(0, max);
 
@@ -58,7 +58,7 @@ export async function deposerIntervenant(f: FormData): Promise<{ ok?: boolean; e
     nom: txt(f, "nom", 80),
     email,
     telephone: txt(f, "telephone", 30),
-    formation: txt(f, "domaine", 200),
+    formation: [...f.getAll("specialites").map(String).filter((x) => (SPECIALITES as readonly string[]).includes(x)), txt(f, "autre_specialite", 80)].filter(Boolean).join(" · "),
     situation: situation in SITUATIONS_INTERVENANT ? situation : "",
     entreprise: txt(f, "entreprise", 150),
     recrute: f.get("recrute") === "on",
@@ -74,7 +74,7 @@ export async function deposerIntervenant(f: FormData): Promise<{ ok?: boolean; e
     annee_rentree: null,
   };
   if (!ligne.prenom || !ligne.nom || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !ligne.formation || txt(f, "presentation", 4000).length < 20)
-    return { erreur: "Merci de remplir votre prénom, votre nom, un email valide, la ou les matières que vous enseignez et quelques lignes de présentation." };
+    return { erreur: "Merci de remplir votre prénom, votre nom, un email valide, au moins une spécialité et quelques lignes de présentation." };
   if (ligne.recrute && !ligne.entreprise) return { erreur: "Vous recrutez : indiquez le nom de votre entreprise." };
   if (!ligne.consentement) return { erreur: "Merci de cocher la case d'accord pour que nous puissions conserver votre candidature." };
   const db = createAdminClient();

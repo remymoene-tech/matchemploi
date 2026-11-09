@@ -62,7 +62,7 @@ const AUTRES = [
 /** Pages réservées à l'administrateur (accessibles depuis ⚙️). */
 const RESERVEES_ADMIN = ["ecoles", "reglages"];
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string; specialite?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -418,7 +418,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
         </nav>
       )}
 
-      {vue === "intervenants" && <VueIntervenants contacts={await listeContacts("intervenant")} personnes={await personnesEquipe()} q={sp.q} />}
+      {vue === "intervenants" && <VueIntervenants contacts={await listeContacts("intervenant")} personnes={await personnesEquipe()} q={sp.q} specialite={sp.specialite} />}
 
       {vue === "alumni" && (
         <VueAlumni contacts={await listeContacts("alumni")} candidats={tousCandidats} entreprises={(entreprises ?? []).map((e) => ({ id: e.id, nom: e.nom, statut: e.statut }))} promo={sp.apromo} aide={sp.aaide} />

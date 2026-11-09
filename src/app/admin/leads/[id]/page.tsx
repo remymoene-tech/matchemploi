@@ -116,7 +116,7 @@ export default async function FicheLead({ params, searchParams }: {
 
       {l && l.categorie && (
         <section className="flex flex-col gap-2 rounded-2xl border-2 p-4 text-sm" style={{ borderColor: "var(--sauge)" }}>
-          <p className="font-semibold">{l.categorie === "intervenant" ? `🧑‍🏫 Matière(s) : ${l.formation || "—"}` : `🎓 Diplôme : ${[l.formation, l.message].filter(Boolean).join(" · ") || "—"}`}</p>
+          <p className="font-semibold">{l.categorie === "intervenant" ? `🎯 Spécialité(s) : ${l.formation || "—"}` : `🎓 Diplôme : ${[l.formation, l.message].filter(Boolean).join(" · ") || "—"}`}</p>
           {l.categorie === "intervenant" && (l.entreprise || l.situation) && <p>💼 {[l.situation && SITUATIONS_INTERVENANT[l.situation], l.entreprise].filter(Boolean).join(" · ")}{l.recrute ? " · 🧑‍💼 recrute" : ""}{l.entreprise_id ? <> · <Link href={`/admin/entreprises/${l.entreprise_id}`} className="text-accent underline">fiche entreprise</Link></> : null}</p>}
           {l.categorie === "intervenant" && l.message && <p className="whitespace-pre-line">{l.message}</p>}
           <div className="flex flex-wrap gap-2">
@@ -176,7 +176,7 @@ export default async function FicheLead({ params, searchParams }: {
               <input type="hidden" name="statut" value={statutLead(l.statut).id} />
               <input type="hidden" name="origine" value={l.origine} />
               <label className="flex flex-col gap-1 text-sm">
-                <span className="font-semibold">{l.categorie === "intervenant" ? "🧑‍🏫 Matière(s) enseignée(s)" : "🎓 Diplôme obtenu"}</span>
+                <span className="font-semibold">{l.categorie === "intervenant" ? "🎯 Spécialité(s)" : "🎓 Diplôme obtenu"}</span>
                 <input className="input" name="formation" defaultValue={l.formation} />
               </label>
             </>
@@ -306,8 +306,8 @@ export default async function FicheLead({ params, searchParams }: {
               ))}
             </div>
             <label className="flex flex-col gap-1">
-              <span className="font-semibold">Matière(s) ou diplôme <span className="font-normal text-muted">(facultatif)</span></span>
-              <input className="input" name="formation" defaultValue={l.categorie ? l.formation : ""} placeholder="Ex. Droit commercial · ou EGC pour un alumni" />
+              <span className="font-semibold">Spécialité(s) ou diplôme <span className="font-normal text-muted">(facultatif)</span></span>
+              <input className="input" name="formation" defaultValue={l.categorie ? l.formation : ""} placeholder="Ex. Vente · Marketing · ou EGC pour un alumni" />
             </label>
             <button className="btn btn-primary w-fit">🔁 Requalifier</button>
           </form>
