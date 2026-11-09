@@ -1,7 +1,13 @@
+"use client";
+
+import { useState } from "react";
 import { QUESTIONS_ATTENTES, type Attentes, type CleAttente } from "@/lib/attentes";
 
 /** Questionnaire des attentes de l'entreprise (formulaire d'offre de l'équipe). */
 export function QuestionnaireAttentes({ a, ouvert, titre = "Les attentes de l'entreprise", sousTitre = "(facultatif, 2 minutes : MagnusMatch rapproche mieux l'offre de vos étudiants)" }: { a?: Attentes | null; ouvert?: boolean; titre?: string; sousTitre?: string }) {
+  // Les questions qui dépendent du type de poste n'apparaissent que si on le coche
+  const [types, setTypes] = useState<string[]>(a?.type_poste ?? []);
+  const avec = (t: string) => types.includes(t);
   const bloc = (cle: CleAttente, extra?: React.ReactNode) => {
     const q = QUESTIONS_ATTENTES[cle];
     const coches = a?.[cle] ?? [];
@@ -11,7 +17,8 @@ export function QuestionnaireAttentes({ a, ouvert, titre = "Les attentes de l'en
         <div className="flex flex-wrap gap-2">
           {q.options.map((o) => (
             <label key={o} className="flex cursor-pointer items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent-soft">
-              <input type={q.type === "choix" ? "radio" : "checkbox"} name={`att_${cle}`} value={o} defaultChecked={coches.includes(o)} className="accent-[var(--accent)]" />
+              <input type={q.type === "choix" ? "radio" : "checkbox"} name={`att_${cle}`} value={o} defaultChecked={coches.includes(o)} className="accent-[var(--accent)]"
+                onChange={cle === "type_poste" ? (ev) => setTypes((t) => (ev.target.checked ? [...t, o] : t.filter((x) => x !== o))) : undefined} />
               {o}
             </label>
           ))}
@@ -31,6 +38,23 @@ export function QuestionnaireAttentes({ a, ouvert, titre = "Les attentes de l'en
       </summary>
       <div className="mt-4 flex flex-col gap-6">
         <section className="flex flex-col gap-4">
+          <h3 className="eyebrow">Le poste proposé</h3>
+          {bloc("type_poste", <p className="hint">Coche un ou plusieurs types : les questions utiles apparaissent en dessous.</p>)}
+          {avec("Stage") && bloc("duree_stage")}
+          {avec("CDD") && bloc("duree_cdd")}
+          {avec("Job étudiant") && bloc("heures_job")}
+          {(avec("CDI") || avec("CDD") || avec("Alternance")) && bloc("temps_travail")}
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-semibold">Les missions du poste</span>
+            <textarea className="input min-h-24" name="att_missions_texte" defaultValue={a?.missions_texte ?? ""}
+              placeholder="Ex. Accueillir et conseiller les clients, préparer les commandes, mettre en rayon, tenir la caisse…" />
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-semibold">Rémunération <span className="font-normal text-muted">(facultatif)</span></span>
+            <input className="input max-w-md" name="att_remuneration" defaultValue={a?.remuneration ?? ""} placeholder="Ex. Selon la grille alternance, + tickets restaurant" />
+          </label>
+        </section>
+        <section className="flex flex-col gap-4">
           <h3 className="eyebrow">1 · Le profil</h3>
           {bloc("diplomes")}
           {bloc("experience")}
@@ -39,7 +63,7 @@ export function QuestionnaireAttentes({ a, ouvert, titre = "Les attentes de l'en
         </section>
         <section className="flex flex-col gap-4">
           <h3 className="eyebrow">2 · Le rythme</h3>
-          {bloc("rythmes", petit("rythme_autre", "Autre rythme…", a?.rythme_autre))}
+          {avec("Alternance") && bloc("rythmes", petit("rythme_autre", "Autre rythme…", a?.rythme_autre))}
           {bloc("demarrage", petit("date_debut", "Date précise, ex. 1er septembre", a?.date_debut))}
           {bloc("horaires")}
         </section>

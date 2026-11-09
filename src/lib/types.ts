@@ -115,6 +115,10 @@ export type Offre = {
   attentes?: import("@/lib/attentes").Attentes | null;
   /** Date d'expiration (offres de l'équipe) : fermée automatiquement ensuite. */
   expire_le?: string | null;
+  /** Fiche de poste structurée (rédigée par MagnusMatch). */
+  fiche?: import("@/lib/ia").FichePoste | null;
+  redigee_ia?: boolean;
+  entreprise_id?: string | null;
 };
 
 export type Correspondance = {

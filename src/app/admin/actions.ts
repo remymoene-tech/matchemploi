@@ -21,7 +21,7 @@ import { genererSynthese } from "@/lib/synthese";
 import { genererCvAmeliore } from "@/lib/cv-ameliore";
 import { ajouterEchange } from "@/lib/echanges";
 import { STATUTS_ENTREPRISE, lireEntreprise } from "@/lib/entreprises";
-import { entrepriseRecrute, lancerRechercheCandidats } from "@/lib/recherche-entreprise";
+import { entrepriseRecrute, lancerRechercheCandidats, preparerFicheDePoste } from "@/lib/recherche-entreprise";
 import { lireFormations } from "@/lib/formations";
 import { changerAdmission } from "@/lib/admission-serveur";
 import { majDiplome } from "@/lib/diplome-serveur";
@@ -79,6 +79,8 @@ export async function enregistrerOffre(f: FormData) {
   if (id) {
     const { data: avant } = await createAdminClient().from("offres").select("*").eq("id", id).maybeSingle();
     donnees.expire_le = lireExpiration(f, avant?.expire_le);
+    // Texte modifié à la main : la fiche imprimable reprend ce texte au lieu de la rédaction de MagnusMatch
+    if (avant?.fiche && (avant.description ?? "").trim() !== donnees.description.trim()) Object.assign(donnees, { fiche: null });
   } else donnees.expire_le = lireExpiration(f, null);
   if (estExpiree(donnees)) donnees.ouverte = false;
   if (!donnees.entreprise || !donnees.intitule) redirect(`/admin/offres/${id || "nouvelle"}?erreur=1`);
@@ -431,4 +433,14 @@ export async function changerStatutEntreprise(f: FormData) {
   // Elle recrute : MagnusMatch rédige la fiche de poste et cherche les candidats
   if (statut === "recrute" && avant?.statut !== "recrute") after(() => lancerRechercheCandidats(id).then(() => undefined));
   revalidatePath("/admin");
+}
+
+/** Bouton « Générer la fiche de poste » : MagnusMatch la rédige, puis on l'ouvre en version imprimable. */
+export async function genererFicheDePosteEntreprise(f: FormData) {
+  await exigerAdmin();
+  const id = t(f, "id", 60);
+  const o = await preparerFicheDePoste(id, f.get("forcer") === "1");
+  if (!o) redirect(`/admin/entreprises/${id}?onglet=offres&erreur=fiche`);
+  after(() => noterOffrePourTous(o.id));
+  redirect(`/admin/offres/${o.id}/fiche`);
 }

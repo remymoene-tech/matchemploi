@@ -508,26 +508,39 @@ ${profil}`,
 
 // ---------- Fiche de poste rédigée automatiquement pour une entreprise qui recrute ----------
 const FichePosteSchema = z.object({
-  intitule: z.string().describe("Intitulé clair du poste, ex. « Assistant(e) commercial(e) en alternance »"),
+  intitule: z.string().describe("Intitulé clair et professionnel du poste, ex. « Assistant(e) commercial(e) en alternance »"),
   contrat: z.enum(["alternance", "cdi", "cdd", "interim", "stage", "job_etudiant", ""]),
-  missions: z.array(z.string()).describe("4 à 6 missions concrètes, phrases courtes"),
-  profil: z.array(z.string()).describe("3 à 5 éléments du profil recherché"),
-  infos: z.array(z.string()).describe("Infos pratiques connues : rythme, date de début, horaires, lieu ; « [à confirmer] » si inconnu"),
+  accroche: z.string().describe("2 à 3 phrases qui présentent l'entreprise et le poste, ton professionnel et chaleureux"),
+  missions: z.array(z.string()).describe("5 à 7 missions concrètes, commençant par un verbe d'action"),
+  profil: z.array(z.string()).describe("3 à 5 éléments : formation, expérience, compétences recherchées"),
+  savoir_etre: z.array(z.string()).describe("3 à 4 qualités humaines recherchées"),
+  conditions: z.array(z.object({ libelle: z.string(), valeur: z.string() })).describe("Type de contrat, durée, rythme, temps de travail, horaires, lieu, démarrage, rémunération ; valeur « À confirmer » si inconnue"),
+  avantages: z.array(z.string()).describe("Ce que l'entreprise apporte (formation, ambiance, perspectives…) ; vide si inconnu"),
 });
+export type FichePoste = z.infer<typeof FichePosteSchema>;
 
 export async function redigerFicheDePoste(e: { nom: string; secteur: string; ville: string; notes: string; attentes?: unknown }, dits: string) {
   const r = await demander(
     FichePosteSchema,
-    `Rédige une fiche de poste courte et concrète pour cette entreprise qui recrute, à partir des seules informations ci-dessous.
-N'invente aucun fait : si une information manque (salaire, horaires, date…), écris « [à confirmer] ». Pas de formule creuse.
+    `Tu es chargé de recrutement. Rédige une fiche de poste professionnelle, claire et attractive pour cette entreprise qui recrute, à partir des seules informations ci-dessous.
+N'invente aucun fait (salaire, horaires, avantages, chiffres) : si une information manque, mets « À confirmer ». Pas de formule creuse ni de superlatifs vides.
+Écris en français, au masculin et féminin (ex. « Assistant(e) »).
 
 Entreprise : ${e.nom}${e.secteur ? ` (${e.secteur})` : ""}${e.ville ? `, ${e.ville}` : ""}
 Notes de l'école : ${e.notes || "aucune"}
 ${attentesTexte(e.attentes as Parameters<typeof attentesTexte>[0]) || "Fiche besoin non remplie."}
 Ce que l'entreprise a dit aux étudiants :
 ${dits || "rien"}`,
-    "low",
+    "medium",
   );
-  const description = `Missions :\n${r.missions.map((x) => `- ${x}`).join("\n")}\n\nProfil recherché :\n${r.profil.map((x) => `- ${x}`).join("\n")}\n\nInfos pratiques :\n${r.infos.map((x) => `- ${x}`).join("\n")}`;
-  return { intitule: r.intitule, contrat: r.contrat, description };
+  const liste = (titre: string, l: string[]) => (l.length ? `${titre} :\n${l.map((x) => `- ${x}`).join("\n")}` : "");
+  const description = [
+    r.accroche,
+    liste("Missions", r.missions),
+    liste("Profil recherché", r.profil),
+    liste("Savoir-être", r.savoir_etre),
+    liste("Conditions", r.conditions.map((c) => `${c.libelle} : ${c.valeur}`)),
+    liste("Ce que nous offrons", r.avantages),
+  ].filter(Boolean).join("\n\n");
+  return { fiche: r, intitule: r.intitule, contrat: r.contrat, description };
 }

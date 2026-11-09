@@ -372,3 +372,7 @@ alter table public.entreprises add column if not exists besoin_rempli_le timesta
 -- Préférences des étudiants (questions communes) et fiches de poste rédigées automatiquement
 alter table public.candidats add column if not exists preferences jsonb;
 alter table public.offres add column if not exists redigee_ia boolean not null default false;
+
+-- Fiche de poste structurée et logo de l'entreprise
+alter table public.offres add column if not exists fiche jsonb;
+alter table public.entreprises add column if not exists logo_url text;

@@ -1,5 +1,10 @@
 /** Questionnaire « Les attentes de l'entreprise », en plus de la fiche de poste. Facultatif, interne à l'équipe. */
 export const QUESTIONS_ATTENTES = {
+  type_poste: { label: "Type de poste", type: "cases", options: ["Alternance", "Stage", "CDI", "CDD", "Job étudiant"] },
+  duree_stage: { label: "Durée du stage", type: "choix", options: ["Moins de 2 mois", "2 mois", "3 mois", "4 à 6 mois"] },
+  duree_cdd: { label: "Durée du CDD", type: "choix", options: ["Moins de 3 mois", "3 à 6 mois", "6 à 12 mois", "Plus d'un an"] },
+  heures_job: { label: "Heures par semaine (job étudiant)", type: "choix", options: ["Moins de 10 h", "10 à 15 h", "15 à 20 h", "Plus de 20 h"] },
+  temps_travail: { label: "Temps de travail", type: "choix", options: ["35 h", "39 h", "Temps partiel", "Autre"] },
   diplomes: { label: "Niveau de diplôme préparé", type: "cases", options: ["CAP", "Bac", "BTS", "Bachelor", "Master"] },
   experience: { label: "Expérience", type: "choix", options: ["Aucune, on forme", "Un petit job suffit", "Indispensable"] },
   permis: { label: "Permis", type: "choix", options: ["Pas utile", "Souhaité", "Obligatoire", "Obligatoire avec véhicule"] },
@@ -64,6 +69,7 @@ const MANAGEMENT_ORDRE = ["diriger", "entrainer", "epauler", "deleguer"];
 export type CleAttente = keyof typeof QUESTIONS_ATTENTES;
 export type Attentes = Partial<Record<CleAttente, string[]>> & {
   langue_autre?: string; rythme_autre?: string; date_debut?: string; redhibitoire?: string; apporte?: string;
+  missions_texte?: string; remuneration?: string;
 };
 
 /** Couleur DISC correspondant à chaque personnalité (même ordre que les options). */
@@ -79,8 +85,8 @@ export function lireAttentes(f: FormData): Attentes | null {
     if ("max" in q) v = v.slice(0, q.max);
     if (v.length) a[cle] = q.type === "choix" ? v.slice(0, 1) : v;
   }
-  for (const k of ["langue_autre", "rythme_autre", "date_debut", "redhibitoire", "apporte"] as const) {
-    const v = txt(f, `att_${k}`);
+  for (const k of ["langue_autre", "rythme_autre", "date_debut", "redhibitoire", "apporte", "missions_texte", "remuneration"] as const) {
+    const v = txt(f, `att_${k}`, k === "missions_texte" ? 2000 : 400);
     if (v) a[k] = v;
   }
   return Object.keys(a).length ? a : null;
@@ -96,6 +102,9 @@ export function attentesTexte(a?: Attentes | null): string {
   const disc = (a.personnalite ?? []).map((p) => DISC_PERSONNALITE[(QUESTIONS_ATTENTES.personnalite.options as readonly string[]).indexOf(p)]).filter(Boolean);
   return [
     "ATTENTES DE L'ENTREPRISE (questionnaire rempli avec l'équipe) :",
+    l("type_poste"), l("duree_stage"), l("duree_cdd"), l("heures_job"), l("temps_travail"),
+    a.missions_texte ? `- Missions du poste : ${a.missions_texte}` : "",
+    a.remuneration ? `- Rémunération : ${a.remuneration}` : "",
     l("diplomes"), l("experience"), l("permis"), l("langues", a.langue_autre), l("rythmes", a.rythme_autre),
     l("demarrage", a.date_debut), l("horaires"),
     l("personnalite") + (disc.length ? ` (DISC : ${disc.join(", ")})` : ""),
