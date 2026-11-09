@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { jourParis } from "@/lib/planning";
 import { nomPersonne, personnesEquipe } from "@/lib/equipe";
-import { Barres } from "@/components/Graphiques";
+import { Colonnes } from "@/components/Graphiques";
 
 type Periode = "jour" | "semaine" | "mois";
 
@@ -117,7 +117,7 @@ export async function ActiviteEquipe({ periode: p, date, historique, leads }: {
             <div key={t.id} className="flex flex-col gap-3 rounded-xl border border-line p-4">
               <p className="flex items-baseline justify-between gap-2"><span className="font-semibold">{t.titre}</span><span className="font-mono text-xl font-bold tabular-nums">{total}</span></p>
               {lignes.length
-                ? <Barres resume={`${t.titre} par personne`} donnees={lignes.map(([email, v]) => ({ label: nom(email), valeur: v }))} />
+                ? <Colonnes resume={`${t.titre} par personne`} donnees={lignes.map(([email, v]) => ({ label: nom(email), valeur: v }))} />
                 : <p className="text-sm text-muted">{t.vide} sur cette période.</p>}
             </div>
           );
@@ -125,7 +125,7 @@ export async function ActiviteEquipe({ periode: p, date, historique, leads }: {
         <div className="flex flex-col gap-3 rounded-xl border border-line p-4">
           <p className="flex items-baseline justify-between gap-2"><span className="font-semibold">🧲 Leads suivis</span><span className="font-mono text-xl font-bold tabular-nums">{lignesLeads.reduce((s, [, v]) => s + v.total, 0)}</span></p>
           {lignesLeads.length
-            ? <Barres resume="Leads suivis par personne" donnees={lignesLeads.map(([email, v]) => ({ label: nom(email), valeur: v.total, detail: `${nom(email)} : ${v.total} lead${v.total > 1 ? "s" : ""}, dont ${v.enCours} en cours`, href: `/admin?vue=leads&lsuivi=${encodeURIComponent(email)}` }))} />
+            ? <Colonnes resume="Leads suivis par personne" donnees={lignesLeads.map(([email, v]) => ({ label: nom(email), valeur: v.total, detail: `${nom(email)} : ${v.total} lead${v.total > 1 ? "s" : ""}, dont ${v.enCours} en cours`, href: `/admin?vue=leads&lsuivi=${encodeURIComponent(email)}` }))} />
             : <p className="text-sm text-muted">Aucun lead attribué pour le moment.</p>}
           <p className="text-xs text-muted">Tous les leads attribués, toutes périodes.</p>
         </div>
