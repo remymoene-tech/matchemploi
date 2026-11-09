@@ -6,7 +6,6 @@ import { jourParis } from "@/lib/planning";
 
 export const revalidate = 300;
 
-const SITE = "https://www.campus-magnus.fr";
 const ORIGINE = "Site MagnusMatch";
 const brochure = (formation?: string) =>
   `/brochure?${new URLSearchParams({ origine: ORIGINE, ...(formation ? { formation } : {}) })}`;
@@ -160,11 +159,8 @@ export default async function Accueil() {
               ))}
             </ul>
           ) : (
-            <p className="text-[#c9ccc4]">Les prochaines journées portes ouvertes sont annoncées sur le site du Campus.</p>
+            <p className="text-[#c9ccc4]">Les prochaines journées portes ouvertes arrivent bientôt : demande ta brochure pour être tenu(e) au courant.</p>
           )}
-          <a href={`${SITE}/journees-portes-ouvertes`} target="_blank" rel="noopener" className="mt-auto text-sm font-semibold text-[#c3cdb8] underline-offset-4 hover:underline">
-            Toutes les portes ouvertes ↗
-          </a>
         </div>
         <div className="flex flex-col gap-4 bg-surface p-8">
           <span className="eyebrow">Une fois admis(e)</span>
@@ -221,7 +217,6 @@ export default async function Accueil() {
           <a href="tel:0490990808" className="text-muted hover:text-ink">04 90 99 08 08</a>
           <a href="mailto:egc@arles.cci.fr" className="text-muted hover:text-ink">egc@arles.cci.fr (EGC)</a>
           <a href="mailto:cfa@arles.cci.fr" className="text-muted hover:text-ink">cfa@arles.cci.fr (GUC, AMLHR)</a>
-          <a href={SITE} target="_blank" rel="noopener" className="font-semibold text-accent">campus-magnus.fr ↗</a>
         </div>
       </section>
     </div>
