@@ -65,8 +65,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 </>
               ) : (
                 <>
-                  <Link className="btn btn-ghost btn-sm" href="/connexion">Se connecter</Link>
-                  <Link className="btn btn-primary btn-sm" href="/inscription">Créer mon espace</Link>
+                  <Link className="btn btn-primary btn-sm" href="/connexion">Se connecter</Link>
                 </>
               )}
             </nav>

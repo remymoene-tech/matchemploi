@@ -176,8 +176,8 @@ export default async function Accueil() {
           </ul>
           <div className="min-w-0"><Carrousel diapos={DIAPOS} /></div>
           <p className="text-sm text-muted">
-            Tu as reçu ton lien d&apos;admission ? <Link href="/inscription" className="font-semibold text-accent">Crée ton espace</Link> ou{" "}
-            <Link href="/connexion" className="font-semibold text-accent">connecte-toi</Link>.
+            🔒 Ton espace MagnusMatch s&apos;ouvre <b className="text-ink">quand tu es admis(e)</b> : tu reçois alors un email avec ton lien personnel pour le créer.
+            Déjà inscrit(e) ? <Link href="/connexion" className="font-semibold text-accent">Connecte-toi</Link>.
           </p>
         </div>
       </section>
