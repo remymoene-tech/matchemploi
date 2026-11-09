@@ -34,7 +34,7 @@ export function Colonnes({ donnees, resume }: { donnees: Point[]; resume: string
 }
 
 /** Barres horizontales (comparer des catégories). */
-export function Barres({ donnees, resume }: { donnees: Point[]; resume: string }) {
+export function Barres({ donnees, resume, total }: { donnees: Point[]; resume: string; /** Affiche aussi le % de ce total */ total?: number }) {
   const max = Math.max(1, ...donnees.map((d) => d.valeur));
   return (
     <figure className="flex flex-col gap-2.5" role="img" aria-label={resume}>
@@ -42,7 +42,7 @@ export function Barres({ donnees, resume }: { donnees: Point[]; resume: string }
         const Conteneur = d.href ? Link : "div";
         return (
         <Conteneur key={d.label} href={d.href ?? ""} className={`group flex flex-col gap-1 rounded-lg text-sm ${d.href ? "-mx-2 px-2 py-1 hover:bg-bg" : ""}`} title={d.detail ?? `${d.label} : ${d.valeur}`}>
-          <div className="flex justify-between gap-2"><span>{d.label}{d.href ? <span className="ml-1 text-muted opacity-0 group-hover:opacity-100">→</span> : null}</span><b className="tabular-nums">{d.valeur}</b></div>
+          <div className="flex justify-between gap-2"><span>{d.label}{d.href ? <span className="ml-1 text-muted opacity-0 group-hover:opacity-100">→</span> : null}</span><span className="whitespace-nowrap"><b className="tabular-nums">{d.valeur}</b>{total ? <span className="ml-1.5 tabular-nums text-muted">· {Math.round((d.valeur / total) * 100)} %</span> : null}</span></div>
           <div className="h-2.5 overflow-hidden rounded-full bg-bg">
             <div className="h-full rounded-full bg-[var(--accent)] opacity-90 transition-opacity group-hover:opacity-100" style={{ width: `${(d.valeur / max) * 100}%` }} />
           </div>

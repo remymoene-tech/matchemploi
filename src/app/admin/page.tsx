@@ -19,7 +19,7 @@ import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
 import { BROCHURES_PAR_DEFAUT, anneeLabel, lireFormations } from "@/lib/formations";
-import { ORIGINES_LEAD, STATUTS_LEAD, estLeadAdmis, listeLeads, nomLead, type EchangeLead } from "@/lib/leads";
+import { ORIGINES_LEAD, STATUTS_LEAD, estLeadAdmis, listeLeads, nomLead, statutLead, type EchangeLead } from "@/lib/leads";
 import { StatsRecrutement } from "@/components/StatsRecrutement";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe } from "@/lib/entreprises";
 import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
@@ -279,7 +279,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               {entreprises === null ? (
                 <p className="text-sm text-muted">Exécute la mise à jour SQL de la page /diagnostic pour activer « Mes entreprises ».</p>
               ) : (
-                <Barres resume="Entreprises avec une offre, et rencontrées sans offre" donnees={[
+                <Barres resume="Entreprises avec une offre, et rencontrées sans offre" total={nbEntreprises} donnees={[
                   { label: "💼 Avec une offre", valeur: avecOffre.length, href: "/admin?vue=entreprises&offre=avec" },
                   { label: "🤝 Rencontrées, sans offre", valeur: nbEntreprises - avecOffre.length, href: "/admin?vue=entreprises&offre=sans" },
                   { label: "⭐ Partenaires", valeur: (entreprises ?? []).filter((e) => e.statut === "partenaire").length, href: "/admin?vue=entreprises&statut=partenaire" },
@@ -296,7 +296,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               {leads === null ? (
                 <p className="text-sm text-muted">Exécute la mise à jour SQL de la page /diagnostic pour activer les leads.</p>
               ) : (
-                <Barres resume="Leads par étape" donnees={STATUTS_LEAD.map((x) => ({ label: x.label, valeur: leads.filter((l) => l.statut === x.id).length, href: `/admin?vue=leads&lstatut=${x.id}` }))} />
+                <Barres resume="Leads par étape" total={nbLeads} donnees={STATUTS_LEAD.map((x) => ({ label: x.label, valeur: leads.filter((l) => statutLead(l.statut).id === x.id).length, href: `/admin?vue=leads&lstatut=${x.id}` }))} />
               )}
             </section>
 
@@ -305,7 +305,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 <h2 className="text-lg font-semibold">🤝 Suivi des mises en relation</h2>
                 <Link href="/admin?vue=entreprises&sous=candidats#a-traiter" className="text-sm font-semibold text-accent">Détail →</Link>
               </div>
-              <Barres donnees={pipeline} resume="Nombre de mises en relation à chaque étape" />
+              <Barres donnees={pipeline} resume="Nombre de mises en relation à chaque étape" total={pipeline.reduce((t, x) => t + x.valeur, 0)} />
             </section>
 
             <section className="card flex flex-col gap-3 p-5">
