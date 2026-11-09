@@ -32,7 +32,7 @@ import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { attribuerLeadAction, creerEvenement, supprimerEvenement, basculerAccueilEvenement, validerAnnonceAlumni, refuserAnnonceAlumni, changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { attribuerLeadAction, attribuerLeadsGroupe, creerEvenement, supprimerEvenement, basculerAccueilEvenement, validerAnnonceAlumni, refuserAnnonceAlumni, changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -59,7 +59,7 @@ const AUTRES = [
 /** Pages réservées à l'administrateur (accessibles depuis ⚙️). */
 const RESERVEES_ADMIN = ["ecoles", "reglages"];
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -507,11 +507,27 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             <Link href="/admin/leads/nouveau" className="btn btn-primary">➕ Ajouter un lead</Link>
           </div>
 
+          {sp.attribution && <p className={`rounded-xl p-3 text-sm ${sp.attribution === "vide" ? "bg-warn-soft" : "bg-good-soft text-good"}`}>{sp.attribution === "vide" ? "Coche au moins un lead et choisis une personne." : `✅ ${sp.attribution} lead${Number(sp.attribution) > 1 ? "s" : ""} attribué${Number(sp.attribution) > 1 ? "s" : ""}. La personne est prévenue.`}</p>}
+          {superAdmin && !!leadsAffiches.length && (
+            <form id="attribution-groupee" action={attribuerLeadsGroupe} className="flex flex-wrap items-center gap-2 rounded-xl border-2 border-dashed border-line p-3 text-sm">
+              <input type="hidden" name="retour" value={`/admin?vue=leads${sp.lsuivi ? `&lsuivi=${sp.lsuivi}` : ""}`} />
+              <span className="font-semibold">👥 Répartir :</span>
+              <span className="text-muted">coche des leads dans le tableau, puis attribue-les à</span>
+              <select name="attribue_a" className="input w-auto py-1.5" defaultValue="" required>
+                <option value="" disabled>Choisir une personne…</option>
+                {personnes.map((p) => <option key={p.email} value={p.email}>{nomPersonne(p)}{p.poste ? ` · ${p.poste}` : ""}</option>)}
+              </select>
+              <button className="btn btn-sm btn-primary">Attribuer les leads cochés</button>
+              {libres > 0 && sp.lsuivi !== "libre" && <Link href="/admin?vue=leads&lsuivi=libre" className="text-accent underline">Voir les {libres} non attribués</Link>}
+            </form>
+          )}
+
           {!!leadsAffiches.length && (
             <div className="overflow-x-auto rounded-xl border border-line bg-surface">
               <table className="w-full min-w-[1100px] text-left text-sm">
                 <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
                   <tr>
+                    {superAdmin && <th className="w-8 p-3"><span className="sr-only">Sélection</span></th>}
                     <th className="p-3 font-semibold">Contact</th>
                     <th className="p-3 font-semibold">Où on en est</th>
                     <th className="p-3 font-semibold">Formation visée</th>
@@ -526,6 +542,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 <tbody>
                   {leadsAffiches.map((l) => (
                     <tr key={l.id} className="border-b border-line align-top last:border-0 hover:bg-bg">
+                      {superAdmin && <td className="p-3"><input type="checkbox" name="ids" value={l.id} form="attribution-groupee" className="h-4 w-4" defaultChecked={!l.attribue_a && sp.lsuivi === "libre"} aria-label={`Sélectionner ${nomLead(l)}`} /></td>}
                       <td className="p-3">
                         <Link href={`/admin/leads/${l.id}`} className="font-semibold hover:text-accent hover:underline">🧲 {nomLead(l)}</Link>
                         <div className="text-xs text-muted">{[l.email, l.telephone].filter(Boolean).join(" · ")}</div>
@@ -545,7 +562,13 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                       <td className="p-3">{l.formation || "—"}</td>
                       <td className="p-3">{l.annee_rentree ?? "—"}</td>
                       <td className="p-3">
-                        {l.attribue_a
+                        {superAdmin ? (
+                          <form action={attribuerLeadAction}>
+                            <input type="hidden" name="lead_id" value={l.id} /><input type="hidden" name="retour" value="/admin?vue=leads" />
+                            <SelectEnregistrer name="attribue_a" label={`Suivi de ${nomLead(l)}`} defaultValue={l.attribue_a ?? ""}
+                              options={[{ id: "", label: "🔴 Personne" }, ...personnes.map((p) => ({ id: p.email, label: `👤 ${nomPersonne(p)}` }))]} />
+                          </form>
+                        ) : l.attribue_a
                           ? <span className="chip whitespace-nowrap">👤 {l.attribue_a === (moi.user.email ?? "").toLowerCase() ? "Moi" : nomPersonne(personnes.find((p) => p.email === l.attribue_a), l.attribue_a)}</span>
                           : (
                             <form action={attribuerLeadAction}>

@@ -799,3 +799,15 @@ async function prendreSiLibre(leadId: string, email: string | undefined) {
   const { data } = await createAdminClient().from("leads").select("attribue_a").eq("id", leadId).maybeSingle();
   if (data && !data.attribue_a) await attribuerLead(leadId, email, email).catch(() => false);
 }
+
+/** Administrateur : attribue d'un coup les leads cochés à une personne de l'équipe. */
+export async function attribuerLeadsGroupe(f: FormData) {
+  const { user } = await exigerSuperAdmin();
+  const { attribuerLead } = await import("@/lib/leads");
+  const email = t(f, "attribue_a", 200);
+  const ids = f.getAll("ids").map(String).filter((x) => /^[\w-]{1,60}$/.test(x));
+  if (!email || !ids.length) redirect(`${t(f, "retour", 200) || "/admin?vue=leads"}&attribution=vide`);
+  for (const id of ids) await attribuerLead(id, email, user.email ?? "");
+  revalidatePath("/admin");
+  redirect(`${t(f, "retour", 200) || "/admin?vue=leads"}&attribution=${ids.length}`);
+}

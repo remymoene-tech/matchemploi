@@ -26,7 +26,7 @@ export function SelectEnregistrer({ name, defaultValue, options, label, motif, d
   return (
     <span className="flex flex-col gap-1.5">
       <span className="flex items-center gap-2">
-        <select aria-label={label} name={name} value={valeur} onChange={(e) => setValeur(e.target.value)} className="input py-1.5 text-sm">
+        <select aria-label={label} name={name} value={valeur} onChange={(e) => setValeur(e.target.value)} className="input min-w-[10rem] py-1.5 text-sm">
           {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
         <Bouton modifie={valeur !== defaultValue} />
