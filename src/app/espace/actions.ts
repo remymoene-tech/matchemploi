@@ -123,6 +123,8 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
   if (!ok) return { erreur: `L'enregistrement a échoué. Réessaie dans un instant, et si ça continue, envoie ce message à ton conseiller : ${detail ?? "erreur inconnue"}` };
 
   after(() => rechercherPourCandidat(user.id));
+  // Un lead avec le même email : sa fiche est reliée à l'espace étudiant
+  after(async () => { try { await createAdminClient().from("leads").update({ candidat_id: user.id }).eq("email", (user.email ?? "").toLowerCase()).is("candidat_id", null); } catch { /* table pas encore créée */ } });
   // Nouveau CV analysé : on montre d'abord les conseils
   redirect(nouveauCV ? "/espace/cv?nouveau=1" : "/espace");
 }

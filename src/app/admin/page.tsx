@@ -12,17 +12,20 @@ import { MessageEnvoyable } from "@/components/MessageEnvoyable";
 import { ListeRelances } from "@/components/ListeRelances";
 import { Barres, Colonnes } from "@/components/Graphiques";
 import { OngletsCartes } from "@/components/OngletsCartes";
+import { Copier } from "@/components/Copier";
+import { FormBrochure } from "@/components/FormBrochure";
 import { ADMISSIONS, admission } from "@/lib/admission";
 import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
 import { anneeLabel, lireFormations } from "@/lib/formations";
+import { ORIGINES_LEAD, STATUTS_LEAD, listeLeads, nomLead } from "@/lib/leads";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe } from "@/lib/entreprises";
 import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { changerStatutLead, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -31,6 +34,7 @@ export const maxDuration = 300;
 
 const VUES = [
   { id: "accueil", label: "Accueil" },
+  { id: "leads", label: "Leads" },
   { id: "entreprises", label: "Mes entreprises" },
   { id: "candidats", label: "Mes candidats" },
 ] as const;
@@ -43,7 +47,7 @@ const AUTRES = [
   { id: "reglages", label: "⚙️ Réglages" },
 ] as const;
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -141,6 +145,21 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       : !!decouvreurs.get(e.id)?.some((d) => d.recrute === "oui"))));
   const filtresEntActifs = !!(q || fStatut || fOffre || fOrigine || fTrouvee);
 
+  // 🧲 Leads (CRM)
+  const leads = vue === "leads" || vue === "accueil" ? await listeLeads() : [];
+  const nbLeads = leads?.length ?? 0;
+  const nouveauxLeads = (leads ?? []).filter((l) => l.statut === "nouveau").length;
+  const ql = (sp.q ?? "").trim().toLowerCase();
+  const leadsAffiches = (leads ?? []).filter((l) =>
+    (!ql || [l.prenom, l.nom, l.email, l.telephone, l.notes].some((x) => (x ?? "").toLowerCase().includes(ql)))
+    && (!sp.lstatut || l.statut === sp.lstatut)
+    && (!sp.lformation || l.formation === sp.lformation)
+    && (!sp.lannee || String(l.annee_rentree ?? "") === sp.lannee)
+    && (!sp.lorigine || l.origine === sp.lorigine));
+  const filtresLeadsActifs = !!(ql || sp.lstatut || sp.lformation || sp.lannee || sp.lorigine);
+  const lienBrochure = `${site || "https://magnusmatch.vercel.app"}/brochure`;
+  const formationsToutes = [...new Set(ecoles.flatMap((e) => lireFormations(e.formations).map((f) => f.nom)))];
+
   const pipeline = SUIVIS.map((x) => ({ label: x.label, valeur: equipe.filter((m) => m.suivi === x.id).length, href: `/admin?vue=entreprises&sous=candidats&suivi=${x.id}#a-traiter` }));
   const [mesRelances, { data: placesData }] = vue === "accueil"
     ? await Promise.all([
@@ -204,6 +223,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       <div className="flex flex-col gap-2">
         <OngletsCartes label="Espace équipe" onglets={[
           { href: "/admin", icone: "🏠", label: "Accueil", sous: "Mes chiffres", actif: vue === "accueil" },
+          { href: "/admin?vue=leads", icone: "🧲", label: "Leads", sous: leads === null ? "à activer" : nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""}` : `${nbLeads} contact${nbLeads > 1 ? "s" : ""}`, actif: vue === "leads" },
           { href: "/admin?vue=entreprises", icone: "🏢", label: "Mes entreprises", sous: entreprises ? `${nbEntreprises} rencontrée${nbEntreprises > 1 ? "s" : ""}` : `${mesOffresOuvertes} offre${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "entreprises" },
           { href: "/admin?vue=candidats", icone: "👥", label: "Mes candidats", sous: `${C.size} inscrit${C.size > 1 ? "s" : ""}`, actif: vue === "candidats" },
         ]} />
@@ -255,6 +275,18 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                   { label: "⭐ Partenaires", valeur: (entreprises ?? []).filter((e) => e.statut === "partenaire").length, href: "/admin?vue=entreprises&statut=partenaire" },
                   { label: "🎓 Trouvées par les étudiants", valeur: (entreprises ?? []).filter((e) => decouvreurs.get(e.id)?.length).length, href: "/admin?vue=entreprises&trouvee=etudiant" },
                 ]} />
+              )}
+            </section>
+
+            <section className="card flex flex-col gap-4 p-5">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">🧲 Mes leads{leads ? ` (${nbLeads})` : ""}</h2>
+                <Link href="/admin?vue=leads" className="text-sm font-semibold text-accent">Détail →</Link>
+              </div>
+              {leads === null ? (
+                <p className="text-sm text-muted">Exécute la mise à jour SQL de la page /diagnostic pour activer les leads.</p>
+              ) : (
+                <Barres resume="Leads par étape" donnees={STATUTS_LEAD.map((x) => ({ label: x.label, valeur: leads.filter((l) => l.statut === x.id).length, href: `/admin?vue=leads&lstatut=${x.id}` }))} />
               )}
             </section>
 
@@ -313,6 +345,127 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               </ul>
             </section>
           </div>
+        </div>
+      )}
+
+      {vue === "leads" && (
+        <div className="flex flex-col gap-3">
+          {leads === null && <p className="rounded-xl bg-warn-soft p-4 text-sm">Les leads ne sont pas encore activés : exécute la mise à jour SQL affichée sur la page /diagnostic.</p>}
+          <section className="card flex flex-col gap-2 p-4">
+            <b>🔗 Lien du formulaire « Recevoir la brochure »</b>
+            <p className="text-sm text-muted">À donner à la personne qui gère campus-magnus.fr pour le bouton « Brochure ». Utilisable aussi dans tes posts, emails ou en QR code au salon.</p>
+            <div className="flex flex-wrap items-center gap-2">
+              <code className="break-all rounded-lg bg-bg px-3 py-2 font-mono text-xs">{lienBrochure}</code>
+              <Copier texte={lienBrochure} />
+              <a href="/brochure" target="_blank" className="btn btn-sm">👁️ Voir le formulaire</a>
+            </div>
+            {!!formationsToutes.length && (
+              <details className="text-sm">
+                <summary className="cursor-pointer text-accent">Liens par formation (le diplôme est déjà coché)</summary>
+                <ul className="mt-2 flex flex-col gap-1">
+                  {formationsToutes.map((f) => {
+                    const lien = `${lienBrochure}?formation=${encodeURIComponent(f)}`;
+                    return <li key={f} className="flex flex-wrap items-center gap-2"><b className="w-20">{f}</b><code className="break-all font-mono text-xs">{lien}</code><Copier texte={lien} /></li>;
+                  })}
+                </ul>
+              </details>
+            )}
+          </section>
+
+          <form method="get" action="/admin" className="card flex flex-wrap items-end gap-3 p-4">
+            <input type="hidden" name="vue" value="leads" />
+            <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm">
+              <span className="font-semibold">🔎 Rechercher</span>
+              <input className="input" name="q" defaultValue={sp.q ?? ""} placeholder="Nom, email, téléphone…" />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">Où on en est</span>
+              <select className="input" name="lstatut" defaultValue={sp.lstatut ?? ""}>
+                <option value="">Tous</option>
+                {STATUTS_LEAD.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">🎓 Formation</span>
+              <select className="input" name="lformation" defaultValue={sp.lformation ?? ""}>
+                <option value="">Toutes</option>
+                {formationsToutes.map((f) => <option key={f}>{f}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">📅 Rentrée</span>
+              <select className="input" name="lannee" defaultValue={sp.lannee ?? ""}>
+                <option value="">Toutes</option>
+                {[...new Set((leads ?? []).map((l) => l.annee_rentree).filter(Boolean))].sort().map((a) => <option key={a} value={String(a)}>{a}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">📍 Origine</span>
+              <select className="input" name="lorigine" defaultValue={sp.lorigine ?? ""}>
+                <option value="">Toutes</option>
+                {ORIGINES_LEAD.map((o) => <option key={o}>{o}</option>)}
+              </select>
+            </label>
+            <div className="flex gap-2">
+              <button className="btn btn-primary">Filtrer</button>
+              {filtresLeadsActifs && <Link href="/admin?vue=leads" className="btn btn-ghost">Effacer</Link>}
+            </div>
+          </form>
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted"><b className="text-ink">{leadsAffiches.length}</b> lead{leadsAffiches.length > 1 ? "s" : ""}{filtresLeadsActifs ? ` sur ${nbLeads}` : ", les plus récents en premier"}</p>
+            <Link href="/admin/leads/nouveau" className="btn btn-primary">➕ Ajouter un lead</Link>
+          </div>
+
+          {!!leadsAffiches.length && (
+            <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+              <table className="w-full min-w-[1000px] text-left text-sm">
+                <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
+                  <tr>
+                    <th className="p-3 font-semibold">Contact</th>
+                    <th className="p-3 font-semibold">Où on en est</th>
+                    <th className="p-3 font-semibold">Formation visée</th>
+                    <th className="p-3 font-semibold">Rentrée</th>
+                    <th className="p-3 font-semibold">Origine</th>
+                    <th className="p-3 font-semibold">Brochure</th>
+                    <th className="p-3 font-semibold">Reçu le</th>
+                    <th className="p-3" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {leadsAffiches.map((l) => (
+                    <tr key={l.id} className="border-b border-line align-top last:border-0 hover:bg-bg">
+                      <td className="p-3">
+                        <Link href={`/admin/leads/${l.id}`} className="font-semibold hover:text-accent hover:underline">🧲 {nomLead(l)}</Link>
+                        <div className="text-xs text-muted">{[l.email, l.telephone].filter(Boolean).join(" · ")}</div>
+                        {l.candidat_id && <span className="chip chip-plus mt-1">🎓 Espace étudiant créé</span>}
+                      </td>
+                      <td className="p-3">
+                        <form action={changerStatutLead}>
+                          <input type="hidden" name="id" value={l.id} />
+                          <SelectAuto name="statut" label={`Statut de ${nomLead(l)}`} defaultValue={l.statut} options={STATUTS_LEAD} />
+                        </form>
+                      </td>
+                      <td className="p-3">{l.formation || "—"}</td>
+                      <td className="p-3">{l.annee_rentree ?? "—"}</td>
+                      <td className="p-3 text-xs text-muted">{l.origine}</td>
+                      <td className="p-3">{l.brochure_envoyee_le ? <span className="chip chip-plus whitespace-nowrap">📬 Envoyée</span> : <span className="chip whitespace-nowrap">—</span>}</td>
+                      <td className="p-3 text-muted">{new Date(l.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" })}</td>
+                      <td className="p-3 text-right">
+                        <span className="flex justify-end gap-2">
+                          <Link href={`/admin/leads/${l.id}?onglet=echanges`} className="btn btn-sm whitespace-nowrap">💬 Échanges</Link>
+                          <Link href={`/admin/leads/${l.id}`} className="btn btn-sm btn-primary whitespace-nowrap">Fiche →</Link>
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {leads && !leadsAffiches.length && (
+            <p className="card border-dashed p-6 text-sm text-muted">{nbLeads ? "Aucun lead ne correspond à ces filtres." : "Pas encore de lead. Ils arriveront ici dès qu'une personne demandera la brochure, ou ajoute-les toi-même (JPO, salon…)."}</p>
+          )}
         </div>
       )}
 
@@ -558,14 +711,21 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 </div>
                 <p className="text-sm">Lien d&apos;inscription des étudiants : <code className="break-all font-mono text-xs">{site}/inscription?ecole={e.code}</code></p>
                 <div className="flex flex-col gap-2 border-t border-line pt-3">
-                  <span className="eyebrow">🎓 Formations</span>
+                  <span className="eyebrow">🎓 Formations et brochures</span>
+                  {"formations" in e && (
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                      <span className="text-muted">Brochure générale (si une formation n&apos;a pas la sienne) :</span>
+                      <FormBrochure ecoleId={e.id} formation="" actuelle={(e as { brochure?: string | null }).brochure} />
+                    </div>
+                  )}
                   {!("formations" in e) && <p className="text-xs text-muted">Exécute la mise à jour SQL de /diagnostic pour ajouter des formations.</p>}
                   <ul className="flex flex-col gap-1.5">
                     {lireFormations(e.formations).map((fo) => (
                       <li key={fo.nom} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-bg px-3 py-2 text-sm">
-                        <span>
-                          <b>{fo.nom}</b> · {fo.duree} an{fo.duree > 1 ? "s" : ""} ·{" "}
-                          {Array.from({ length: fo.duree }, (_, i) => i + 1).map((n) => `${anneeLabel(n)} ${fo.alternance.includes(n) ? "alternance" : "initiale"}`).join(", ")}
+                        <span className="flex flex-col gap-1">
+                          <span><b>{fo.nom}</b> · {fo.duree} an{fo.duree > 1 ? "s" : ""} ·{" "}
+                          {Array.from({ length: fo.duree }, (_, i) => i + 1).map((n) => `${anneeLabel(n)} ${fo.alternance.includes(n) ? "alternance" : "initiale"}`).join(", ")}</span>
+                          <FormBrochure ecoleId={e.id} formation={fo.nom} actuelle={fo.brochure} />
                         </span>
                         <form action={retirerFormation}>
                           <input type="hidden" name="ecole_id" value={e.id} />

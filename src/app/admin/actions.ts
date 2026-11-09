@@ -23,6 +23,7 @@ import { ajouterEchange } from "@/lib/echanges";
 import { STATUTS_ENTREPRISE, lireEntreprise } from "@/lib/entreprises";
 import { entrepriseRecrute, genererFicheOffre, lancerRechercheCandidats, preparerFicheDePoste } from "@/lib/recherche-entreprise";
 import { lireFormations } from "@/lib/formations";
+import { STATUTS_LEAD, brochurePour, envoyerBrochure, leadParId } from "@/lib/leads";
 import { changerAdmission } from "@/lib/admission-serveur";
 import { majDiplome } from "@/lib/diplome-serveur";
 import { memeEntreprise } from "@/lib/prospections";
@@ -338,8 +339,10 @@ export async function ajouterFormation(f: FormData) {
   if (!id || !nom) redirect("/admin?vue=ecoles");
   const db = createAdminClient();
   const { data } = await db.from("ecoles").select("formations").eq("id", id).maybeSingle();
-  const liste = lireFormations(data?.formations).filter((x) => x.nom.toLowerCase() !== nom.toLowerCase());
-  await db.from("ecoles").update({ formations: [...liste, { nom, duree, alternance }] }).eq("id", id);
+  const avant = lireFormations(data?.formations);
+  const brochure = avant.find((x) => x.nom.toLowerCase() === nom.toLowerCase())?.brochure ?? null;
+  const liste = avant.filter((x) => x.nom.toLowerCase() !== nom.toLowerCase());
+  await db.from("ecoles").update({ formations: [...liste, { nom, duree, alternance, brochure }] }).eq("id", id);
   redirect("/admin?vue=ecoles&ok=1");
 }
 
@@ -455,4 +458,106 @@ export async function genererFicheDePosteEntreprise(f: FormData) {
   if (!("fiche" in o)) redirect(`/admin/entreprises/${id}?onglet=offres&erreur=fiche-base`);
   if (!(o as { fiche?: unknown }).fiche) redirect(`/admin/entreprises/${id}?onglet=offres&erreur=fiche-ia`);
   redirect(`/admin/offres/${o.id}/fiche`);
+}
+
+/* ---------- Brochures (téléchargées par les leads) ---------- */
+export async function preparerDepotBrochure(ecoleId: string, formation: string): Promise<{ chemin: string; jeton: string } | { erreur: string }> {
+  await exigerAdmin();
+  const slug = (formation || "generale").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "-").toLowerCase();
+  const chemin = `${ecoleId}/${slug}-${Date.now()}.pdf`;
+  const { data, error } = await createAdminClient().storage.from("brochures").createSignedUploadUrl(chemin);
+  if (error || !data) return { erreur: "Le dépôt n'est pas encore activé : exécute la mise à jour SQL de la page /diagnostic." };
+  return { chemin: data.path, jeton: data.token };
+}
+
+export async function enregistrerBrochure(ecoleId: string, formation: string, chemin: string | null): Promise<{ erreur?: string }> {
+  await exigerAdmin();
+  const db = createAdminClient();
+  const { data: e } = await db.from("ecoles").select("*").eq("id", ecoleId).maybeSingle();
+  if (!e) return { erreur: "École introuvable." };
+  const { error } = formation
+    ? await db.from("ecoles").update({ formations: lireFormations(e.formations).map((x) => (x.nom === formation ? { ...x, brochure: chemin } : x)) }).eq("id", ecoleId)
+    : await db.from("ecoles").update({ brochure: chemin }).eq("id", ecoleId);
+  if (error) return { erreur: "Enregistrement impossible : exécute la mise à jour SQL de la page /diagnostic." };
+  revalidatePath("/admin");
+  return {};
+}
+
+/* ---------- Leads (CRM) ---------- */
+function lireLead(f: FormData) {
+  const statut = t(f, "statut", 30);
+  const a = Number(f.get("annee_rentree"));
+  return {
+    prenom: t(f, "prenom", 80), nom: t(f, "nom", 80), email: t(f, "email", 150).toLowerCase(), telephone: t(f, "telephone", 30),
+    formation: t(f, "formation", 120), annee_rentree: Number.isInteger(a) && a >= 2020 && a <= 2100 ? a : null,
+    origine: t(f, "origine", 60) || "Autre",
+    statut: STATUTS_LEAD.some((x) => x.id === statut) ? statut : "nouveau",
+    notes: t(f, "notes", 4000),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+export async function enregistrerLead(f: FormData) {
+  await exigerAdmin();
+  const id = t(f, "id", 60);
+  const d = lireLead(f);
+  if (!d.email && !d.telephone && !d.nom) redirect(`/admin/leads/${id || "nouveau"}?erreur=champs`);
+  const db = createAdminClient();
+  if (id) {
+    const { error } = await db.from("leads").update(d).eq("id", id);
+    if (error) redirect(`/admin/leads/${id}?erreur=base`);
+    redirect(`/admin/leads/${id}?ok=1`);
+  }
+  const { data, error } = await db.from("leads").insert({ ...d, consentement: f.get("consentement") === "on" }).select("id").single();
+  if (error || !data) redirect("/admin/leads/nouveau?erreur=base");
+  redirect(`/admin/leads/${data.id}?ok=1`);
+}
+
+export async function changerStatutLead(f: FormData) {
+  await exigerAdmin();
+  const statut = t(f, "statut", 30);
+  if (!STATUTS_LEAD.some((x) => x.id === statut)) return;
+  await createAdminClient().from("leads").update({ statut, updated_at: new Date().toISOString() }).eq("id", t(f, "id", 60));
+  revalidatePath("/admin");
+}
+
+export async function supprimerLead(f: FormData) {
+  await exigerAdmin();
+  await createAdminClient().from("leads").delete().eq("id", t(f, "id", 60));
+  redirect("/admin?vue=leads");
+}
+
+export async function renvoyerBrochure(f: FormData) {
+  await exigerAdmin();
+  const id = t(f, "id", 60);
+  const l = await leadParId(id);
+  if (!l) redirect("/admin?vue=leads");
+  const lien = await brochurePour(l.formation, l.ecole_id);
+  if (!lien) redirect(`/admin/leads/${id}?erreur=brochure`);
+  const ok = await envoyerBrochure(l, lien);
+  if (ok) await createAdminClient().from("echanges").insert({ lead_id: id, type: "email", resume: `Brochure ${l.formation} envoyée par email.`, auteur: "" });
+  redirect(`/admin/leads/${id}?${ok ? "brochure=1" : "erreur=email"}`);
+}
+
+export async function ajouterEchangeLead(_: { erreur?: string; ok?: boolean }, f: FormData): Promise<{ erreur?: string; ok?: boolean }> {
+  const { user } = await exigerAdmin();
+  const id = t(f, "lead_id", 60);
+  const r = await ajouterEchange({ lead: id }, f, user.email ?? "");
+  if (r.erreur) return r;
+  revalidatePath(`/admin/leads/${id}`);
+  return { ok: true };
+}
+
+export async function supprimerEchangeLead(f: FormData) {
+  await exigerAdmin();
+  const id = t(f, "lead_id", 60);
+  await createAdminClient().from("echanges").delete().eq("id", t(f, "id", 60)).eq("lead_id", id);
+  revalidatePath(`/admin/leads/${id}`);
+}
+
+export async function actionFaiteLead(f: FormData) {
+  await exigerAdmin();
+  const id = t(f, "lead_id", 60);
+  await createAdminClient().from("echanges").update({ action_faite: true }).eq("id", t(f, "id", 60)).eq("lead_id", id);
+  revalidatePath(`/admin/leads/${id}`);
 }

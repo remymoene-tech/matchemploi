@@ -37,7 +37,7 @@ export function localVersISO(local: string, tz: number): string | null {
 }
 
 /** Ajoute un échange pour un candidat, ou pour une entreprise ({ entreprise: id }). */
-export async function ajouterEchange(cible: string | { entreprise: string }, f: FormData, auteur: string): Promise<{ erreur?: string }> {
+export async function ajouterEchange(cible: string | { entreprise: string } | { lead: string }, f: FormData, auteur: string): Promise<{ erreur?: string }> {
   const type = txt(f, "type", 20);
   const resume = txt(f, "resume");
   if (!resume) return { erreur: "Écris ce qui s'est dit." };
@@ -45,7 +45,7 @@ export async function ajouterEchange(cible: string | { entreprise: string }, f: 
   const quand = localVersISO(txt(f, "date_echange", 30), tz);
   const relanceA = localVersISO(txt(f, "action_a", 30), tz);
   const { error } = await createAdminClient().from("echanges").insert({
-    ...(typeof cible === "string" ? { candidat_id: cible } : { entreprise_id: cible.entreprise }),
+    ...(typeof cible === "string" ? { candidat_id: cible } : "lead" in cible ? { lead_id: cible.lead } : { entreprise_id: cible.entreprise }),
     type: TYPES_ECHANGE.some((t) => t.id === type) ? type : "autre",
     date_echange: quand ?? new Date().toISOString(),
     resume,
@@ -54,7 +54,7 @@ export async function ajouterEchange(cible: string | { entreprise: string }, f: 
     action_a: relanceA,
     auteur,
   });
-  if (error) return { erreur: /echanges|entreprise|candidat_id/.test(error.message) ? "La base n'est pas à jour : exécute la mise à jour SQL de la page /diagnostic." : "L'enregistrement a échoué." };
+  if (error) return { erreur: /echanges|entreprise|candidat_id|lead_id/.test(error.message) ? "La base n'est pas à jour : exécute la mise à jour SQL de la page /diagnostic." : "L'enregistrement a échoué." };
   return {};
 }
 
@@ -77,16 +77,21 @@ export async function echangesDuCandidat(candidatId: string): Promise<Echange[]>
   return (data ?? []) as Echange[];
 }
 
+export async function echangesDuLead(leadId: string): Promise<Echange[]> {
+  const { data } = await createAdminClient().from("echanges").select("*").eq("lead_id", leadId).order("date_echange", { ascending: false }).limit(200);
+  return (data ?? []) as Echange[];
+}
+
 export async function echangesDeLEntreprise(entrepriseId: string): Promise<Echange[]> {
   const { data } = await createAdminClient().from("echanges").select("*").eq("entreprise_id", entrepriseId).order("date_echange", { ascending: false }).limit(200);
   return (data ?? []) as Echange[];
 }
 
-export type Relance = { id: string; candidat_id: string | null; entreprise_id: string | null; nom: string; action: string; action_a: string | null; action_le: string | null; type: string; auteur: string };
+export type Relance = { id: string; candidat_id: string | null; entreprise_id: string | null; lead_id?: string | null; nom: string; action: string; action_a: string | null; action_le: string | null; type: string; auteur: string };
 
 /** Lien vers la fiche concernée (onglet Échanges). */
-export const lienRelance = (r: Pick<Relance, "candidat_id" | "entreprise_id"> & { action?: string }, baseCandidats = "/admin/candidats") =>
-  r.entreprise_id ? (r.action?.startsWith("📋") ? `/admin/entreprises/${r.entreprise_id}#besoins` : `/admin/entreprises/${r.entreprise_id}?onglet=echanges`)
+export const lienRelance = (r: Pick<Relance, "candidat_id" | "entreprise_id"> & { lead_id?: string | null; action?: string }, baseCandidats = "/admin/candidats") =>
+  r.lead_id ? `/admin/leads/${r.lead_id}?onglet=echanges` : r.entreprise_id ? (r.action?.startsWith("📋") ? `/admin/entreprises/${r.entreprise_id}#besoins` : `/admin/entreprises/${r.entreprise_id}?onglet=echanges`)
     : `${baseCandidats}/${r.candidat_id}?onglet=${r.action?.startsWith("🎯") ? "prospections" : "echanges"}`;
 
 /** Relances non faites d'un recruteur (les siennes), ou de toute l'équipe si auteur = null. */
@@ -97,16 +102,19 @@ export async function relancesDe(auteur: string | null): Promise<Relance[]> {
     return q.neq("action", "").order("action_a", { ascending: true, nullsFirst: false }).limit(300);
   };
   // Avec les entreprises si la base est à jour, sinon seulement les candidats
-  let { data, error } = await lire("id, candidat_id, entreprise_id, action, action_a, action_le, type, auteur, candidats(nom, email), entreprises(nom)");
+  let { data, error } = await lire("id, candidat_id, entreprise_id, lead_id, action, action_a, action_le, type, auteur, candidats(nom, email), entreprises(nom), leads(prenom, nom, email)");
+  if (error) ({ data, error } = await lire("id, candidat_id, entreprise_id, action, action_a, action_le, type, auteur, candidats(nom, email), entreprises(nom)"));
   if (error) ({ data, error } = await lire("id, candidat_id, action, action_a, action_le, type, auteur, candidats(nom, email)"));
   if (error) return [];
   return ((data ?? []) as unknown as Record<string, unknown>[]).filter((r) => r.action).map((r) => {
     const c = r.candidats as { nom: string; email: string } | null;
     const e = r.entreprises as { nom: string } | null | undefined;
     const entreprise_id = (r.entreprise_id as string | null | undefined) ?? null;
+    const lead_id = (r.lead_id as string | null | undefined) ?? null;
+    const l = r.leads as { prenom: string; nom: string; email: string } | null | undefined;
     return {
-      id: r.id as string, candidat_id: (r.candidat_id as string | null) ?? null, entreprise_id,
-      nom: entreprise_id ? `🏢 ${e?.nom || "Entreprise"}` : c?.nom || c?.email || "Candidat",
+      id: r.id as string, candidat_id: (r.candidat_id as string | null) ?? null, entreprise_id, lead_id,
+      nom: lead_id ? `🧲 ${[l?.prenom, l?.nom].filter(Boolean).join(" ") || l?.email || "Lead"}` : entreprise_id ? `🏢 ${e?.nom || "Entreprise"}` : c?.nom || c?.email || "Candidat",
       action: r.action as string, action_a: r.action_a as string | null, action_le: r.action_le as string | null, type: r.type as string, auteur: (r.auteur as string) ?? "",
     };
   });

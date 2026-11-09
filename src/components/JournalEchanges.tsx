@@ -3,7 +3,7 @@ import { TYPES_ECHANGE, echeance, maintenantMs, type Echange } from "@/lib/echan
 /** Historique des échanges (téléphone, email, rendez-vous…) avec les rappels. Réservé à l'équipe. */
 export function JournalEchanges({ echanges, champ, cibleId, actionFaite, supprimer }: {
   echanges: Echange[];
-  champ: "candidat_id" | "entreprise_id";
+  champ: "candidat_id" | "entreprise_id" | "lead_id";
   cibleId: string;
   actionFaite: (f: FormData) => Promise<void>;
   supprimer: (f: FormData) => Promise<void>;

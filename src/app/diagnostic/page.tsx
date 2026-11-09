@@ -98,7 +98,14 @@ alter table public.entreprises add column if not exists besoin_rempli_le timesta
 alter table public.candidats add column if not exists preferences jsonb;
 alter table public.offres add column if not exists redigee_ia boolean not null default false;
 alter table public.offres add column if not exists fiche jsonb;
-alter table public.entreprises add column if not exists logo_url text;`;
+alter table public.entreprises add column if not exists logo_url text;
+create table if not exists public.leads (id uuid primary key default gen_random_uuid(), prenom text not null default '', nom text not null default '', email text not null default '', telephone text not null default '', formation text not null default '', annee_rentree integer, origine text not null default 'Brochure (site de l''école)', statut text not null default 'nouveau', ecole_id uuid references public.ecoles(id) on delete set null, candidat_id uuid references public.candidats(user_id) on delete set null, consentement boolean not null default false, brochure_envoyee_le timestamptz, notes text not null default '', created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+alter table public.leads enable row level security;
+create index if not exists leads_date_idx on public.leads(created_at desc);
+create index if not exists leads_email_idx on public.leads(email);
+alter table public.echanges add column if not exists lead_id uuid references public.leads(id) on delete cascade;
+alter table public.ecoles add column if not exists brochure text;
+insert into storage.buckets (id, name, public) values ('brochures', 'brochures', true) on conflict (id) do nothing;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -147,6 +154,9 @@ async function verifierBase() {
     db.from("offres").select("redigee_ia").limit(1),
     db.from("offres").select("fiche").limit(1),
     db.from("entreprises").select("logo_url").limit(1),
+    db.from("leads").select("id").limit(1),
+    db.from("echanges").select("lead_id").limit(1),
+    db.from("ecoles").select("brochure").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -193,6 +203,9 @@ async function verifierBase() {
     "Fiches de poste rédigées par MagnusMatch",
     "Fiche de poste imprimable",
     "Logo des entreprises",
+    "Leads (CRM)",
+    "Échanges et rappels des leads",
+    "Brochures des formations",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }
