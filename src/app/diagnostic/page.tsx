@@ -115,7 +115,10 @@ alter table public.leads add column if not exists entretien_a timestamptz;
 alter table public.leads add column if not exists rappel_entretien_envoye boolean not null default false;
 alter table public.entretiens_conseil alter column candidat_id drop not null;
 alter table public.entretiens_conseil add column if not exists lead_id uuid references public.leads(id) on delete set null;
-alter table public.leads add column if not exists motif_perte text not null default '';`;
+alter table public.leads add column if not exists motif_perte text not null default '';
+create table if not exists public.evenements (id uuid primary key default gen_random_uuid(), nom text not null, date date not null, lieu text not null default '', code text not null unique, created_at timestamptz not null default now());
+alter table public.evenements enable row level security;
+alter table public.leads add column if not exists evenement_id uuid references public.evenements(id) on delete set null;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -171,6 +174,8 @@ async function verifierBase() {
     db.from("leads").select("entretien_a, rappel_entretien_envoye").limit(1),
     db.from("entretiens_conseil").select("lead_id").limit(1),
     db.from("leads").select("motif_perte").limit(1),
+    db.from("evenements").select("id").limit(1),
+    db.from("leads").select("evenement_id").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -224,6 +229,8 @@ async function verifierBase() {
     "Entretien d'admission des leads (date, rappel)",
     "Fiche d'entretien des leads",
     "Motif des leads perdus",
+    "Événements (QR code)",
+    "Leads venus d'un événement",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

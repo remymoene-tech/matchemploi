@@ -403,3 +403,8 @@ alter table public.entretiens_conseil add column if not exists lead_id uuid refe
 
 -- Motif quand un lead est perdu
 alter table public.leads add column if not exists motif_perte text not null default '';
+
+-- Événements (JPO, salons) : QR code vers le formulaire brochure
+create table if not exists public.evenements (id uuid primary key default gen_random_uuid(), nom text not null, date date not null, lieu text not null default '', code text not null unique, created_at timestamptz not null default now());
+alter table public.evenements enable row level security;
+alter table public.leads add column if not exists evenement_id uuid references public.evenements(id) on delete set null;

@@ -14,6 +14,7 @@ import { ListeRelances } from "@/components/ListeRelances";
 import { Barres, Colonnes } from "@/components/Graphiques";
 import { OngletsCartes } from "@/components/OngletsCartes";
 import { Planning } from "@/components/Planning";
+import { listeEvenements } from "@/lib/evenements";
 import { Copier } from "@/components/Copier";
 import { FormBrochure } from "@/components/FormBrochure";
 import { ADMISSIONS, admission } from "@/lib/admission";
@@ -28,7 +29,7 @@ import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { creerEvenement, supprimerEvenement, changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -41,6 +42,7 @@ const VUES = [
   { id: "entreprises", label: "Mes entreprises" },
   { id: "candidats", label: "Mes candidats" },
   { id: "planning", label: "Planning" },
+  { id: "evenements", label: "Événements" },
 ] as const;
 /** Pages secondaires, en petit à droite des onglets. */
 const AUTRES = [
@@ -150,7 +152,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const filtresEntActifs = !!(q || fStatut || fOffre || fOrigine || fTrouvee);
 
   // 🧲 Leads (CRM)
-  const leads = vue === "leads" || vue === "accueil" || vue === "candidats" ? await listeLeads() : [];
+  const leads = vue === "leads" || vue === "accueil" || vue === "candidats" || vue === "evenements" ? await listeLeads() : [];
+  const evenements = vue === "evenements" ? await listeEvenements() : [];
   // Leads admis à l'entretien qui n'ont pas encore créé leur espace : déjà candidats
   const admisSansEspace = (leads ?? []).filter((l) => estLeadAdmis(l) && !l.candidat_id);
   const { data: echLeadsData } = (vue === "accueil" || vue === "leads") && leads?.length
@@ -235,6 +238,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           { href: "/admin?vue=leads", icone: "🎓", label: "Étudiants", sous: `${nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""} lead${nouveauxLeads > 1 ? "s" : ""}` : `${nbLeads} leads`} · ${C.size} candidat${C.size > 1 ? "s" : ""}`, actif: vue === "leads" || vue === "candidats" },
           { href: "/admin?vue=entreprises", icone: "🏢", label: "Mes entreprises", sous: entreprises ? `${nbEntreprises} rencontrée${nbEntreprises > 1 ? "s" : ""}` : `${mesOffresOuvertes} offre${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "entreprises" },
           { href: "/admin?vue=planning", icone: "📅", label: "Planning", sous: "Entretiens programmés", actif: vue === "planning" },
+          { href: "/admin?vue=evenements", icone: "🎪", label: "Événements", sous: "JPO, salons · QR code", actif: vue === "evenements" },
         ]} />
         <nav className="flex flex-wrap justify-end gap-3 text-sm" aria-label="Autres pages">
           {AUTRES.map((v) => (
@@ -451,7 +455,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               <span className="font-semibold">📍 Origine</span>
               <select className="input" name="lorigine" defaultValue={sp.lorigine ?? ""}>
                 <option value="">Toutes</option>
-                {ORIGINES_LEAD.map((o) => <option key={o}>{o}</option>)}
+                {[...new Set([...ORIGINES_LEAD, ...(leads ?? []).map((l) => l.origine)])].map((o) => <option key={o}>{o}</option>)}
               </select>
             </label>
             <div className="flex gap-2">
@@ -727,6 +731,51 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             </table>
           </div>
           {!C.size && <p className="card border-dashed p-6 text-sm text-muted">Aucun candidat inscrit pour l&apos;instant.</p>}
+        </div>
+      )}
+
+      {vue === "evenements" && (
+        <div className="flex flex-col gap-4">
+          {evenements === null && <p className="rounded-xl bg-warn-soft p-4 text-sm">Les événements ne sont pas encore activés : exécute la mise à jour SQL affichée sur la page /diagnostic.</p>}
+          {sp.erreur === "evenement" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Indique le nom et la date de l&apos;événement.</p>}
+          <form action={creerEvenement} className="card flex flex-wrap items-end gap-3 p-5">
+            <div className="w-full">
+              <h2 className="text-lg font-semibold">🎪 Nouvel événement</h2>
+              <p className="text-sm text-muted">Journée portes ouvertes, salon, forum… MagnusMatch crée un QR code : les visiteurs remplissent le formulaire brochure et arrivent dans tes leads, avec le nom de l&apos;événement comme origine.</p>
+            </div>
+            <label className="flex min-w-56 flex-1 flex-col gap-1 text-sm"><span className="font-semibold">Nom</span><input className="input" name="nom" required placeholder="Journée Portes Ouvertes" /></label>
+            <label className="flex flex-col gap-1 text-sm"><span className="font-semibold">Date</span><input className="input" type="date" name="date" required /></label>
+            <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm"><span className="font-semibold">Lieu <span className="font-normal text-muted">(facultatif)</span></span><input className="input" name="lieu" placeholder="Campus Magnus, Arles" /></label>
+            <button className="btn btn-primary">➕ Créer et générer le QR code</button>
+          </form>
+          {evenements && evenements.length > 0 && (
+            <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+              <table className="w-full min-w-[720px] text-left text-sm">
+                <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
+                  <tr><th className="p-3 font-semibold">Événement</th><th className="p-3 font-semibold">Date</th><th className="p-3 font-semibold">Leads</th><th className="p-3 font-semibold">Admis</th><th className="p-3" /></tr>
+                </thead>
+                <tbody>
+                  {evenements.map((ev) => {
+                    const ls = (leads ?? []).filter((l) => (l as { evenement_id?: string | null }).evenement_id === ev.id || l.origine === ev.nom);
+                    return (
+                      <tr key={ev.id} className="border-b border-line align-top last:border-0 hover:bg-bg">
+                        <td className="p-3"><Link href={`/admin/evenements/${ev.id}`} className="font-semibold hover:text-accent hover:underline">🎪 {ev.nom}</Link><div className="text-xs text-muted">{ev.lieu || "—"}</div></td>
+                        <td className="p-3">{new Date(`${ev.date}T12:00:00Z`).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}</td>
+                        <td className="p-3"><Link href={`/admin?vue=leads&lorigine=${encodeURIComponent(ev.nom)}`} className="chip chip-tag">🧲 {ls.length}</Link></td>
+                        <td className="p-3">{ls.filter((l) => estLeadAdmis(l)).length}</td>
+                        <td className="p-3 text-right">
+                          <span className="flex justify-end gap-2">
+                            <Link href={`/admin/evenements/${ev.id}`} className="btn btn-sm btn-primary">📲 QR code</Link>
+                            <form action={supprimerEvenement}><input type="hidden" name="id" value={ev.id} /><button className="btn btn-sm btn-ghost text-bad">Supprimer</button></form>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

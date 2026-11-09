@@ -1,16 +1,18 @@
 import { Logo } from "@/components/Logo";
 import { formationsDeLEcole, ecoleParCode } from "@/lib/ecoles";
 import { INTITULES } from "@/lib/formations";
+import { evenementParCode } from "@/lib/evenements";
 import { demanderBrochure } from "./actions";
 
 export const metadata = { title: "Recevoir la brochure · Campus Magnus", description: "Recevez la brochure de nos formations par email." };
 
-type SP = { formation?: string; ecole?: string; origine?: string; erreur?: string; merci?: string; prenom?: string; envoye?: string; lien?: string };
+type SP = { evenement?: string; formation?: string; ecole?: string; origine?: string; erreur?: string; merci?: string; prenom?: string; envoye?: string; lien?: string };
 
 /** Page publique : demande de brochure (lien à mettre sur le bouton « Brochure » du site de l'école). */
 export default async function Brochure({ searchParams }: { searchParams: Promise<SP> }) {
   const sp = await searchParams;
   const ecole = sp.ecole ? await ecoleParCode(sp.ecole).catch(() => null) : null;
+  const evenement = sp.evenement ? await evenementParCode(sp.evenement).catch(() => null) : null;
   const formations = await formationsDeLEcole(ecole?.id);
   const annee = new Date().getFullYear();
   const lienSur = sp.lien && /^https:\/\//.test(sp.lien) ? sp.lien : null;
@@ -52,8 +54,8 @@ export default async function Brochure({ searchParams }: { searchParams: Promise
       <div className="flex flex-col items-center gap-4 text-center">
         <Logo taille="lg" />
         <div>
-          <span className="eyebrow">Campus Magnus · Arles</span>
-          <h1 className="text-3xl font-extrabold">Recevez la brochure de nos formations</h1>
+          <span className="eyebrow">{evenement ? `${evenement.nom} · Campus Magnus` : "Campus Magnus · Arles"}</span>
+          <h1 className="text-3xl font-extrabold">{evenement ? "Bienvenue ! Recevez la brochure de nos formations" : "Recevez la brochure de nos formations"}</h1>
           <p className="text-muted">Remplissez ce court formulaire : la brochure arrive directement dans votre boîte mail.</p>
         </div>
       </div>
@@ -61,6 +63,7 @@ export default async function Brochure({ searchParams }: { searchParams: Promise
       <form action={demanderBrochure} className="card flex flex-col gap-5 p-6">
         <input type="hidden" name="ecole" value={sp.ecole ?? ""} />
         <input type="hidden" name="origine" value={sp.origine ?? ""} />
+        <input type="hidden" name="evenement" value={evenement?.code ?? ""} />
         {/* Champ piège pour les robots (invisible) */}
         <input type="text" name="site_web" tabIndex={-1} autoComplete="off" className="absolute -left-[9999px] h-0 w-0 opacity-0" aria-hidden />
         <div className="grid gap-4 sm:grid-cols-2">

@@ -4,12 +4,13 @@ import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { brochurePour, envoyerBrochure, notifierNouveauLead, type Lead } from "@/lib/leads";
 import { ecoleParCode } from "@/lib/ecoles";
+import { evenementParCode } from "@/lib/evenements";
 
 const txt = (f: FormData, k: string, max = 200) => String(f.get(k) ?? "").trim().slice(0, max);
 
 /** Formulaire public « Recevoir la brochure » : crée (ou met à jour) le lead, envoie la brochure, prévient l'équipe. */
 export async function demanderBrochure(f: FormData) {
-  const retour = new URLSearchParams({ formation: txt(f, "formation", 120), ecole: txt(f, "ecole", 40), origine: txt(f, "origine", 60) });
+  const retour = new URLSearchParams({ formation: txt(f, "formation", 120), ecole: txt(f, "ecole", 40), origine: txt(f, "origine", 60), evenement: txt(f, "evenement", 16) });
   if (txt(f, "site_web")) redirect("/brochure?merci=1"); // robot : champ caché rempli
   const email = txt(f, "email", 150).toLowerCase();
   const donnees = {
@@ -31,7 +32,9 @@ export async function demanderBrochure(f: FormData) {
   }
   const db = createAdminClient();
   const ecole = txt(f, "ecole", 40) ? await ecoleParCode(txt(f, "ecole", 40)).catch(() => null) : null;
-  const origine = txt(f, "origine", 60) || "Brochure (site de l'école)";
+  // Venu par le QR code d'un événement : l'origine est le nom de l'événement
+  const evenement = txt(f, "evenement", 16) ? await evenementParCode(txt(f, "evenement", 16)).catch(() => null) : null;
+  const origine = evenement?.nom || txt(f, "origine", 60) || "Brochure (site de l'école)";
 
   // Même email déjà connu : on met la fiche à jour au lieu de créer un doublon
   const { data: existant } = await db.from("leads").select("*").eq("email", email).order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -39,9 +42,10 @@ export async function demanderBrochure(f: FormData) {
   if (existant) {
     const { data } = await db.from("leads").update({ ...donnees, updated_at: new Date().toISOString() }).eq("id", existant.id).select("*").single();
     lead = data as Lead;
-    await db.from("echanges").insert({ lead_id: existant.id, type: "autre", resume: `A redemandé la brochure (${donnees.formation}, rentrée ${donnees.annee_rentree}).`, auteur: "" });
+    await db.from("echanges").insert({ lead_id: existant.id, type: "autre", resume: evenement ? `Rencontré à l'événement « ${evenement.nom} » (${donnees.formation}, rentrée ${donnees.annee_rentree}).` : `A redemandé la brochure (${donnees.formation}, rentrée ${donnees.annee_rentree}).`, auteur: "" });
   } else {
-    const { data, error } = await db.from("leads").insert({ ...donnees, origine, ecole_id: ecole?.id ?? null }).select("*").single();
+    let { data, error } = await db.from("leads").insert({ ...donnees, origine, ecole_id: ecole?.id ?? null, ...(evenement ? { evenement_id: evenement.id } : {}) }).select("*").single();
+    if (error && evenement) ({ data, error } = await db.from("leads").insert({ ...donnees, origine, ecole_id: ecole?.id ?? null }).select("*").single());
     if (error || !data) {
       retour.set("erreur", "base");
       redirect(`/brochure?${retour}`);

@@ -23,6 +23,7 @@ import { ajouterEchange } from "@/lib/echanges";
 import { STATUTS_ENTREPRISE, lireEntreprise } from "@/lib/entreprises";
 import { entrepriseRecrute, genererFicheOffre, lancerRechercheCandidats, preparerFicheDePoste } from "@/lib/recherche-entreprise";
 import { lireFormations } from "@/lib/formations";
+import { nouveauCode } from "@/lib/evenements";
 import { STATUTS_LEAD, dateEntretienTexte, datesEtapes, brochurePour, envoyerBrochure, envoyerConvocation, envoyerInvitation, estLeadAdmis, leadParId, nomLead, parisVersISO } from "@/lib/leads";
 import { changerAdmission } from "@/lib/admission-serveur";
 import { majDiplome } from "@/lib/diplome-serveur";
@@ -666,4 +667,21 @@ export async function changerStatutLeadFiche(f: FormData) {
   revalidatePath("/admin");
   if (retour.startsWith("/admin")) redirect(retour);
   redirect(`/admin/leads/${id}?${messages.join("&") || "ok=1"}`);
+}
+
+/* ---------- Événements (JPO, salons…) ---------- */
+export async function creerEvenement(f: FormData) {
+  await exigerAdmin();
+  const nom = t(f, "nom", 150);
+  const date = t(f, "date", 10);
+  if (!nom || !/^\d{4}-\d{2}-\d{2}$/.test(date)) redirect("/admin?vue=evenements&erreur=evenement");
+  const { data, error } = await createAdminClient().from("evenements").insert({ nom, date, lieu: t(f, "lieu", 150), code: nouveauCode() }).select("id").single();
+  if (error || !data) redirect("/admin?vue=evenements&erreur=base");
+  redirect(`/admin/evenements/${data.id}`);
+}
+
+export async function supprimerEvenement(f: FormData) {
+  await exigerAdmin();
+  await createAdminClient().from("evenements").delete().eq("id", t(f, "id", 60));
+  redirect("/admin?vue=evenements");
 }
