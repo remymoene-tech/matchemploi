@@ -54,12 +54,19 @@ export function StatsRecrutement({ leads, echanges, maintenant, annee, annees }:
 
       <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
         <div className="flex flex-col gap-2">
-          <h3 className="font-semibold">⏱️ Délai de rappel après réception du lead</h3>
+          <h3 className="font-semibold">⏱️ Temps de réponse aux leads</h3>
+          <div className="flex items-center gap-4 rounded-xl bg-accent-soft p-4">
+            <b className="text-4xl font-semibold tabular-nums">{moyenne != null ? duree(moyenne) : "—"}</b>
+            <span className="text-sm">
+              <b>Temps moyen de réponse</b><br />
+              <span className="text-muted">Ex. lead reçu à 12 h 00, rappelé à 12 h 20 → 20 min</span>
+            </span>
+          </div>
           <div className="overflow-x-auto rounded-xl border border-line">
             <table className="w-full text-left text-sm">
               <tbody>
-                <tr className="border-b border-line"><th className={th}>Délai moyen</th><td className={`${td} text-lg font-semibold`}>{moyenne != null ? duree(moyenne) : "—"}</td></tr>
-                <tr className="border-b border-line"><th className={th}>Délai médian</th><td className={td}>{mediane != null ? duree(mediane) : "—"}</td></tr>
+                <tr className="border-b border-line"><th className={th}>Temps de réponse le plus rapide</th><td className={td}>{rappeles.length ? duree(rappeles[0]) : "—"}</td></tr>
+                <tr className="border-b border-line"><th className={th}>Temps de réponse médian</th><td className={td}>{mediane != null ? duree(mediane) : "—"}</td></tr>
                 <tr className="border-b border-line"><th className={th}>Rappelés en moins de 24 h</th><td className={td}>{pct(rappeles.filter((h) => h <= 24).length, liste.length)}</td></tr>
                 <tr className="border-b border-line"><th className={th}>Rappelés en moins de 48 h</th><td className={td}>{pct(rappeles.filter((h) => h <= 48).length, liste.length)}</td></tr>
                 <tr><th className={th}>Pas encore rappelés</th><td className={`${td} ${enAttente.length ? "font-semibold text-bad" : ""}`}>{enAttente.length}</td></tr>
@@ -74,7 +81,7 @@ export function StatsRecrutement({ leads, echanges, maintenant, annee, annees }:
               ))}
             </p>
           )}
-          <p className="text-xs text-muted">Le rappel compte dès le premier échange noté dans la fiche du lead (appel, email, SMS, rendez-vous).</p>
+          <p className="text-xs text-muted">La réponse compte à l&apos;heure du premier échange noté dans la fiche du lead (appel, email, SMS, rendez-vous) : pense à mettre la bonne heure dans « Date et heure ».</p>
         </div>
 
         <div className="flex flex-col gap-2">
