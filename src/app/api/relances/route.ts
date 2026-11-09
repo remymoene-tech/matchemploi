@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { estAdmin } from "@/lib/auth";
+import { estEquipe } from "@/lib/auth";
 import { ecoleDuResponsable } from "@/lib/ecoles";
 import { echeance, lienRelance, relancesDe } from "@/lib/echanges";
 import { relancesEtudiant } from "@/lib/prospections";
@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 async function recruteur() {
   const { data: { user } } = await (await createClient()).auth.getUser();
   if (!user?.email) return null;
-  if (estAdmin(user.email)) return { email: user.email, base: "/admin/candidats" };
+  if (await estEquipe(user.email)) return { email: user.email, base: "/admin/candidats" };
   if (await ecoleDuResponsable(user.email)) return { email: user.email, base: "/ecole/etudiants" };
   return null;
 }

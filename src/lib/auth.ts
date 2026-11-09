@@ -1,14 +1,16 @@
 import "server-only";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { estSuperAdmin, roleDe } from "@/lib/equipe";
 
+/** Administrateur du site (ADMIN_EMAILS) : tous les droits, dont le ⚙️. */
 export function estAdmin(email: string | null | undefined) {
-  if (!email) return false;
-  const admins = (process.env.ADMIN_EMAILS ?? "")
-    .split(",")
-    .map((e) => e.trim().toLowerCase())
-    .filter(Boolean);
-  return admins.includes(email.toLowerCase());
+  return estSuperAdmin(email);
+}
+
+/** Membre de l'équipe du tableau de bord : administrateur, chargé(e) d'admission ou de relations entreprises. */
+export async function estEquipe(email: string | null | undefined) {
+  return !!(await roleDe(email));
 }
 
 /** Renvoie l'utilisateur connecté, ou redirige vers la page de connexion. */
@@ -21,8 +23,17 @@ export async function exigerUtilisateur() {
   return { user, supabase };
 }
 
+/** Tableau de bord : toute l'équipe (administrateur et chargé(e)s dont l'accès est actif). */
 export async function exigerAdmin() {
   const { user, supabase } = await exigerUtilisateur();
-  if (!estAdmin(user.email)) redirect("/espace");
-  return { user, supabase };
+  const role = await roleDe(user.email);
+  if (!role) redirect("/espace");
+  return { user, supabase, role };
+}
+
+/** Réglages du site (⚙️) : administrateur uniquement. */
+export async function exigerSuperAdmin() {
+  const { user, supabase } = await exigerUtilisateur();
+  if (!estSuperAdmin(user.email)) redirect("/admin");
+  return { user, supabase, role: "admin" as const };
 }

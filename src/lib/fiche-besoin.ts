@@ -1,4 +1,5 @@
 import "server-only";
+import { emailsEquipe } from "@/lib/equipe";
 import { randomBytes } from "node:crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { Entreprise } from "@/lib/entreprises";
@@ -19,7 +20,7 @@ export async function entrepriseParJeton(jeton: string): Promise<Entreprise | nu
 
 /** Notification 🔔 à l'équipe : l'entreprise a rempli sa fiche besoin. */
 export async function notifierBesoinRempli(e: Entreprise) {
-  const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+  const admins = await emailsEquipe(["entreprises"]);
   const destinataires = [...new Set([...(e.auteur ? [e.auteur.toLowerCase()] : []), ...admins])];
   const maintenant = new Date().toISOString();
   if (!destinataires.length) return;

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { estAdmin } from "@/lib/auth";
+import { estEquipe } from "@/lib/auth";
 import { ecoleDuResponsable } from "@/lib/ecoles";
 import { echeance, lienRelance } from "@/lib/echanges";
 
@@ -9,7 +9,7 @@ import { echeance, lienRelance } from "@/lib/echanges";
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const { data: { user } } = await (await createClient()).auth.getUser();
-  if (!user?.email || !(estAdmin(user.email) || (await ecoleDuResponsable(user.email)))) return new NextResponse("Accès réservé", { status: 403 });
+  if (!user?.email || !((await estEquipe(user.email)) || (await ecoleDuResponsable(user.email)))) return new NextResponse("Accès réservé", { status: 403 });
   const db = createAdminClient();
   let { data: e } = await db.from("echanges").select("id, candidat_id, entreprise_id, action, action_a, action_le, candidats(nom), entreprises(nom)").eq("id", id).maybeSingle();
   if (!e) ({ data: e } = await db.from("echanges").select("id, candidat_id, action, action_a, action_le, candidats(nom)").eq("id", id).maybeSingle() as unknown as { data: typeof e });

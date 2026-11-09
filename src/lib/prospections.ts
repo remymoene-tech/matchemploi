@@ -1,4 +1,5 @@
 import "server-only";
+import { emailsEquipe } from "@/lib/equipe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { echeance } from "@/lib/echanges";
 
@@ -123,7 +124,7 @@ export async function notifierEntrepriseQuiRecrute(candidatId: string, entrepris
   try {
     const base = db();
     const { data: c } = await base.from("candidats").select("nom, email, ecole_id").eq("user_id", candidatId).maybeSingle();
-    const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+    const admins = await emailsEquipe(["entreprises"]);
     const { data: resp } = c?.ecole_id ? await base.from("responsables").select("email").eq("ecole_id", c.ecole_id) : { data: [] };
     const destinataires = [...new Set([...admins, ...(resp ?? []).map((r) => (r.email as string).toLowerCase())])];
     const nom = c?.nom || c?.email || "Un étudiant";

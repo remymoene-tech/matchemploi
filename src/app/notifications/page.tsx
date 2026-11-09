@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { exigerUtilisateur, estAdmin } from "@/lib/auth";
+import { exigerUtilisateur, estEquipe } from "@/lib/auth";
 import { ecoleDuResponsable } from "@/lib/ecoles";
 import { historiqueEquipe, historiqueEtudiant } from "@/lib/notifications";
 
@@ -11,7 +11,7 @@ export default async function Notifications({ searchParams }: { searchParams: Pr
   const { filtre } = await searchParams;
   const { user } = await exigerUtilisateur();
   if (!user.email) redirect("/");
-  const admin = estAdmin(user.email);
+  const admin = await estEquipe(user.email);
   const ecole = admin ? null : await ecoleDuResponsable(user.email);
   const liste = admin || ecole
     ? await historiqueEquipe(user.email, admin ? "/admin/candidats" : "/ecole/etudiants")

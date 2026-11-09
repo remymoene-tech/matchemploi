@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Jost, JetBrains_Mono } from "next/font/google";
 import { Logo } from "@/components/Logo";
 import { createClient } from "@/lib/supabase/server";
-import { estAdmin } from "@/lib/auth";
+import { roleDe } from "@/lib/equipe";
 import { verifierConfig } from "@/lib/config";
 import { ecoleDuResponsable } from "@/lib/ecoles";
 import { Cloche } from "@/components/Cloche";
@@ -22,11 +22,13 @@ export const metadata: Metadata = {
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   let user: { email?: string } | null = null;
   let monEcole: { nom: string } | null = null;
+  let role: Awaited<ReturnType<typeof roleDe>> = null;
   if (verifierConfig().supabaseOk) {
     try {
       const supabase = await createClient();
       user = (await supabase.auth.getUser()).data.user;
       monEcole = user ? await ecoleDuResponsable(user.email) : null;
+      role = user ? await roleDe(user.email) : null;
     } catch {
       user = null; // Supabase injoignable : on affiche quand même la page
     }
@@ -44,14 +46,19 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <nav className="flex flex-wrap items-center gap-1 text-sm">
               {user ? (
                 <>
-                  <Link className="btn btn-ghost btn-sm" href="/espace">Mes offres</Link>
-                  <Link className="btn btn-ghost btn-sm" href="/espace/carte">📇 Ma carte de visite</Link>
-                  <Link className="btn btn-ghost btn-sm" href="/espace/profil">Mon profil</Link>
-                  {monEcole || estAdmin(user.email)
-                    ? <Cloche lien={estAdmin(user.email) ? "/admin?vue=relances" : "/ecole?vue=relances"} />
+                  {(!role || role === "admin") && (
+                    <>
+                      <Link className="btn btn-ghost btn-sm" href="/espace">Mes offres</Link>
+                      <Link className="btn btn-ghost btn-sm" href="/espace/carte">📇 Ma carte de visite</Link>
+                      <Link className="btn btn-ghost btn-sm" href="/espace/profil">Mon profil</Link>
+                    </>
+                  )}
+                  {monEcole || role
+                    ? <Cloche lien={role ? "/admin?vue=relances" : "/ecole?vue=relances"} />
                     : <Cloche lien="/espace/prospections" etudiant />}
                   {monEcole && <Link className="btn btn-ghost btn-sm" href="/ecole">Mon école</Link>}
-                  {estAdmin(user.email) && <Link className="btn btn-ghost btn-sm" href="/admin">📊 Tableau de bord</Link>}
+                  {role && <Link className="btn btn-ghost btn-sm" href="/admin">📊 Tableau de bord</Link>}
+                  {role === "admin" && <Link className="btn btn-ghost btn-sm px-2 text-base" href="/admin/parametres" title="Paramètres (administrateur)" aria-label="Paramètres administrateur">⚙️</Link>}
                   <form action={deconnexion}>
                     <button className="btn btn-sm">Se déconnecter</button>
                   </form>

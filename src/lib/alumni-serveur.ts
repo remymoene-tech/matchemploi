@@ -1,4 +1,5 @@
 import "server-only";
+import { emailsEquipe } from "@/lib/equipe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { memeEntreprise } from "@/lib/prospections";
 import { nouveauJeton, VALIDITE_JOURS } from "@/lib/fiche-besoin";
@@ -8,11 +9,11 @@ import { AIDES, lireParcours, type Parcours } from "@/lib/alumni";
 const db = () => createAdminClient();
 
 /** Notification 🔔 pour l'équipe (admins + responsables de l'école), sur la fiche du candidat. */
-export async function notifierEquipe(candidatId: string, resume: string, action: string) {
+export async function notifierEquipe(candidatId: string, resume: string, action: string, roles?: string[]) {
   try {
     const base = db();
     const { data: c } = await base.from("candidats").select("ecole_id").eq("user_id", candidatId).maybeSingle();
-    const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+    const admins = await emailsEquipe(roles);
     const { data: resp } = c?.ecole_id ? await base.from("responsables").select("email").eq("ecole_id", c.ecole_id) : { data: [] };
     const destinataires = [...new Set([...admins, ...(resp ?? []).map((r) => (r.email as string).toLowerCase())])];
     if (!destinataires.length) return;

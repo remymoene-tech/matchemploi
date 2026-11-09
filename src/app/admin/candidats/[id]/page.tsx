@@ -6,7 +6,7 @@ export const metadata = { title: "Fiche candidat · MagnusMatch" };
 
 export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string; admission?: string; carte?: string }> }) {
   const { onglet, admission: admissionDemandee, carte } = await searchParams;
-  await exigerAdmin();
+  const { role } = await exigerAdmin();
   const { id } = await params;
   return (
     <FicheCandidat
@@ -26,7 +26,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       cheminCV={`/admin/cv/${id}`}
       retour={{ href: "/admin?vue=candidats", libelle: "Tous les candidats" }}
       changerSuivi={changerSuivi}
-      refaireQrCarte={refaireQrCarteAdmin}
+      refaireQrCarte={role === "admin" ? refaireQrCarteAdmin : undefined}
       carteRefaite={carte === "nouveau"}
     />
   );

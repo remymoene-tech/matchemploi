@@ -127,7 +127,9 @@ alter table public.candidats add column if not exists carte_vue_le timestamptz;
 alter table public.candidats add column if not exists parcours jsonb;
 alter table public.candidats add column if not exists alumni_rappel_le timestamptz;
 alter table public.offres add column if not exists validation text;
-alter table public.offres add column if not exists proposee_par uuid references auth.users(id) on delete set null;`;
+alter table public.offres add column if not exists proposee_par uuid references auth.users(id) on delete set null;
+create table if not exists public.equipe (id uuid primary key default gen_random_uuid(), email text not null unique, nom text not null default '', role text not null default 'admission', actif boolean not null default true, retire_le timestamptz, created_at timestamptz not null default now());
+alter table public.equipe enable row level security;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -189,6 +191,7 @@ async function verifierBase() {
     db.from("candidats").select("carte_jeton, carte_options, carte_vues, carte_vue_le").limit(1),
     db.from("candidats").select("parcours, alumni_rappel_le").limit(1),
     db.from("offres").select("validation, proposee_par").limit(1),
+    db.from("equipe").select("id").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -248,6 +251,7 @@ async function verifierBase() {
     "Carte de visite des candidats",
     "Alumni (parcours)",
     "Annonces déposées par les alumni",
+    "Équipe du tableau de bord",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

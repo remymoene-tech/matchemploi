@@ -6,7 +6,7 @@ import { estExpiree, lireExpiration } from "@/lib/expiration";
 import { after } from "next/server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { exigerAdmin } from "@/lib/auth";
+import { exigerAdmin, exigerSuperAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { iaConfiguree, lireAnnonce } from "@/lib/ia";
 import { noterOffrePourTous, rechercheQuotidienne } from "@/lib/matching";
@@ -150,7 +150,7 @@ export async function relancerTout() {
 }
 
 export async function changerFrequence(f: FormData) {
-  await exigerAdmin();
+  await exigerSuperAdmin();
   const v = t(f, "frequence") as Frequence;
   if (!FREQUENCES.some((x) => x.id === v)) return;
   const ok = await ecrireFrequence(v);
@@ -158,7 +158,7 @@ export async function changerFrequence(f: FormData) {
 }
 
 export async function creerEcole(f: FormData) {
-  await exigerAdmin();
+  await exigerSuperAdmin();
   const nom = t(f, "nom", 120);
   const email = t(f, "email", 150).toLowerCase();
   if (!nom) redirect("/admin?vue=ecoles&erreur=nom");
@@ -170,7 +170,7 @@ export async function creerEcole(f: FormData) {
 }
 
 export async function ajouterResponsable(f: FormData) {
-  await exigerAdmin();
+  await exigerSuperAdmin();
   const email = t(f, "email", 150).toLowerCase();
   if (!email.includes("@")) redirect("/admin?vue=ecoles&erreur=email");
   await createAdminClient().from("responsables").upsert({ email, ecole_id: t(f, "ecole_id"), nom: t(f, "nom", 120) });
@@ -178,7 +178,7 @@ export async function ajouterResponsable(f: FormData) {
 }
 
 export async function retirerResponsable(f: FormData) {
-  await exigerAdmin();
+  await exigerSuperAdmin();
   await createAdminClient().from("responsables").delete().eq("email", t(f, "email", 150));
   redirect("/admin?vue=ecoles");
 }
@@ -332,7 +332,7 @@ export async function changerAdmissionAdmin(f: FormData) {
 
 /* ---------- Formations des écoles ---------- */
 export async function ajouterFormation(f: FormData) {
-  await exigerAdmin();
+  await exigerSuperAdmin();
   const id = t(f, "ecole_id", 60);
   const nom = t(f, "nom", 120);
   const duree = Math.max(1, Math.min(5, Number(f.get("duree")) || 1));
@@ -348,7 +348,7 @@ export async function ajouterFormation(f: FormData) {
 }
 
 export async function retirerFormation(f: FormData) {
-  await exigerAdmin();
+  await exigerSuperAdmin();
   const id = t(f, "ecole_id", 60);
   const nom = t(f, "nom", 120);
   const db = createAdminClient();
@@ -463,7 +463,7 @@ export async function genererFicheDePosteEntreprise(f: FormData) {
 
 /* ---------- Brochures (téléchargées par les leads) ---------- */
 export async function preparerDepotBrochure(ecoleId: string, formation: string): Promise<{ chemin: string; jeton: string } | { erreur: string }> {
-  await exigerAdmin();
+  await exigerSuperAdmin();
   const slug = (formation || "generale").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "-").toLowerCase();
   const chemin = `${ecoleId}/${slug}-${Date.now()}.pdf`;
   const { data, error } = await createAdminClient().storage.from("brochures").createSignedUploadUrl(chemin);
@@ -472,7 +472,7 @@ export async function preparerDepotBrochure(ecoleId: string, formation: string):
 }
 
 export async function enregistrerBrochure(ecoleId: string, formation: string, chemin: string | null): Promise<{ erreur?: string }> {
-  await exigerAdmin();
+  await exigerSuperAdmin();
   const db = createAdminClient();
   const { data: e } = await db.from("ecoles").select("*").eq("id", ecoleId).maybeSingle();
   if (!e) return { erreur: "École introuvable." };
@@ -700,7 +700,7 @@ export async function supprimerEvenement(f: FormData) {
 
 /** Carte de visite : nouveau QR code pour un candidat (l'ancien lien ne marche plus). Réservé à l'administrateur. */
 export async function refaireQrCarteAdmin(f: FormData) {
-  await exigerAdmin();
+  await exigerSuperAdmin();
   const id = t(f, "candidat_id", 60);
   const { changerJetonCarte } = await import("@/lib/carte");
   await changerJetonCarte(id);
@@ -725,4 +725,47 @@ export async function refuserAnnonceAlumni(f: FormData) {
   await createAdminClient().from("offres").update({ ouverte: false, validation: "refusee" }).eq("id", t(f, "id", 60)).eq("source", "alumni");
   revalidatePath("/admin");
   redirect(t(f, "retour", 200) || "/admin");
+}
+
+/* ---------- ⚙️ Équipe (administrateur uniquement) ---------- */
+
+export async function ajouterMembreEquipe(f: FormData) {
+  await exigerSuperAdmin();
+  const { ROLES_EQUIPE } = await import("@/lib/equipe");
+  const email = t(f, "email", 200).toLowerCase();
+  const role = t(f, "role", 30);
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || !ROLES_EQUIPE.some((r) => r.id === role)) redirect("/admin/parametres?erreur=membre");
+  const db = createAdminClient();
+  const { data: existe } = await db.from("equipe").select("id").eq("email", email).maybeSingle();
+  const ligne = { email, nom: t(f, "nom", 120), role, actif: true, retire_le: null };
+  const { error } = existe ? await db.from("equipe").update(ligne).eq("id", existe.id) : await db.from("equipe").insert(ligne);
+  if (error) redirect("/admin/parametres?erreur=base");
+  if (f.get("prevenir") === "1" && moyenEnvoi()) {
+    const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
+    const { roleEquipe } = await import("@/lib/equipe");
+    after(() => envoyerEmail(email, "Ton accès au tableau de bord MagnusMatch", texteEnHtml(
+      `Bonjour ${ligne.nom || ""},\n\nTu as maintenant accès au tableau de bord MagnusMatch du Campus Magnus, en tant que ${roleEquipe(role)?.label ?? "membre de l'équipe"}.\n\n1. Crée ton compte avec cette adresse (${email}) : ${site}/inscription\n   (si tu as déjà un compte, connecte-toi simplement : ${site}/connexion)\n2. Clique sur « 📊 Tableau de bord » en haut de la page.\n\nÀ très vite,\nL'équipe du Campus Magnus`)).then(() => undefined));
+  }
+  redirect("/admin/parametres?ok=ajoute");
+}
+
+export async function basculerAccesMembre(f: FormData) {
+  await exigerSuperAdmin();
+  const actif = f.get("actif") === "1";
+  await createAdminClient().from("equipe").update({ actif, retire_le: actif ? null : new Date().toISOString() }).eq("id", t(f, "id", 60));
+  redirect(`/admin/parametres?ok=${actif ? "retabli" : "coupe"}`);
+}
+
+export async function changerRoleMembre(f: FormData) {
+  await exigerSuperAdmin();
+  const { ROLES_EQUIPE } = await import("@/lib/equipe");
+  const role = t(f, "role", 30);
+  if (ROLES_EQUIPE.some((r) => r.id === role)) await createAdminClient().from("equipe").update({ role }).eq("id", t(f, "id", 60));
+  redirect("/admin/parametres?ok=role");
+}
+
+export async function supprimerMembre(f: FormData) {
+  await exigerSuperAdmin();
+  await createAdminClient().from("equipe").delete().eq("id", t(f, "id", 60));
+  redirect("/admin/parametres?ok=supprime");
 }

@@ -1,4 +1,5 @@
 import "server-only";
+import { emailsEquipe } from "@/lib/equipe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerEmail, moyenEnvoi, texteEnHtml } from "@/lib/email";
 import { BROCHURES_PAR_DEFAUT, lireFormations } from "@/lib/formations";
@@ -114,7 +115,7 @@ L'équipe Campus Magnus`),
 
 /** Notification 🔔 à l'équipe : nouveau lead. */
 export async function notifierNouveauLead(l: Pick<Lead, "id" | "prenom" | "nom" | "email" | "formation" | "annee_rentree" | "origine">) {
-  const admins = (process.env.ADMIN_EMAILS ?? "").split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+  const admins = await emailsEquipe(["admission"]);
   if (!admins.length) return;
   const maintenant = new Date().toISOString();
   const quoi = [l.formation, l.annee_rentree && `rentrée ${l.annee_rentree}`].filter(Boolean).join(", ");

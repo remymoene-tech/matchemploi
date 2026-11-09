@@ -446,7 +446,7 @@ export async function enregistrerParcours(f: FormData) {
   const { error } = await db.from("candidats").update({ parcours: p }).eq("user_id", user.id);
   if (error) redirect("/espace/parcours?erreur=base");
   const nom = c.nom || c.email;
-  if (nouvelleEntreprise) await notifierEquipe(user.id, `🎓 ${nom} (alumni) travaille maintenant chez ${p.entreprise}${p.poste ? ` comme ${p.poste}` : ""}. L'entreprise est dans Mes entreprises.`, `🎓 Alumni : ${nom} est chez ${p.entreprise}`);
+  if (nouvelleEntreprise) await notifierEquipe(user.id, `🎓 ${nom} (alumni) travaille maintenant chez ${p.entreprise}${p.poste ? ` comme ${p.poste}` : ""}. L'entreprise est dans Mes entreprises.`, `🎓 Alumni : ${nom} est chez ${p.entreprise}`, ["entreprises"]);
   const nouvellesAides = p.aides.filter((a) => !(avant?.aides ?? []).includes(a));
   if (nouvellesAides.length) await notifierEquipe(user.id, `🎓 ${nom} (alumni) propose d'aider le Campus : ${texteAides(nouvellesAides)}.`, `🎓 ${nom} peut aider : ${texteAides(nouvellesAides)}`);
   redirect("/espace/parcours?ok=1");
@@ -462,7 +462,7 @@ export async function monEntrepriseRecrute() {
   const p = lireParcours(c?.parcours);
   if (!c || c.statut_admission !== "alumni" || !p?.entreprise_id) redirect("/espace/parcours");
   await db.from("entreprises").update({ statut: "recrute" }).eq("id", p.entreprise_id).in("statut", ["rencontree", "en_discussion", "pas_maintenant"]);
-  await notifierEquipe(user.id, `🎯 ${c.nom || c.email} (alumni) signale que ${p.entreprise} recrute. Fiche besoin en cours de remplissage.`, `🎯 ${p.entreprise} recrute (alumni ${c.nom || c.email}) : à traiter`);
+  await notifierEquipe(user.id, `🎯 ${c.nom || c.email} (alumni) signale que ${p.entreprise} recrute. Fiche besoin en cours de remplissage.`, `🎯 ${p.entreprise} recrute (alumni ${c.nom || c.email}) : à traiter`, ["entreprises"]);
   const lien = await lienBesoinEntreprise(p.entreprise_id);
   redirect(lien ?? "/espace/parcours?recrute=1");
 }
@@ -501,6 +501,6 @@ export async function deposerAnnonceAlumni(f: FormData) {
   const position = ligne.lieu ? await localiserLieu(ligne.lieu) : null;
   const { error } = await db.from("offres").insert({ ...ligne, latitude: position?.latitude ?? null, longitude: position?.longitude ?? null });
   if (error) redirect("/espace/parcours?erreur=base#annonce");
-  await notifierEquipe(user.id, `📝 ${c.nom || c.email} (alumni) a déposé une annonce : « ${ligne.intitule} » chez ${ligne.entreprise}. À valider dans le tableau de bord.`, `📝 Annonce à valider : ${ligne.intitule} (${ligne.entreprise})`);
+  await notifierEquipe(user.id, `📝 ${c.nom || c.email} (alumni) a déposé une annonce : « ${ligne.intitule} » chez ${ligne.entreprise}. À valider dans le tableau de bord.`, `📝 Annonce à valider : ${ligne.intitule} (${ligne.entreprise})`, ["entreprises"]);
   redirect("/espace/parcours?annonce=1#annonce");
 }

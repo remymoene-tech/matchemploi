@@ -55,12 +55,16 @@ const AUTRES = [
   { id: "ecoles", label: "🏫 Écoles" },
   { id: "reglages", label: "⚙️ Réglages" },
 ] as const;
+/** Pages réservées à l'administrateur (accessibles depuis ⚙️). */
+const RESERVEES_ADMIN = ["ecoles", "reglages"];
 
 export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
-  const vue = sp.vue === "offres" || sp.vue === "correspondances" ? "entreprises" : [...VUES, ...AUTRES].some((v) => v.id === sp.vue) ? sp.vue! : "accueil";
+  const superAdmin = moi.role === "admin";
+  const vueDemandee = sp.vue === "offres" || sp.vue === "correspondances" ? "entreprises" : [...VUES, ...AUTRES].some((v) => v.id === sp.vue) ? sp.vue! : "accueil";
+  const vue = !superAdmin && RESERVEES_ADMIN.includes(vueDemandee) ? "accueil" : vueDemandee;
   const sous = sp.sous === "offres" || sp.sous === "candidats" ? sp.sous
     : sp.vue === "offres" ? (sp.suivi ? "candidats" : "offres") : sp.vue === "correspondances" ? "candidats" : "entreprises";
   const db = createAdminClient();
@@ -245,7 +249,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           { href: "/admin?vue=evenements", icone: "🎪", label: "Événements", sous: "JPO, salons · QR code", actif: vue === "evenements" },
         ]} />
         <nav className="flex flex-wrap justify-end gap-3 text-sm" aria-label="Autres pages">
-          {AUTRES.map((v) => (
+          {AUTRES.filter((v) => !RESERVEES_ADMIN.includes(v.id)).map((v) => (
             <Link key={v.id} href={`/admin?vue=${v.id}`} className={vue === v.id ? "font-semibold text-ink underline underline-offset-4" : "text-muted hover:text-ink"}>{v.label}</Link>
           ))}
         </nav>

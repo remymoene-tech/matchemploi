@@ -28,7 +28,8 @@ export async function inscription(_: EtatForm, form: FormData): Promise<EtatForm
   const supabase = await createClient();
   const origine = process.env.NEXT_PUBLIC_SITE_URL ?? `https://${(await headers()).get("host")}`;
   const ecole = String(form.get("ecole") ?? "").trim().replace(/[^A-Za-z0-9-]/g, "");
-  const suite = `/espace/profil${ecole ? `?ecole=${ecole}` : ""}`;
+  const { roleDe } = await import("@/lib/equipe");
+  const suite = (await roleDe(email)) ? "/admin" : `/espace/profil${ecole ? `?ecole=${ecole}` : ""}`;
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -46,7 +47,8 @@ export async function connexion(_: EtatForm, form: FormData): Promise<EtatForm> 
     password: String(form.get("password") ?? ""),
   });
   if (error) return { erreur: traduire(error.message) };
-  redirect("/espace");
+  const { roleDe } = await import("@/lib/equipe");
+  redirect((await roleDe(String(form.get("email") ?? "").trim())) ? "/admin" : "/espace");
 }
 
 export async function deconnexion() {
