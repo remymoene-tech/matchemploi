@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { brochurePour, envoyerBrochure, notifierNouveauLead, type Lead } from "@/lib/leads";
+import { brochurePour, envoyerBrochure, notifierNouveauLead, notifierSuiviLead, type Lead } from "@/lib/leads";
 import { ecoleParCode } from "@/lib/ecoles";
 import { evenementParCode } from "@/lib/evenements";
 
@@ -42,7 +42,10 @@ export async function demanderBrochure(f: FormData) {
   if (existant) {
     const { data } = await db.from("leads").update({ ...donnees, updated_at: new Date().toISOString() }).eq("id", existant.id).select("*").single();
     lead = data as Lead;
-    await db.from("echanges").insert({ lead_id: existant.id, type: "autre", resume: evenement ? `Rencontré à l'événement « ${evenement.nom} » (${donnees.formation}, rentrée ${donnees.annee_rentree}).` : `A redemandé la brochure (${donnees.formation}, rentrée ${donnees.annee_rentree}).`, auteur: "" });
+    const quoi = evenement ? `Rencontré à l'événement « ${evenement.nom} » (${donnees.formation}, rentrée ${donnees.annee_rentree}).` : `A redemandé la brochure (${donnees.formation}, rentrée ${donnees.annee_rentree}).`;
+    await db.from("echanges").insert({ lead_id: existant.id, type: "autre", resume: quoi, auteur: "" });
+    // Le lead revient : on prévient la personne qui le suit (ou toute l'équipe s'il n'est attribué à personne)
+    await notifierSuiviLead(existant, `🧲 ${donnees.prenom} ${donnees.nom} : ${quoi}`, `🧲 ${donnees.prenom} ${donnees.nom} est revenu(e) : ${evenement ? evenement.nom : "brochure redemandée"} → à recontacter`).catch(() => undefined);
   } else {
     let { data, error } = await db.from("leads").insert({ ...donnees, origine, ecole_id: ecole?.id ?? null, ...(evenement ? { evenement_id: evenement.id } : {}) }).select("*").single();
     if (error && evenement) ({ data, error } = await db.from("leads").insert({ ...donnees, origine, ecole_id: ecole?.id ?? null }).select("*").single());

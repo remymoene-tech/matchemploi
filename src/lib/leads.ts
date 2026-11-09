@@ -57,6 +57,9 @@ export type Lead = {
   notes: string;
   /** Motif quand le lead est « Perdu ». */
   motif_perte?: string | null;
+  /** Membre de l'équipe qui suit ce lead (email) : il est le seul à recevoir ses notifications. */
+  attribue_a?: string | null;
+  attribue_le?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -115,7 +118,7 @@ L'équipe Campus Magnus`),
 
 /** Notification 🔔 à l'équipe : nouveau lead. */
 export async function notifierNouveauLead(l: Pick<Lead, "id" | "prenom" | "nom" | "email" | "formation" | "annee_rentree" | "origine">) {
-  const admins = await emailsEquipe(["leads"]);
+  const admins = await emailsEquipe();
   if (!admins.length) return;
   const maintenant = new Date().toISOString();
   const quoi = [l.formation, l.annee_rentree && `rentrée ${l.annee_rentree}`].filter(Boolean).join(", ");
@@ -243,4 +246,37 @@ L'équipe Campus Magnus`)).catch(() => false);
     }
   }
   return n;
+}
+
+/**
+ * Attribue un lead à un membre de l'équipe. Les autres membres n'ont plus la notification « Nouveau lead »
+ * (elle passe en « faite » chez eux) ; la personne choisie est prévenue si quelqu'un d'autre le lui attribue.
+ */
+export async function attribuerLead(leadId: string, email: string, par: string): Promise<boolean> {
+  const base = db();
+  const cle = email.trim().toLowerCase();
+  const { data: l } = await base.from("leads").select("id, prenom, nom, email, attribue_a").eq("id", leadId).maybeSingle();
+  if (!l) return false;
+  if ((l.attribue_a ?? "") === cle) return true;
+  const { error } = await base.from("leads").update({ attribue_a: cle || null, attribue_le: cle ? new Date().toISOString() : null }).eq("id", leadId);
+  if (error) return false;
+  if (!cle) return true;
+  // Les autres n'ont plus la notification « Nouveau lead » : seul le responsable du lead la garde
+  await base.from("echanges").update({ action_faite: true }).eq("lead_id", leadId).eq("action_faite", false).like("action", "🧲 Nouveau lead%").neq("auteur", cle);
+  const maintenant = new Date().toISOString();
+  const moi = cle === par.trim().toLowerCase();
+  await base.from("echanges").insert({
+    lead_id: leadId, type: "autre", date_echange: maintenant, auteur: moi ? "" : cle,
+    resume: moi ? `👤 ${par} s'occupe de ce lead.` : `👤 Lead attribué à ${cle} par ${par}.`,
+    ...(moi ? {} : { action: `🧲 ${par} t'a attribué le lead ${nomLead(l as Lead)} → à contacter`, action_le: maintenant.slice(0, 10), action_a: maintenant }),
+  });
+  return true;
+}
+
+/** Notification au responsable du lead s'il y en a un, sinon à toute l'équipe. */
+export async function notifierSuiviLead(l: Pick<Lead, "id" | "attribue_a">, resume: string, action: string) {
+  const dest = l.attribue_a ? [l.attribue_a] : await emailsEquipe();
+  if (!dest.length) return;
+  const maintenant = new Date().toISOString();
+  await db().from("echanges").insert(dest.map((auteur) => ({ lead_id: l.id, type: "autre", date_echange: maintenant, resume, action, action_le: maintenant.slice(0, 10), action_a: maintenant, auteur })));
 }

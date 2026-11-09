@@ -14,13 +14,26 @@ export const ROLES_EQUIPE = [
   { id: "entreprises", label: "Chargé(e) relations entreprises", icone: "🏢" },
 ] as const;
 
+/** Postes proposés dans ⚙️ (« Autre » : l'administrateur écrit l'intitulé). */
+export const POSTES = [
+  "Chargé(e) admissions et relations entreprises",
+  "Responsable admissions et relations entreprises",
+  "Chargé(e) pédagogie",
+  "Responsable pédagogie",
+  "Directrice marketing et communication",
+  "Chargé(e) marketing et communication",
+] as const;
+
+/** Intitulé de l'administrateur. */
+export const POSTE_ADMIN = "Directeur campus";
+
 /** Accès qu'on peut donner à chaque membre de l'équipe (cases à cocher dans ⚙️). */
 export const ACCES = [
   { id: "accueil", label: "Accueil et chiffres", icone: "🏠", aide: "Statistiques et graphiques" },
-  { id: "leads", label: "Leads", icone: "🧲", aide: "Demandes de brochure, entretiens d'admission · notifié des nouveaux leads" },
+  { id: "leads", label: "Leads", icone: "🧲", aide: "Demandes de brochure, entretiens d'admission, attribution des leads" },
   { id: "candidats", label: "Candidats", icone: "👥", aide: "Fiches, admissions, CV, tests, briefing, entretiens" },
-  { id: "alumni", label: "Alumni", icone: "🎓", aide: "Parcours des alumni · notifié quand un alumni propose son aide" },
-  { id: "entreprises", label: "Entreprises et offres", icone: "🏢", aide: "Fiches entreprises, offres, annonces d'alumni · notifié quand une entreprise recrute" },
+  { id: "alumni", label: "Alumni", icone: "🎓", aide: "Parcours des alumni et leurs propositions d'aide" },
+  { id: "entreprises", label: "Entreprises et offres", icone: "🏢", aide: "Fiches entreprises, offres, annonces d'alumni à valider" },
   { id: "planning", label: "Planning", icone: "📅", aide: "Entretiens programmés" },
   { id: "evenements", label: "Événements", icone: "🎪", aide: "JPO, salons, QR codes" },
 ] as const;
@@ -55,7 +68,7 @@ export function estSuperAdmin(email: string | null | undefined) {
 /** Droits de la personne dans l'équipe (null si elle n'en fait pas partie ou si son accès est coupé). */
 export const droitsDe = cache(async (email: string | null | undefined): Promise<Droits | null> => {
   if (!email) return null;
-  if (estSuperAdmin(email)) return { admin: true, acces: TOUS_ACCES, poste: "Administrateur" };
+  if (estSuperAdmin(email)) return { admin: true, acces: TOUS_ACCES, poste: POSTE_ADMIN };
   try {
     const db = createAdminClient();
     const cle = email.trim().toLowerCase();
@@ -97,3 +110,14 @@ export async function emailsEquipe(acces?: Acces[]): Promise<string[]> {
     return admins;
   }
 }
+
+export type Personne = { email: string; nom: string; poste: string };
+
+/** Tout le monde dans l'équipe (administrateur + membres actifs), pour attribuer un lead. */
+export async function personnesEquipe(): Promise<Personne[]> {
+  const admins: Personne[] = emailsAdmins().map((email) => ({ email, nom: "", poste: POSTE_ADMIN }));
+  const membres = ((await listeEquipe()) ?? []).filter((m) => m.actif).map((m) => ({ email: m.email.toLowerCase(), nom: m.nom, poste: m.poste || roleEquipe(m.role)?.label || "" }));
+  return [...admins, ...membres.filter((m) => !admins.some((a) => a.email === m.email))];
+}
+
+export const nomPersonne = (p: Personne | undefined, email?: string | null) => (p ? p.nom || p.email.split("@")[0] : email ? email.split("@")[0] : "");

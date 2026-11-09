@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { exigerSuperAdmin } from "@/lib/auth";
-import { ACCES, accesDe, emailsAdmins, listeEquipe, roleEquipe, type Membre } from "@/lib/equipe";
+import { ACCES, POSTES, POSTE_ADMIN, accesDe, emailsAdmins, listeEquipe, roleEquipe, type Membre } from "@/lib/equipe";
+import { ChoixPoste } from "@/components/ChoixPoste";
 import { ajouterMembreEquipe, basculerAccesMembre, modifierMembre, supprimerMembre } from "../actions";
 
 export const metadata = { title: "⚙️ Paramètres · MagnusMatch" };
@@ -64,7 +65,7 @@ export default async function Parametres({ searchParams }: { searchParams: Promi
                 <div className="grid gap-3 sm:grid-cols-3">
                   <label className="flex flex-col gap-1 text-sm"><span className="font-semibold">Prénom et nom</span><input className="input" name="nom" placeholder="Ex. Julie Martin" /></label>
                   <label className="flex flex-col gap-1 text-sm"><span className="font-semibold">Email <span className="text-bad">*</span></span><input className="input" type="email" name="email" required placeholder="julie.martin@arles.cci.fr" /></label>
-                  <label className="flex flex-col gap-1 text-sm"><span className="font-semibold">Intitulé de poste</span><input className="input" name="poste" maxLength={120} placeholder="Ex. Chargée d'admission" /></label>
+                  <ChoixPoste postes={POSTES} />
                 </div>
                 <CasesAcces coches={["accueil", "leads", "candidats"]} />
                 <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="prevenir" value="1" defaultChecked className="h-4 w-4" /> Lui envoyer un email avec le lien pour créer son compte</label>
@@ -75,7 +76,7 @@ export default async function Parametres({ searchParams }: { searchParams: Promi
             <div className="flex flex-col gap-3">
               {admins.map((x) => (
                 <div key={x} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-line p-4">
-                  <div><p className="font-semibold">{x}</p><p className="text-sm text-muted">👑 Administrateur · tous les accès · défini dans Vercel (ADMIN_EMAILS)</p></div>
+                  <div><p className="font-semibold">{x}</p><p className="text-sm text-muted">👑 {POSTE_ADMIN} · administrateur · tous les accès · défini dans Vercel (ADMIN_EMAILS)</p></div>
                   <span className="chip chip-plus">Tous les droits</span>
                 </div>
               ))}
@@ -109,7 +110,7 @@ export default async function Parametres({ searchParams }: { searchParams: Promi
                         <input type="hidden" name="id" value={m.id} />
                         <div className="grid gap-3 sm:grid-cols-2">
                           <label className="flex flex-col gap-1 text-sm"><span className="font-semibold">Prénom et nom</span><input className="input" name="nom" defaultValue={m.nom} /></label>
-                          <label className="flex flex-col gap-1 text-sm"><span className="font-semibold">Intitulé de poste</span><input className="input" name="poste" maxLength={120} defaultValue={posteDe(m)} /></label>
+                          <ChoixPoste postes={POSTES} actuel={posteDe(m)} />
                         </div>
                         <CasesAcces coches={acces} />
                         <div className="flex gap-2"><button className="btn btn-primary">Enregistrer</button><Link href="/admin/parametres" className="btn btn-ghost">Annuler</Link></div>
@@ -124,7 +125,8 @@ export default async function Parametres({ searchParams }: { searchParams: Promi
         )}
 
         <p className="rounded-xl border border-line p-4 text-sm text-muted">
-          🔒 <b className="text-ink">Toujours réservé à toi (⚙️)</b> : cette page, les écoles et leurs formations, les brochures, la fréquence de recherche, et refaire le QR code d&apos;une carte de visite. Chaque personne reçoit les notifications 🔔 des parties auxquelles elle a accès.
+          🔒 <b className="text-ink">Toujours réservé à toi (⚙️)</b> : cette page, les écoles et leurs formations, les brochures, la fréquence de recherche, et refaire le QR code d&apos;une carte de visite.
+          <br />🔔 <b className="text-ink">Notifications</b> : toute l&apos;équipe reçoit les nouvelles notifications (nouveaux leads, entreprises qui recrutent…). Dès qu&apos;un lead est attribué, seule la personne qui le suit reçoit ses notifications.
         </p>
       </section>
 

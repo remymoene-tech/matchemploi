@@ -421,3 +421,5 @@ create table if not exists public.equipe (id uuid primary key default gen_random
 alter table public.equipe enable row level security;
 alter table public.equipe add column if not exists poste text not null default '';
 alter table public.equipe add column if not exists acces jsonb;
+alter table public.leads add column if not exists attribue_a text;
+alter table public.leads add column if not exists attribue_le timestamptz;

@@ -20,7 +20,7 @@ export async function entrepriseParJeton(jeton: string): Promise<Entreprise | nu
 
 /** Notification 🔔 à l'équipe : l'entreprise a rempli sa fiche besoin. */
 export async function notifierBesoinRempli(e: Entreprise) {
-  const admins = await emailsEquipe(["entreprises"]);
+  const admins = await emailsEquipe();
   const destinataires = [...new Set([...(e.auteur ? [e.auteur.toLowerCase()] : []), ...admins])];
   const maintenant = new Date().toISOString();
   if (!destinataires.length) return;

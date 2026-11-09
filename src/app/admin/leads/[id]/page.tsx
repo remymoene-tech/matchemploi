@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { exigerAcces } from "@/lib/auth";
+import { nomPersonne, personnesEquipe } from "@/lib/equipe";
 import { MOTIFS_PERTE, ORIGINES_LEAD, STATUTS_LEAD, dateEntretienTexte, estLeadAdmis, isoVersParis, leadParId, nomLead, statutLead, type Lead } from "@/lib/leads";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { echangesDuLead, echeance, maintenantMs } from "@/lib/echanges";
@@ -9,15 +10,16 @@ import { OngletsCartes } from "@/components/OngletsCartes";
 import { StatutLeadRapide } from "@/components/StatutLeadRapide";
 import { FormEchange } from "@/components/FormEchange";
 import { JournalEchanges } from "@/components/JournalEchanges";
-import { changerStatutLeadFiche, planifierEntretienLead, renvoyerInvitation, actionFaiteLead, ajouterEchangeLead, enregistrerLead, renvoyerBrochure, supprimerEchangeLead, supprimerLead } from "../../actions";
+import { attribuerLeadAction, changerStatutLeadFiche, planifierEntretienLead, renvoyerInvitation, actionFaiteLead, ajouterEchangeLead, enregistrerLead, renvoyerBrochure, supprimerEchangeLead, supprimerLead } from "../../actions";
 
 export const metadata = { title: "Lead · MagnusMatch" };
 
 export default async function FicheLead({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ onglet?: string; ok?: string; erreur?: string; brochure?: string; invitation?: string; convocation?: string }>;
+  searchParams: Promise<{ onglet?: string; ok?: string; erreur?: string; brochure?: string; invitation?: string; convocation?: string; attribue?: string }>;
 }) {
-  await exigerAcces("leads");
+  const { user } = await exigerAcces("leads");
+  const equipe = await personnesEquipe();
   const { id } = await params;
   const sp = await searchParams;
   const nouveau = id === "nouveau";
@@ -77,6 +79,34 @@ export default async function FicheLead({ params, searchParams }: {
           </div>
         )}
       </header>
+
+      {l && (() => {
+        const moi = (user.email ?? "").toLowerCase();
+        const resp = equipe.find((p) => p.email === l.attribue_a);
+        return (
+          <section className={`flex flex-wrap items-center gap-3 rounded-2xl border-2 p-3 text-sm ${l.attribue_a ? "border-line bg-surface" : "border-bad bg-bad-soft"}`}>
+            <span className="font-semibold">👤 Suivi par :</span>
+            {l.attribue_a
+              ? <span><b>{l.attribue_a === moi ? "Toi" : nomPersonne(resp, l.attribue_a)}</b>{resp?.poste ? <span className="text-muted"> · {resp.poste}</span> : ""}</span>
+              : <span className="font-semibold text-bad">Personne pour le moment : toute l&apos;équipe a été prévenue</span>}
+            {l.attribue_a !== moi && (
+              <form action={attribuerLeadAction}>
+                <input type="hidden" name="lead_id" value={l.id} /><input type="hidden" name="attribue_a" value="moi" />
+                <button className="btn btn-sm btn-primary">🙋 Je m&apos;en occupe</button>
+              </form>
+            )}
+            <form action={attribuerLeadAction} className="flex flex-wrap items-center gap-2">
+              <input type="hidden" name="lead_id" value={l.id} />
+              <select name="attribue_a" defaultValue={l.attribue_a ?? ""} className="input w-auto max-w-[260px] py-1.5 text-sm" aria-label="Attribuer à">
+                <option value="">— Personne —</option>
+                {equipe.map((p) => <option key={p.email} value={p.email}>{nomPersonne(p)}{p.poste ? ` · ${p.poste}` : ""}</option>)}
+              </select>
+              <button className="btn btn-sm">Attribuer</button>
+            </form>
+            {sp.attribue && <span className="text-good">✅ Enregistré</span>}
+          </section>
+        );
+      })()}
 
       {l && (
         <StatutLeadRapide id={l.id} statut={statutLead(l.statut).id} statuts={STATUTS_LEAD} motifs={MOTIFS_PERTE}

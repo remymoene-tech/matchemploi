@@ -574,6 +574,7 @@ export async function ajouterEchangeLead(_: { erreur?: string; ok?: boolean }, f
   const id = t(f, "lead_id", 60);
   const r = await ajouterEchange({ lead: id }, f, user.email ?? "");
   if (r.erreur) return r;
+  await prendreSiLibre(id, user.email);
   revalidatePath(`/admin/leads/${id}`);
   return { ok: true };
 }
@@ -615,13 +616,14 @@ export async function planifierEntretienLead(f: FormData) {
   const statut = ["nouveau", "contacte", "rdv", "dossier", "entretien"].includes(l.statut) ? "convoque" : l.statut;
   const { error } = await db.from("leads").update({ entretien_a: quand, rappel_entretien_envoye: false, statut, ...datesEtapes(l, statut), updated_at: new Date().toISOString() }).eq("id", id);
   if (error) redirect(`/admin/leads/${id}?onglet=entretien&erreur=base`);
-  // Rappel 🔔 pour l'équipe, 1 heure avant
+  await prendreSiLibre(id, user.email);
+  // Rappel 🔔 1 heure avant, pour la personne qui suit le lead
   await db.from("echanges").insert({
     lead_id: id, type: "rdv", date_echange: new Date().toISOString(),
     resume: `📨 Convoqué à l'entretien d'admission : ${dateEntretienTexte(quand)}.`,
     action: `🗣️ Entretien d'admission de ${nomLead(l)} à ${new Date(quand).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" })}`,
     action_le: quand.slice(0, 10), action_a: new Date(new Date(quand).getTime() - 3600e3).toISOString(),
-    auteur: user.email ?? "",
+    auteur: l.attribue_a || user.email || "",
   });
   const ok = f.get("convocation") === "on" ? await envoyerConvocation(l, quand) : false;
   redirect(`/admin/leads/${id}?onglet=entretien&${ok ? "convocation=1" : "ok=1"}`);
@@ -635,6 +637,7 @@ export async function changerStatutLeadFiche(f: FormData) {
   const retour = t(f, "retour", 200);
   const l = await leadParId(id);
   if (!l || !STATUTS_LEAD.some((x) => x.id === statut)) redirect("/admin?vue=leads");
+  if (statut !== l.statut) await prendreSiLibre(id, user.email);
   // Convoqué au concours : la date et l'heure de l'entretien sont obligatoires
   if (statut === "convoque" && !t(f, "entretien_a", 20) && !(l.statut === "convoque" && l.entretien_a)) redirect(`/admin/leads/${id}?erreur=date`);
   const db = createAdminClient();
@@ -729,6 +732,12 @@ export async function refuserAnnonceAlumni(f: FormData) {
 
 /* ---------- ⚙️ Équipe (administrateur uniquement) ---------- */
 
+/** Intitulé choisi dans la liste, ou écrit à la main (« Autre »). */
+function lirePoste(f: FormData) {
+  const choix = t(f, "poste_choix", 120);
+  return choix === "autre" ? t(f, "poste_autre", 120) : choix || t(f, "poste", 120);
+}
+
 export async function ajouterMembreEquipe(f: FormData) {
   await exigerSuperAdmin();
   const { TOUS_ACCES } = await import("@/lib/equipe");
@@ -738,7 +747,7 @@ export async function ajouterMembreEquipe(f: FormData) {
   if (!acces.length) redirect("/admin/parametres?erreur=acces");
   const db = createAdminClient();
   const { data: existe } = await db.from("equipe").select("id").eq("email", email).maybeSingle();
-  const ligne = { email, nom: t(f, "nom", 120), poste: t(f, "poste", 120), acces, role: "equipe", actif: true, retire_le: null };
+  const ligne = { email, nom: t(f, "nom", 120), poste: lirePoste(f), acces, role: "equipe", actif: true, retire_le: null };
   const { error } = existe ? await db.from("equipe").update(ligne).eq("id", existe.id) : await db.from("equipe").insert(ligne);
   if (error) redirect("/admin/parametres?erreur=base");
   if (f.get("prevenir") === "1" && moyenEnvoi()) {
@@ -761,7 +770,7 @@ export async function modifierMembre(f: FormData) {
   const { TOUS_ACCES } = await import("@/lib/equipe");
   const acces = f.getAll("acces").map(String).filter((x) => (TOUS_ACCES as string[]).includes(x));
   if (!acces.length) redirect("/admin/parametres?erreur=acces");
-  const { error } = await createAdminClient().from("equipe").update({ nom: t(f, "nom", 120), poste: t(f, "poste", 120), acces }).eq("id", t(f, "id", 60));
+  const { error } = await createAdminClient().from("equipe").update({ nom: t(f, "nom", 120), poste: lirePoste(f), acces }).eq("id", t(f, "id", 60));
   redirect(error ? "/admin/parametres?erreur=base" : "/admin/parametres?ok=modifie");
 }
 
@@ -769,4 +778,24 @@ export async function supprimerMembre(f: FormData) {
   await exigerSuperAdmin();
   await createAdminClient().from("equipe").delete().eq("id", t(f, "id", 60));
   redirect("/admin/parametres?ok=supprime");
+}
+
+/** « Je m'en occupe » ou attribution à un membre de l'équipe. */
+export async function attribuerLeadAction(f: FormData) {
+  const { user } = await exigerAcces("leads");
+  const { attribuerLead } = await import("@/lib/leads");
+  const id = t(f, "lead_id", 60);
+  const choix = t(f, "attribue_a", 200);
+  const email = choix === "moi" ? (user.email ?? "") : choix;
+  await attribuerLead(id, email, user.email ?? "");
+  revalidatePath("/admin");
+  redirect(t(f, "retour", 200) || `/admin/leads/${id}?attribue=1`);
+}
+
+/** Le premier membre qui agit sur un lead libre en devient responsable (réactivité). */
+async function prendreSiLibre(leadId: string, email: string | undefined) {
+  if (!leadId || !email) return;
+  const { attribuerLead } = await import("@/lib/leads");
+  const { data } = await createAdminClient().from("leads").select("attribue_a").eq("id", leadId).maybeSingle();
+  if (data && !data.attribue_a) await attribuerLead(leadId, email, email).catch(() => false);
 }

@@ -19,7 +19,7 @@ import { Copier } from "@/components/Copier";
 import { FormBrochure } from "@/components/FormBrochure";
 import { ADMISSIONS, admission } from "@/lib/admission";
 import { VueAlumni } from "@/components/VueAlumni";
-import { peut, type Acces } from "@/lib/equipe";
+import { nomPersonne, personnesEquipe, peut, type Acces } from "@/lib/equipe";
 import { AnnoncesAValider } from "@/components/AnnoncesAValider";
 import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
@@ -32,7 +32,7 @@ import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { creerEvenement, supprimerEvenement, basculerAccueilEvenement, validerAnnonceAlumni, refuserAnnonceAlumni, changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { attribuerLeadAction, creerEvenement, supprimerEvenement, basculerAccueilEvenement, validerAnnonceAlumni, refuserAnnonceAlumni, changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -59,7 +59,7 @@ const AUTRES = [
 /** Pages réservées à l'administrateur (accessibles depuis ⚙️). */
 const RESERVEES_ADMIN = ["ecoles", "reglages"];
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -181,8 +181,11 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     && (!sp.lstatut || l.statut === sp.lstatut)
     && (!sp.lformation || l.formation === sp.lformation)
     && (!sp.lannee || String(l.annee_rentree ?? "") === sp.lannee)
-    && (!sp.lorigine || l.origine === sp.lorigine));
-  const filtresLeadsActifs = !!(ql || sp.lstatut || sp.lformation || sp.lannee || sp.lorigine);
+    && (!sp.lorigine || l.origine === sp.lorigine)
+    && (!sp.lsuivi || (sp.lsuivi === "libre" ? !l.attribue_a : sp.lsuivi === "moi" ? l.attribue_a === (moi.user.email ?? "").toLowerCase() : l.attribue_a === sp.lsuivi)));
+  const filtresLeadsActifs = !!(ql || sp.lstatut || sp.lformation || sp.lannee || sp.lorigine || sp.lsuivi);
+  const personnes = vue === "leads" ? await personnesEquipe() : [];
+  const libres = (leads ?? []).filter((l) => !l.attribue_a && !["perdu", "admis", "inscrit"].includes(l.statut)).length;
   const lienBrochure = `${site || "https://magnusmatch.vercel.app"}/brochure`;
   const formationsToutes = [...new Set(ecoles.flatMap((e) => lireFormations(e.formations).map((f) => f.nom)))];
 
@@ -477,6 +480,15 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               </select>
             </label>
             <label className="flex flex-col gap-1 text-sm">
+              <span className="font-semibold">👤 Suivi par</span>
+              <select className="input" name="lsuivi" defaultValue={sp.lsuivi ?? ""}>
+                <option value="">Tout le monde</option>
+                <option value="moi">Mes leads</option>
+                <option value="libre">Non attribués{libres ? ` (${libres})` : ""}</option>
+                {personnes.map((p) => <option key={p.email} value={p.email}>{nomPersonne(p)}</option>)}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
               <span className="font-semibold">📍 Origine</span>
               <select className="input" name="lorigine" defaultValue={sp.lorigine ?? ""}>
                 <option value="">Toutes</option>
@@ -504,6 +516,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                     <th className="p-3 font-semibold">Où on en est</th>
                     <th className="p-3 font-semibold">Formation visée</th>
                     <th className="p-3 font-semibold">Rentrée</th>
+                    <th className="p-3 font-semibold">Suivi par</th>
                     <th className="p-3 font-semibold">Origine</th>
                     <th className="p-3 font-semibold">Brochure</th>
                     <th className="p-3 font-semibold">Reçu le</th>
@@ -531,6 +544,16 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                       </td>
                       <td className="p-3">{l.formation || "—"}</td>
                       <td className="p-3">{l.annee_rentree ?? "—"}</td>
+                      <td className="p-3">
+                        {l.attribue_a
+                          ? <span className="chip whitespace-nowrap">👤 {l.attribue_a === (moi.user.email ?? "").toLowerCase() ? "Moi" : nomPersonne(personnes.find((p) => p.email === l.attribue_a), l.attribue_a)}</span>
+                          : (
+                            <form action={attribuerLeadAction}>
+                              <input type="hidden" name="lead_id" value={l.id} /><input type="hidden" name="attribue_a" value="moi" /><input type="hidden" name="retour" value="/admin?vue=leads" />
+                              <button className="btn btn-sm whitespace-nowrap border-bad text-bad">🙋 Je prends</button>
+                            </form>
+                          )}
+                      </td>
                       <td className="p-3 text-xs text-muted">{l.origine}</td>
                       <td className="p-3">{l.brochure_envoyee_le ? <span className="chip chip-plus whitespace-nowrap">📬 Envoyée</span> : <span className="chip whitespace-nowrap">—</span>}</td>
                       <td className="p-3 text-muted">{new Date(l.created_at).toLocaleDateString("fr-FR", { day: "numeric", month: "short", timeZone: "Europe/Paris" })}</td>

@@ -131,7 +131,9 @@ alter table public.offres add column if not exists proposee_par uuid references 
 create table if not exists public.equipe (id uuid primary key default gen_random_uuid(), email text not null unique, nom text not null default '', role text not null default 'admission', actif boolean not null default true, retire_le timestamptz, created_at timestamptz not null default now());
 alter table public.equipe enable row level security;
 alter table public.equipe add column if not exists poste text not null default '';
-alter table public.equipe add column if not exists acces jsonb;`;
+alter table public.equipe add column if not exists acces jsonb;
+alter table public.leads add column if not exists attribue_a text;
+alter table public.leads add column if not exists attribue_le timestamptz;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -194,6 +196,7 @@ async function verifierBase() {
     db.from("candidats").select("parcours, alumni_rappel_le").limit(1),
     db.from("offres").select("validation, proposee_par").limit(1),
     db.from("equipe").select("id, poste, acces").limit(1),
+    db.from("leads").select("attribue_a, attribue_le").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -254,6 +257,7 @@ async function verifierBase() {
     "Alumni (parcours)",
     "Annonces déposées par les alumni",
     "Équipe du tableau de bord",
+    "Leads attribués à l'équipe",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }
