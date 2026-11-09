@@ -119,7 +119,11 @@ alter table public.leads add column if not exists motif_perte text not null defa
 create table if not exists public.evenements (id uuid primary key default gen_random_uuid(), nom text not null, date date not null, lieu text not null default '', code text not null unique, created_at timestamptz not null default now());
 alter table public.evenements enable row level security;
 alter table public.leads add column if not exists evenement_id uuid references public.evenements(id) on delete set null;
-alter table public.evenements add column if not exists sur_accueil boolean not null default false;`;
+alter table public.evenements add column if not exists sur_accueil boolean not null default false;
+alter table public.candidats add column if not exists carte_jeton text unique;
+alter table public.candidats add column if not exists carte_options jsonb;
+alter table public.candidats add column if not exists carte_vues integer not null default 0;
+alter table public.candidats add column if not exists carte_vue_le timestamptz;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -178,6 +182,7 @@ async function verifierBase() {
     db.from("evenements").select("id").limit(1),
     db.from("leads").select("evenement_id").limit(1),
     db.from("evenements").select("sur_accueil").limit(1),
+    db.from("candidats").select("carte_jeton, carte_options, carte_vues, carte_vue_le").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -234,6 +239,7 @@ async function verifierBase() {
     "Événements (QR code)",
     "Leads venus d'un événement",
     "Événements sur la page d'accueil",
+    "Carte de visite des candidats",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

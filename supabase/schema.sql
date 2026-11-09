@@ -409,3 +409,7 @@ create table if not exists public.evenements (id uuid primary key default gen_ra
 alter table public.evenements enable row level security;
 alter table public.leads add column if not exists evenement_id uuid references public.evenements(id) on delete set null;
 alter table public.evenements add column if not exists sur_accueil boolean not null default false;
+alter table public.candidats add column if not exists carte_jeton text unique;
+alter table public.candidats add column if not exists carte_options jsonb;
+alter table public.candidats add column if not exists carte_vues integer not null default 0;
+alter table public.candidats add column if not exists carte_vue_le timestamptz;

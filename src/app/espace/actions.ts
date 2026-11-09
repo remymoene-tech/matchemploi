@@ -402,3 +402,26 @@ export async function analyserMonLinkedin(_: EtatLinkedin, f: FormData): Promise
   revalidatePath("/espace/reseau");
   return { ok: "C'est prêt ✓" };
 }
+
+/* ---------- Carte de visite ---------- */
+
+export async function enregistrerCarte(f: FormData) {
+  const { user } = await exigerUtilisateur();
+  const options = {
+    tel: f.get("tel") === "on",
+    email: f.get("email") === "on",
+    linkedin: f.get("linkedin") === "on",
+    recherche: texte(f, "recherche", 160),
+    active: f.get("active") === "on",
+  };
+  const { error } = await createAdminClient().from("candidats").update({ carte_options: options }).eq("user_id", user.id);
+  redirect(error ? "/espace/carte?erreur=base" : "/espace/carte?ok=1");
+}
+
+/** Nouveau QR code : l'ancien lien ne fonctionne plus (utile si la carte a trop circulé). */
+export async function nouveauQrCarte() {
+  const { user } = await exigerUtilisateur();
+  const { changerJetonCarte } = await import("@/lib/carte");
+  await changerJetonCarte(user.id);
+  redirect("/espace/carte?nouveau=1");
+}
