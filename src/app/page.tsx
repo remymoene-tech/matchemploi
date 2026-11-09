@@ -27,7 +27,7 @@ const PROFILS = [
 
 type Formation = {
   sigle: string; nom: string; niveau: string; duree: string; rythme: string; prix: string;
-  points: string[]; metiers: string[]; fiche: string; couleur: string;
+  points: string[]; metiers: string[]; couleur: string;
 };
 
 const FORMATIONS: Formation[] = [
@@ -36,21 +36,21 @@ const FORMATIONS: Formation[] = [
     rythme: "1re année en formation initiale, 2e et 3e années en alternance", prix: "Alternance gratuite pour l'étudiant",
     points: ["Marketing, communication digitale", "Politique commerciale et négociation", "Gestion, finance, management d'équipe", "Entrepreneuriat, anglais et TOEIC"],
     metiers: ["Chargé(e) de développement commercial", "Chef(fe) de projet marketing", "Créateur·rice d'entreprise"],
-    fiche: `${SITE}/egc/formation`, couleur: "var(--jaune)",
+    couleur: "var(--jaune)",
   },
   {
     sigle: "GUC", nom: "Gestionnaire d'Unité Commerciale", niveau: "Bac+2 · RNCP 36141 niveau 5", duree: "2 ans",
     rythme: "2 jours par semaine au centre, 3 jours en entreprise", prix: "0 € en apprentissage ou alternance",
     points: ["Actions commerciales et marketing « phygital »", "Vente et relation client omnicanale", "Suivi des ventes et gestion des stocks", "Organisation et animation d'équipe"],
     metiers: ["Responsable de rayon", "Manager des ventes", "Assistant(e) directeur·rice de magasin"],
-    fiche: `${SITE}/cfa/la-formation-gestionnaire-dunite-commerciale`, couleur: "var(--sauge)",
+    couleur: "var(--sauge)",
   },
   {
     sigle: "AMLHR", nom: "Assistant(e) Manager Loisirs Hébergement Restauration", niveau: "Bac+2 · RNCP 38039 niveau 5", duree: "2 ans",
     rythme: "1 semaine par mois au CFA, ou 2 j / 3 j selon la saison", prix: "0 € en apprentissage ou alternance",
     points: ["Piloter l'activité d'un établissement", "Accueil et relation client, en plusieurs langues", "Encadrer et animer une équipe", "Promotion, communication, e-réputation"],
     metiers: ["Assistant(e) manager", "Adjoint(e) de direction", "Chef(fe) de service hébergement ou restauration"],
-    fiche: `${SITE}/cfa/assistante-manager-loisirs-hebergement-restauration`, couleur: "var(--rose)",
+    couleur: "var(--rose)",
   },
 ];
 
@@ -77,9 +77,9 @@ export default async function Accueil() {
   const evenements = await prochainsEvenements();
   return (
     <div className="flex flex-col gap-20">
-      {/* Accroche : bloc noir + cadre sauge, comme le site du Campus */}
-      <section className="grid items-stretch gap-0 lg:grid-cols-[1.1fr_1fr]">
-        <div className="monte relative z-10 flex flex-col justify-center gap-5 bg-[#111] p-8 text-white sm:p-12 lg:-mr-10 lg:my-10">
+      {/* Accroche : bloc noir, comme le site du Campus */}
+      <section>
+        <div className="monte relative z-10 flex flex-col justify-center gap-5 bg-[#111] p-8 text-white sm:p-12 lg:px-16 lg:py-14">
           <span className="text-xs font-semibold uppercase tracking-[.2em] text-[#c3cdb8]">Campus Magnus · Arles</span>
           <h1 className="font-display text-4xl font-medium uppercase leading-[1.05] tracking-[.04em] sm:text-5xl">
             Ta formation <span className="text-[#c3cdb8]">et ton alternance</span>, au même endroit.
@@ -92,19 +92,6 @@ export default async function Accueil() {
             <Link href={brochure()} className="btn btn-primary px-5 py-2.5 text-base">📬 Clique pour avoir ta brochure</Link>
             <Link href="#formations" className="btn border-white/40 bg-transparent px-5 py-2.5 text-base text-white hover:bg-white/10">Voir les formations</Link>
           </div>
-        </div>
-        <div className="monte grid content-center gap-3 border-[10px] p-6 sm:p-10 lg:pl-20" style={{ borderColor: "var(--sauge)", animationDelay: ".12s" }}>
-          {[
-            ["0 €", "de frais de formation en alternance"],
-            ["3", "formations : EGC, GUC, AMLHR"],
-            ["Bac+2 · Bac+3", "titres reconnus par l'État"],
-            ["3 j / 5", "en entreprise pour la plupart des rythmes"],
-          ].map(([chiffre, texte]) => (
-            <div key={texte} className="flex items-baseline gap-3 border-b border-line pb-3 last:border-0 last:pb-0">
-              <span className="min-w-[7.5rem] font-display text-2xl font-semibold">{chiffre}</span>
-              <span className="text-sm text-muted">{texte}</span>
-            </div>
-          ))}
         </div>
       </section>
 
@@ -144,8 +131,7 @@ export default async function Accueil() {
                 </div>
                 <div className="flex flex-wrap gap-1.5">{f.metiers.map((m) => <span key={m} className="chip text-xs">{m}</span>)}</div>
                 <div className="mt-auto flex flex-wrap gap-2 pt-2">
-                  <Link href={brochure(f.sigle)} className="btn btn-primary btn-sm">📬 Brochure {f.sigle}</Link>
-                  <a href={f.fiche} target="_blank" rel="noopener" className="btn btn-sm">Fiche complète ↗</a>
+                  <Link href={brochure(f.sigle)} className="btn btn-primary btn-sm">📬 Télécharge ta brochure {f.sigle}</Link>
                 </div>
               </div>
             </article>
