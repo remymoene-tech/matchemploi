@@ -34,7 +34,7 @@ import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { attribuerLeadAction, attribuerLeadsGroupe, creerEvenement, supprimerEvenement, basculerAccueilEvenement, validerAnnonceAlumni, refuserAnnonceAlumni, changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { changerRentreeAdmin, attribuerLeadAction, attribuerLeadsGroupe, creerEvenement, supprimerEvenement, basculerAccueilEvenement, validerAnnonceAlumni, refuserAnnonceAlumni, changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -62,7 +62,7 @@ const AUTRES = [
 /** Pages réservées à l'administrateur (accessibles depuis ⚙️). */
 const RESERVEES_ADMIN = ["ecoles", "reglages"];
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string; specialite?: string; ltraite?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string; specialite?: string; ltraite?: string; rentree?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -610,6 +610,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
       {vue === "candidats" && (
         <div className="flex flex-col gap-3">
+          {sp.rentree === "sql" && <p className="rounded-xl bg-bad-soft p-3 text-sm text-bad">⚠️ L&apos;année de rentrée n&apos;a pas pu être enregistrée : lance le SQL de <a href="/diagnostic" className="font-semibold underline">/diagnostic</a> dans Supabase (ligne « Année de rentrée des étudiants »).</p>}
           {admisSansEspace.length > 0 && (
             <section className="card flex flex-col gap-2 p-4">
               <h3 className="font-semibold">✅ Admis à l&apos;entretien, en attente de leur espace ({admisSansEspace.length})</h3>
@@ -690,7 +691,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
 
           <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-            <table className="w-full min-w-[1120px] text-left text-sm">
+            <table className="w-full min-w-[1400px] text-left text-sm">
               <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
                 <tr>
                   <th className="p-3 font-semibold">Candidat</th>
@@ -725,7 +726,11 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                         </form>
                         {c.motif_admission && ["refus", "abandon"].includes(c.statut_admission ?? "") && <div className="mt-1 max-w-[180px] truncate text-xs text-muted" title={c.motif_admission}>Motif : {c.motif_admission}</div>}
                       </td>
-                      <td className="p-3">{c.formation ? <><span className="font-semibold">{c.formation}</span>{c.annee_cursus ? <span className="text-muted"> · {c.annee_cursus === 1 ? "1re" : `${c.annee_cursus}e`} année</span> : null}{rentreeDe(c) ? <div className="mt-0.5 whitespace-nowrap">📅 Rentrée {rentreeDe(c)}</div> : <div className="text-xs text-warn">Rentrée à compléter</div>}</> : <span className="chip chip-minus">À compléter</span>}</td>
+                      <td className="p-3">{c.formation ? <><span className="font-semibold">{c.formation}</span>{c.annee_cursus ? <span className="text-muted"> · {c.annee_cursus === 1 ? "1re" : `${c.annee_cursus}e`} année</span> : null}<form action={changerRentreeAdmin} className="mt-1">
+                          <input type="hidden" name="candidat_id" value={c.user_id} />
+                          <SelectEnregistrer name="annee_rentree" label={`Rentrée de ${c.nom || c.email}`} defaultValue={String(rentreeDe(c) ?? "")}
+                            options={[{ id: "", label: "📅 Rentrée ?" }, ...Array.from({ length: 8 }, (_, i) => new Date().getFullYear() - 5 + i).map((a) => ({ id: String(a), label: `📅 Sept. ${a}` }))]} />
+                        </form></> : <span className="chip chip-minus">À compléter</span>}</td>
                       <td className="p-3 text-muted">{ecoles.find((x) => x.id === c.ecole_id)?.nom ?? "—"}</td>
                       <td className="p-3">{c.cv_chemin ? <a className="font-semibold text-accent" href={`/admin/cv/${c.user_id}`} target="_blank">📄 Ouvrir</a> : <span className="chip chip-minus">Sans CV</span>}</td>
                       <td className="p-3">{best != null ? <span className={`chip ${best >= 70 ? "chip-plus" : "chip-tag"}`}>{best} %</span> : <span className="text-muted">—</span>}</td>

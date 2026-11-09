@@ -9,7 +9,7 @@ export function SelectAuto({ name, defaultValue, options, label }: {
       aria-label={label}
       name={name}
       defaultValue={defaultValue}
-      className="input py-1.5 text-sm"
+      className="input min-w-[10rem] py-1.5 text-sm"
       onChange={(e) => e.currentTarget.form?.requestSubmit()}
     >
       {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}

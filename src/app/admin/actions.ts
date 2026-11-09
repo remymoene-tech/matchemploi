@@ -902,3 +902,18 @@ export async function enregistrerFicheIntervenant(f: FormData) {
   const { droits } = await exigerAcces("intervenants", "leads", "candidats");
   redirect(peut(droits, "intervenants") ? `/admin/leads/${id}?ok=1` : "/admin?vue=leads&requalifie=intervenant");
 }
+
+/** Tableau « Mes candidats » : l'équipe choisit l'année de rentrée (le diplôme est déduit : rentrée + durée). */
+export async function changerRentreeAdmin(f: FormData) {
+  await exigerAcces("candidats", "alumni");
+  const { formationsDeLEcole } = await import("@/lib/ecoles");
+  const id = t(f, "candidat_id", 60);
+  const r = Number(f.get("annee_rentree"));
+  const annee = Number.isInteger(r) && r >= 2000 && r <= 2100 ? r : null;
+  const db = createAdminClient();
+  const { data: c } = await db.from("candidats").select("formation, ecole_id").eq("user_id", id).maybeSingle();
+  const duree = c ? (await formationsDeLEcole(c.ecole_id)).find((x) => x.nom === c.formation)?.duree : undefined;
+  const { error } = await db.from("candidats").update({ annee_rentree: annee, ...(annee && duree ? { diplome_annee: annee + duree } : {}) }).eq("user_id", id);
+  revalidatePath("/admin");
+  redirect(`/admin?vue=candidats${error ? "&rentree=sql" : ""}`);
+}
