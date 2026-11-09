@@ -9,7 +9,8 @@ export const STATUTS_LEAD = [
   { id: "contacte", label: "📞 Contacté", chip: "chip-tag" },
   { id: "rdv", label: "📅 RDV / JPO", chip: "chip-tag" },
   { id: "dossier", label: "📝 Dossier envoyé", chip: "chip-tag" },
-  { id: "inscrit", label: "✅ Inscrit", chip: "chip-plus" },
+  { id: "entretien", label: "🗣️ Entretien prévu", chip: "chip-tag" },
+  { id: "admis", label: "✅ Admis à l'entretien", chip: "chip-plus" },
   { id: "perdu", label: "❌ Perdu", chip: "chip-minus" },
 ] as const;
 
@@ -34,7 +35,8 @@ export type Lead = {
   updated_at: string;
 };
 
-export const statutLead = (id: string) => STATUTS_LEAD.find((s) => s.id === id) ?? STATUTS_LEAD[0];
+export const statutLead = (id: string) => STATUTS_LEAD.find((s) => s.id === (id === "inscrit" ? "admis" : id)) ?? STATUTS_LEAD[0];
+export const estLeadAdmis = (l: { statut: string }) => l.statut === "admis" || l.statut === "inscrit";
 export const nomLead = (l: Pick<Lead, "prenom" | "nom" | "email">) => [l.prenom, l.nom].filter(Boolean).join(" ") || l.email;
 
 const db = () => createAdminClient();
@@ -101,4 +103,35 @@ export async function notifierNouveauLead(l: Pick<Lead, "id" | "prenom" | "nom" 
     action_a: maintenant,
     auteur,
   })));
+}
+
+/**
+ * Lead accepté à l'entretien : il devient candidat. Il reçoit le lien pour créer son espace MagnusMatch
+ * (déjà rattaché à son école) ; il sera directement « Admis » en s'inscrivant avec cet email.
+ */
+export async function envoyerInvitation(l: Pick<Lead, "id" | "prenom" | "email" | "formation" | "ecole_id">): Promise<boolean> {
+  if (!moyenEnvoi() || !l.email) return false;
+  const base = process.env.NEXT_PUBLIC_SITE_URL || "https://magnusmatch.vercel.app";
+  let code = "";
+  if (l.ecole_id) code = ((await db().from("ecoles").select("code").eq("id", l.ecole_id).maybeSingle()).data?.code as string) ?? "";
+  if (!code) code = ((await db().from("ecoles").select("code").ilike("nom", "magnus campus").maybeSingle()).data?.code as string) ?? "";
+  const lien = `${base}/inscription?${new URLSearchParams({ ...(code ? { ecole: code } : {}), email: l.email })}`;
+  const ok = await envoyerEmail(
+    l.email,
+    "Félicitations, tu es admis(e) au Campus Magnus 🎉",
+    texteEnHtml(`Bonjour ${l.prenom || ""},
+
+Félicitations : ton entretien est validé, tu es admis(e)${l.formation ? ` en ${l.formation}` : ""} au Campus Magnus !
+
+Pour la suite, crée ton espace MagnusMatch (1 minute) : tu y trouveras les offres d'alternance qui te correspondent, des conseils pour ton CV et ton LinkedIn, et tes tests de personnalité.
+
+Créer mon espace : ${lien}
+
+Utilise bien cette adresse email (${l.email}) pour t'inscrire.
+
+À très vite,
+L'équipe Campus Magnus`),
+  );
+  if (ok) await db().from("echanges").insert({ lead_id: l.id, type: "email", resume: "✅ Admis : lien de création d'espace envoyé par email.", auteur: "" });
+  return ok;
 }

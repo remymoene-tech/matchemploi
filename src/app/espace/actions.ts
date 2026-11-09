@@ -124,7 +124,17 @@ export async function enregistrerProfil(_: EtatProfil, f: FormData): Promise<Eta
 
   after(() => rechercherPourCandidat(user.id));
   // Un lead avec le même email : sa fiche est reliée à l'espace étudiant
-  after(async () => { try { await createAdminClient().from("leads").update({ candidat_id: user.id }).eq("email", (user.email ?? "").toLowerCase()).is("candidat_id", null); } catch { /* table pas encore créée */ } });
+  after(async () => {
+    try {
+      const db = createAdminClient();
+      const { data: liens } = await db.from("leads").update({ candidat_id: user.id }).eq("email", (user.email ?? "").toLowerCase()).is("candidat_id", null).select("statut");
+      // Admis à l'entretien (lead) : il est directement « Admis » sur MagnusMatch
+      if ((liens ?? []).some((l) => l.statut === "admis" || l.statut === "inscrit")) {
+        await db.from("candidats").update({ statut_admission: "admis" }).eq("user_id", user.id).eq("statut_admission", "prospect");
+        await rechercherPourCandidat(user.id);
+      }
+    } catch { /* table pas encore créée */ }
+  });
   // Nouveau CV analysé : on montre d'abord les conseils
   redirect(nouveauCV ? "/espace/cv?nouveau=1" : "/espace");
 }

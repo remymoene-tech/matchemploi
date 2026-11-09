@@ -23,7 +23,7 @@ import { ajouterEchange } from "@/lib/echanges";
 import { STATUTS_ENTREPRISE, lireEntreprise } from "@/lib/entreprises";
 import { entrepriseRecrute, genererFicheOffre, lancerRechercheCandidats, preparerFicheDePoste } from "@/lib/recherche-entreprise";
 import { lireFormations } from "@/lib/formations";
-import { STATUTS_LEAD, brochurePour, envoyerBrochure, leadParId } from "@/lib/leads";
+import { STATUTS_LEAD, brochurePour, envoyerBrochure, envoyerInvitation, estLeadAdmis, leadParId } from "@/lib/leads";
 import { changerAdmission } from "@/lib/admission-serveur";
 import { majDiplome } from "@/lib/diplome-serveur";
 import { memeEntreprise } from "@/lib/prospections";
@@ -504,8 +504,13 @@ export async function enregistrerLead(f: FormData) {
   if (!d.email && !d.telephone && !d.nom) redirect(`/admin/leads/${id || "nouveau"}?erreur=champs`);
   const db = createAdminClient();
   if (id) {
+    const avant = await leadParId(id);
     const { error } = await db.from("leads").update(d).eq("id", id);
     if (error) redirect(`/admin/leads/${id}?erreur=base`);
+    if (d.statut === "admis" && avant && !estLeadAdmis(avant) && !avant.candidat_id) {
+      const ok = await envoyerInvitation({ ...avant, ...d });
+      redirect(`/admin/leads/${id}?${ok ? "invitation=1" : "ok=1"}`);
+    }
     redirect(`/admin/leads/${id}?ok=1`);
   }
   const { data, error } = await db.from("leads").insert({ ...d, consentement: f.get("consentement") === "on" }).select("id").single();
@@ -517,8 +522,21 @@ export async function changerStatutLead(f: FormData) {
   await exigerAdmin();
   const statut = t(f, "statut", 30);
   if (!STATUTS_LEAD.some((x) => x.id === statut)) return;
-  await createAdminClient().from("leads").update({ statut, updated_at: new Date().toISOString() }).eq("id", t(f, "id", 60));
+  const id = t(f, "id", 60);
+  const avant = await leadParId(id);
+  await createAdminClient().from("leads").update({ statut, updated_at: new Date().toISOString() }).eq("id", id);
+  // Accepté à l'entretien : il reçoit son lien pour créer son espace
+  if (statut === "admis" && avant && !estLeadAdmis(avant) && !avant.candidat_id) after(() => envoyerInvitation(avant).then(() => undefined));
   revalidatePath("/admin");
+}
+
+export async function renvoyerInvitation(f: FormData) {
+  await exigerAdmin();
+  const id = t(f, "id", 60);
+  const l = await leadParId(id);
+  if (!l) redirect("/admin?vue=leads");
+  const ok = await envoyerInvitation(l);
+  redirect(`/admin/leads/${id}?${ok ? "invitation=1" : "erreur=email"}`);
 }
 
 export async function supprimerLead(f: FormData) {

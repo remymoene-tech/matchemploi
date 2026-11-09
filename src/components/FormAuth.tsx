@@ -8,11 +8,14 @@ export function FormAuth({
   bouton,
   nouveauMotDePasse,
   ecole,
+  email,
 }: {
   action: (etat: EtatForm, form: FormData) => Promise<EtatForm>;
   bouton: string;
   nouveauMotDePasse?: boolean;
   ecole?: string;
+  /** Email pré-rempli (lien d'invitation après admission). */
+  email?: string;
 }) {
   const [etat, formAction, enCours] = useActionState(action, {});
   if (etat.info) return <p className="rounded-lg bg-good-soft p-4 text-good">{etat.info}</p>;
@@ -21,7 +24,7 @@ export function FormAuth({
       {ecole && <input type="hidden" name="ecole" value={ecole} />}
       <div className="flex flex-col gap-1">
         <label className="label" htmlFor="email">Email</label>
-        <input className="input" id="email" name="email" type="email" autoComplete="email" required />
+        <input className="input" id="email" name="email" type="email" autoComplete="email" required defaultValue={email} />
       </div>
       <div className="flex flex-col gap-1">
         <label className="label" htmlFor="password">Mot de passe</label>

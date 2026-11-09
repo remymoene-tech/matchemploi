@@ -19,13 +19,13 @@ import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
 import { BROCHURES_PAR_DEFAUT, anneeLabel, lireFormations } from "@/lib/formations";
-import { ORIGINES_LEAD, STATUTS_LEAD, listeLeads, nomLead } from "@/lib/leads";
+import { ORIGINES_LEAD, STATUTS_LEAD, estLeadAdmis, listeLeads, nomLead } from "@/lib/leads";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe } from "@/lib/entreprises";
 import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { changerStatutLead, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { renvoyerInvitation, changerStatutLead, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -146,7 +146,9 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const filtresEntActifs = !!(q || fStatut || fOffre || fOrigine || fTrouvee);
 
   // 🧲 Leads (CRM)
-  const leads = vue === "leads" || vue === "accueil" ? await listeLeads() : [];
+  const leads = vue === "leads" || vue === "accueil" || vue === "candidats" ? await listeLeads() : [];
+  // Leads admis à l'entretien qui n'ont pas encore créé leur espace : déjà candidats
+  const admisSansEspace = (leads ?? []).filter((l) => estLeadAdmis(l) && !l.candidat_id);
   const nbLeads = leads?.length ?? 0;
   const nouveauxLeads = (leads ?? []).filter((l) => l.statut === "nouveau").length;
   const ql = (sp.q ?? "").trim().toLowerCase();
@@ -223,9 +225,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       <div className="flex flex-col gap-2">
         <OngletsCartes label="Espace équipe" onglets={[
           { href: "/admin", icone: "🏠", label: "Accueil", sous: "Mes chiffres", actif: vue === "accueil" },
-          { href: "/admin?vue=leads", icone: "🧲", label: "Leads", sous: leads === null ? "à activer" : nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""}` : `${nbLeads} contact${nbLeads > 1 ? "s" : ""}`, actif: vue === "leads" },
+          { href: "/admin?vue=leads", icone: "🎓", label: "Étudiants", sous: `${nouveauxLeads ? `${nouveauxLeads} nouveau${nouveauxLeads > 1 ? "x" : ""} lead${nouveauxLeads > 1 ? "s" : ""}` : `${nbLeads} leads`} · ${C.size} candidat${C.size > 1 ? "s" : ""}`, actif: vue === "leads" || vue === "candidats" },
           { href: "/admin?vue=entreprises", icone: "🏢", label: "Mes entreprises", sous: entreprises ? `${nbEntreprises} rencontrée${nbEntreprises > 1 ? "s" : ""}` : `${mesOffresOuvertes} offre${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "entreprises" },
-          { href: "/admin?vue=candidats", icone: "👥", label: "Mes candidats", sous: `${C.size} inscrit${C.size > 1 ? "s" : ""}`, actif: vue === "candidats" },
         ]} />
         <nav className="flex flex-wrap justify-end gap-3 text-sm" aria-label="Autres pages">
           {AUTRES.map((v) => (
@@ -346,6 +347,21 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             </section>
           </div>
         </div>
+      )}
+
+      {(vue === "leads" || vue === "candidats") && (
+        <nav className="flex flex-wrap gap-2" aria-label="Étudiants">
+          {([
+            ["leads", "🧲", "Leads", nbLeads],
+            ["candidats", "👥", "Mes candidats", C.size + admisSansEspace.length],
+          ] as const).map(([id, icone, label, n]) => (
+            <Link key={id} href={`/admin?vue=${id}`} aria-current={vue === id ? "page" : undefined}
+              className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold ${vue === id ? "border-accent bg-accent-soft text-ink" : "border-line bg-surface text-muted hover:text-ink"}`}>
+              <span aria-hidden>{icone}</span>{label}<span className="rounded-full bg-bg px-2 text-xs tabular-nums">{n}</span>
+            </Link>
+          ))}
+          <span className="self-center text-xs text-muted">Un lead devient candidat quand il est admis à l&apos;entretien.</span>
+        </nav>
       )}
 
       {vue === "leads" && (
@@ -471,6 +487,23 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
       {vue === "candidats" && (
         <div className="flex flex-col gap-3">
+          {admisSansEspace.length > 0 && (
+            <section className="card flex flex-col gap-2 p-4">
+              <h3 className="font-semibold">✅ Admis à l&apos;entretien, en attente de leur espace ({admisSansEspace.length})</h3>
+              <p className="text-xs text-muted">Ils ont reçu le lien pour créer leur espace MagnusMatch. Dès qu&apos;ils s&apos;inscrivent avec cet email, ils rejoignent la liste ci-dessous, déjà « Admis ».</p>
+              <ul className="flex flex-col divide-y divide-line">
+                {admisSansEspace.map((l) => (
+                  <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                    <span><Link href={`/admin/leads/${l.id}`} className="font-semibold hover:text-accent hover:underline">🎓 {nomLead(l)}</Link><span className="text-muted"> · {[l.formation, l.annee_rentree && `rentrée ${l.annee_rentree}`, l.email].filter(Boolean).join(" · ")}</span></span>
+                    <form action={renvoyerInvitation}>
+                      <input type="hidden" name="id" value={l.id} />
+                      <button className="btn btn-sm">✉️ Renvoyer le lien</button>
+                    </form>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <form method="get" action="/admin" className="card flex flex-wrap items-end gap-3 p-4">
             <input type="hidden" name="vue" value="candidats" />
             <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm">

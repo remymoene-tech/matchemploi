@@ -5,8 +5,9 @@ import { ecoleParCode } from "@/lib/ecoles";
 
 export const metadata = { title: "Créer mon espace · MagnusMatch" };
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ ecole?: string }> }) {
-  const code = (await searchParams).ecole ?? "";
+export default async function Page({ searchParams }: { searchParams: Promise<{ ecole?: string; email?: string }> }) {
+  const sp = await searchParams;
+  const code = sp.ecole ?? "";
   const ecole = code ? await ecoleParCode(code).catch(() => null) : null;
   return (
     <div className="mx-auto flex max-w-sm flex-col gap-6">
@@ -20,7 +21,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ e
         </p>
       )}
       <div className="card p-6">
-        <FormAuth action={inscription} bouton="Créer mon compte" nouveauMotDePasse ecole={ecole?.code} />
+        <FormAuth action={inscription} bouton="Créer mon compte" nouveauMotDePasse ecole={ecole?.code} email={sp.email} />
       </div>
       <p className="text-sm text-muted">Déjà inscrit ? <Link className="font-semibold text-accent" href="/connexion">Se connecter</Link></p>
     </div>

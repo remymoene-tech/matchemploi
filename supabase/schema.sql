@@ -385,3 +385,6 @@ create index if not exists leads_email_idx on public.leads(email);
 alter table public.echanges add column if not exists lead_id uuid references public.leads(id) on delete cascade;
 alter table public.ecoles add column if not exists brochure text;
 insert into storage.buckets (id, name, public) values ('brochures', 'brochures', true) on conflict (id) do nothing;
+
+-- Leads : « Inscrit » devient « Admis à l'entretien »
+update public.leads set statut = 'admis' where statut = 'inscrit';
