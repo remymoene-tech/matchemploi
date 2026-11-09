@@ -36,7 +36,7 @@ export const ACCES = [
   { id: "entreprises", label: "Entreprises et offres", icone: "🏢", aide: "Fiches entreprises, offres, annonces d'alumni à valider" },
   { id: "planning", label: "Planning", icone: "📅", aide: "Entretiens programmés" },
   { id: "evenements", label: "Événements", icone: "🎪", aide: "JPO, salons, QR codes" },
-  { id: "intervenants", label: "Intervenants", icone: "🧑‍🏫", aide: "Carnet d'adresses des intervenants et leurs CV · réservé aux postes de pédagogie" },
+  { id: "intervenants", label: "Intervenants", icone: "🧑‍🏫", aide: "Carnet d'adresses des intervenants et leurs CV · d'habitude la pédagogie · notifié des nouveaux intervenants" },
 ] as const;
 
 export type Acces = (typeof ACCES)[number]["id"];
@@ -54,9 +54,15 @@ export type Droits = { admin: boolean; acces: Acces[]; poste: string };
 /** Le CRM intervenants est réservé à la pédagogie (et à l'administrateur, directeur campus). */
 export const estPedagogie = (poste?: string | null) => /p[ée]dagog/i.test(poste ?? "");
 
+/**
+ * Accès réels d'un membre : exactement les cases cochées par l'administrateur dans ⚙️
+ * (il peut donner « Intervenants » à n'importe qui). Sans cases enregistrées : accès par défaut,
+ * et « Intervenants » seulement pour la pédagogie.
+ */
 export function accesDe(m: Pick<Membre, "role" | "acces"> & { poste?: string | null }): Acces[] {
-  const liste = Array.isArray(m.acces) ? m.acces.filter((a): a is Acces => TOUS_ACCES.includes(a as Acces)) : PAR_DEFAUT[m.role] ?? ["accueil"];
-  return liste.filter((a) => a !== "intervenants" || estPedagogie(m.poste));
+  if (Array.isArray(m.acces)) return m.acces.filter((a): a is Acces => TOUS_ACCES.includes(a as Acces));
+  const base = PAR_DEFAUT[m.role] ?? ["accueil"];
+  return estPedagogie(m.poste) ? [...base, "intervenants"] : base;
 }
 
 export const roleEquipe = (id: string) => ROLES_EQUIPE.find((r) => r.id === id);
@@ -130,9 +136,9 @@ export async function personnesEquipe(): Promise<Personne[]> {
 
 export const nomPersonne = (p: Personne | undefined, email?: string | null) => (p ? p.nom || nomDepuisEmail(p.email) : email ? nomDepuisEmail(email) : "");
 
-/** Pédagogie et direction (intervenants) : l'administrateur et les membres dont le poste parle de pédagogie ou de direction. */
+/** Nouveaux intervenants : l'administrateur et les membres qui ont l'accès « Intervenants ». */
 export async function emailsPedagogieDirection(): Promise<string[]> {
   const admins = emailsAdmins();
-  const membres = ((await listeEquipe().catch(() => null)) ?? []).filter((m) => m.actif && estPedagogie(m.poste));
+  const membres = ((await listeEquipe().catch(() => null)) ?? []).filter((m) => m.actif && accesDe(m).includes("intervenants"));
   return [...new Set([...admins, ...membres.map((m) => m.email.toLowerCase())])];
 }
