@@ -8,6 +8,7 @@ import { adzunaConfigure } from "@/lib/adzuna";
 import { lbaConfigure } from "@/lib/la-bonne-alternance";
 import { Chips, Score } from "@/components/Score";
 import { SelectAuto } from "@/components/SelectAuto";
+import { SelectEnregistrer } from "@/components/SelectEnregistrer";
 import { MessageEnvoyable } from "@/components/MessageEnvoyable";
 import { ListeRelances } from "@/components/ListeRelances";
 import { Barres, Colonnes } from "@/components/Graphiques";
@@ -464,7 +465,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
           {!!leadsAffiches.length && (
             <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-              <table className="w-full min-w-[1000px] text-left text-sm">
+              <table className="w-full min-w-[1100px] text-left text-sm">
                 <thead className="border-b border-line text-xs uppercase tracking-wide text-muted">
                   <tr>
                     <th className="p-3 font-semibold">Contact</th>
@@ -488,7 +489,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                       <td className="p-3">
                         <form action={changerStatutLead}>
                           <input type="hidden" name="id" value={l.id} />
-                          <SelectAuto name="statut" label={`Statut de ${nomLead(l)}`} defaultValue={l.statut} options={STATUTS_LEAD} />
+                          <SelectEnregistrer name="statut" label={`Statut de ${nomLead(l)}`} defaultValue={statutLead(l.statut).id} options={STATUTS_LEAD} />
                         </form>
                       </td>
                       <td className="p-3">{l.formation || "—"}</td>
