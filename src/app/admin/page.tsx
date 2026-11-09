@@ -172,7 +172,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   // Leads admis à l'entretien qui n'ont pas encore créé leur espace : déjà candidats
   const admisSansEspace = (leads ?? []).filter((l) => estLeadAdmis(l) && !l.candidat_id);
   const { data: echLeadsData } = (vue === "accueil" || vue === "leads") && leads?.length
-    ? await db.from("echanges").select("lead_id, date_echange, auteur, resume").not("lead_id", "is", null).limit(5000)
+    ? await db.from("echanges").select("lead_id, date_echange, auteur, resume, type").not("lead_id", "is", null).limit(5000)
     : { data: [] };
   const nbLeads = leads?.length ?? 0;
   const nouveauxLeads = (leads ?? []).filter((l) => l.statut === "nouveau").length;

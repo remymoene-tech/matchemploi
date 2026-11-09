@@ -166,13 +166,19 @@ L'équipe Campus Magnus`),
 }
 
 /* ---------- Statistiques de recrutement ---------- */
-export type EchangeLead = { lead_id: string; date_echange: string; auteur: string; resume: string };
+export type EchangeLead = { lead_id: string; date_echange: string; auteur: string; resume: string; type?: string };
+
+/** Échanges qui comptent comme un contact avec le lead. */
+const TYPES_CONTACT = ["telephone", "email", "sms", "rdv"];
 
 /** Premier vrai contact de l'équipe (pas les notifications automatiques ni les emails envoyés par le site). */
 export function premierContact(l: Lead, echanges: EchangeLead[]) {
-  return echanges
-    .filter((e) => e.lead_id === l.id && e.auteur && !/^🧲|^✅ Admis : lien|^A redemandé/.test(e.resume) && e.date_echange >= l.created_at)
+  const premier = echanges
+    .filter((e) => e.lead_id === l.id && e.auteur && (e.type ? TYPES_CONTACT.includes(e.type) : true)
+      && !/^🧲|^👤|^✅ Admis : lien|^A redemandé|^Rencontré à l'événement/.test(e.resume))
     .map((e) => e.date_echange).sort()[0] ?? null;
+  // Appel noté avant la création du lead (lead saisi après coup) : contact immédiat
+  return premier && premier < l.created_at ? l.created_at : premier;
 }
 
 const rang = (statut: string) => ({ convoque: 1, present: 2, absent: 1, admis: 3 } as Record<string, number>)[ANCIENS[statut] ?? statut] ?? 0;

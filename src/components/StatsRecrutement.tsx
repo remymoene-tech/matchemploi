@@ -22,10 +22,14 @@ export function StatsRecrutement({ leads, echanges, maintenant, annee, annees }:
   });
   const rappeles = delais.filter((d) => d.h != null).map((d) => d.h!) .sort((a, b) => a - b);
   const moyenne = rappeles.length ? rappeles.reduce((s, x) => s + x, 0) / rappeles.length : null;
-  const mediane = rappeles.length ? rappeles[Math.floor(rappeles.length / 2)] : null;
+  const milieu = Math.floor(rappeles.length / 2);
+  const mediane = !rappeles.length ? null : rappeles.length % 2 ? rappeles[milieu] : (rappeles[milieu - 1] + rappeles[milieu]) / 2;
   // Pas encore rappelés : aucun échange noté et toujours « Nouveau »
   const enAttente = delais.filter((d) => d.h == null && statutLead(d.l.statut).id === "nouveau")
     .sort((a, b) => a.l.created_at.localeCompare(b.l.created_at));
+  // Statut changé sans échange noté : on ne connaît pas l'heure du rappel, ils ne comptent pas dans les %
+  const sansEchange = delais.filter((d) => d.h == null && statutLead(d.l.statut).id !== "nouveau");
+  const base = rappeles.length + enAttente.length;
 
   // 2. Conversion
   const etapes = [
@@ -75,9 +79,10 @@ export function StatsRecrutement({ leads, echanges, maintenant, annee, annees }:
               <tbody>
                 <tr className="border-b border-line"><th className={th}>Temps de réponse le plus rapide</th><td className={td}>{rappeles.length ? duree(rappeles[0]) : "—"}</td></tr>
                 <tr className="border-b border-line"><th className={th}>Temps de réponse médian</th><td className={td}>{mediane != null ? duree(mediane) : "—"}</td></tr>
-                <tr className="border-b border-line"><th className={th}>Rappelés en moins de 24 h</th><td className={td}>{pct(rappeles.filter((h) => h <= 24).length, liste.length)}</td></tr>
-                <tr className="border-b border-line"><th className={th}>Rappelés en moins de 48 h</th><td className={td}>{pct(rappeles.filter((h) => h <= 48).length, liste.length)}</td></tr>
+                <tr className="border-b border-line"><th className={th}>Rappelés en moins de 24 h</th><td className={td}>{pct(rappeles.filter((h) => h <= 24).length, base)}</td></tr>
+                <tr className="border-b border-line"><th className={th}>Rappelés en moins de 48 h</th><td className={td}>{pct(rappeles.filter((h) => h <= 48).length, base)}</td></tr>
                 <tr><th className={th}>Pas encore rappelés</th><td className={`${td} ${enAttente.length ? "font-semibold text-bad" : ""}`}>{enAttente.length}</td></tr>
+                {sansEchange.length > 0 && <tr className="border-t border-line"><th className={th}>Statut changé sans appel noté <span className="block text-xs font-normal text-muted">pas comptés dans les temps et les %</span></th><td className={`${td} font-semibold text-warn`}>{sansEchange.length}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -87,6 +92,12 @@ export function StatsRecrutement({ leads, echanges, maintenant, annee, annees }:
               {enAttente.slice(0, 5).map((d, i) => (
                 <span key={d.l.id}>{i ? ", " : ""}<Link href={`/admin/leads/${d.l.id}?onglet=echanges`} className="text-accent underline">{nomLead(d.l)}</Link> ({duree((maintenant - new Date(d.l.created_at).getTime()) / 3600e3)})</span>
               ))}
+            </p>
+          )}
+          {sansEchange.length > 0 && (
+            <p className="rounded-lg bg-warn-soft px-3 py-2 text-xs">
+              ⚠️ Pour {sansEchange.length > 1 ? "ces leads" : "ce lead"}, le statut a changé mais aucun appel, email, SMS ou rendez-vous n&apos;est noté : ajoute-le dans « 💬 Échanges » avec la bonne heure pour qu&apos;il compte →{" "}
+              {sansEchange.map((d, i) => <span key={d.l.id}>{i ? ", " : ""}<Link href={`/admin/leads/${d.l.id}?onglet=echanges`} className="font-semibold underline">{nomLead(d.l)}</Link></span>)}
             </p>
           )}
           <p className="text-xs text-muted">La réponse compte à l&apos;heure du premier échange noté dans la fiche du lead (appel, email, SMS, rendez-vous) : pense à mettre la bonne heure dans « Date et heure ».</p>
