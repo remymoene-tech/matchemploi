@@ -5,6 +5,7 @@ import { estAdmin } from "@/lib/auth";
 import { ecoleDuResponsable } from "@/lib/ecoles";
 import { echeance, lienRelance, relancesDe } from "@/lib/echanges";
 import { relancesEtudiant } from "@/lib/prospections";
+import { historiqueEquipe, historiqueEtudiant } from "@/lib/notifications";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,8 @@ export async function GET() {
     return NextResponse.json({
       dues: toutes.filter((x) => x.quand && new Date(x.quand).getTime() <= maintenant),
       prochaines: toutes.filter((x) => x.quand && new Date(x.quand).getTime() > maintenant).slice(0, 5),
+      recentes: await historiqueEtudiant(user.id, 5),
+      historique: "/notifications",
     });
   }
   const toutes = (await relancesDe(r.email)).map((x) => ({ ...x, quand: echeance(x)?.toISOString() ?? null, lien: lienRelance(x, r.base) }));
@@ -41,7 +44,7 @@ export async function GET() {
   const prochaines = toutes.filter((x) => x.quand && new Date(x.quand).getTime() > maintenant).slice(0, 5);
   // Briefing de la semaine sur les étudiants (une notification par semaine)
   const briefing = { cle: lundi(), lien: r.base.startsWith("/admin") ? "/admin?vue=briefing" : "/ecole?vue=briefing" };
-  return NextResponse.json({ dues, prochaines, briefing });
+  return NextResponse.json({ dues, prochaines, briefing, recentes: await historiqueEquipe(r.email, r.base, 5), historique: "/notifications" });
 }
 
 /** Marquer une relance comme faite depuis la cloche. */

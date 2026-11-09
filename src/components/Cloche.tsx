@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-type R = { id: string; nom: string; action: string; quand: string | null; lien: string };
+type R = { id: string; nom: string; action: string; quand: string | null; lien: string; faite?: boolean };
 
 const heure = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString("fr-FR", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", timeZone: "Europe/Paris" }) : "";
@@ -13,6 +13,7 @@ export function Cloche({ lien = "/admin?vue=relances", etudiant = false }: { lie
   const [briefing, setBriefing] = useState<{ cle: string; lien: string } | null>(null);
   const [dues, setDues] = useState<R[]>([]);
   const [prochaines, setProchaines] = useState<R[]>([]);
+  const [recentes, setRecentes] = useState<R[]>([]);
   const [ouvert, setOuvert] = useState(false);
   const [toast, setToast] = useState<R | null>(null);
   const [permission, setPermission] = useState<NotificationPermission | "indisponible">("indisponible");
@@ -23,7 +24,8 @@ export function Cloche({ lien = "/admin?vue=relances", etudiant = false }: { lie
     try {
       const res = await fetch("/api/relances", { cache: "no-store" });
       if (!res.ok) return;
-      const j = (await res.json()) as { dues: R[]; prochaines: R[]; briefing?: { cle: string; lien: string } };
+      const j = (await res.json()) as { dues: R[]; prochaines: R[]; recentes?: R[]; briefing?: { cle: string; lien: string } };
+      setRecentes(j.recentes ?? []);
       // Briefing hebdomadaire : notifié une fois par semaine (mémorisé sur cet appareil)
       if (j.briefing) {
         let vu = "";
@@ -122,6 +124,18 @@ export function Cloche({ lien = "/admin?vue=relances", etudiant = false }: { lie
               ))}
             </>
           )}
+          {!!recentes.length && (
+            <>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-wide text-muted">🕓 5 dernières notifications</p>
+              {recentes.map((d) => (
+                <Link key={d.id} href={d.lien} onClick={() => setOuvert(false)} className={`flex flex-col rounded-lg border border-line p-2 text-sm hover:border-accent ${d.faite ? "opacity-60" : ""}`}>
+                  <span><b>{d.nom}</b> · {d.action}</span>
+                  <span className="text-xs text-muted">{heure(d.quand)}{d.faite ? " · ✓ fait" : ""}</span>
+                </Link>
+              ))}
+            </>
+          )}
+          <Link href="/notifications" className="btn btn-sm mt-1" onClick={() => setOuvert(false)}>📜 Voir tout l&apos;historique</Link>
           {permission === "default" && (
             <button type="button" className="btn btn-sm mt-1"
               onClick={async () => setPermission(await Notification.requestPermission())}>
