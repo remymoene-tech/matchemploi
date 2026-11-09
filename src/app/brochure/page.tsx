@@ -14,7 +14,10 @@ export default async function Brochure({ searchParams }: { searchParams: Promise
   const ecole = sp.ecole ? await ecoleParCode(sp.ecole).catch(() => null) : null;
   const evenement = sp.evenement ? await evenementParCode(sp.evenement).catch(() => null) : null;
   const formations = await formationsDeLEcole(ecole?.id);
-  const annee = new Date().getFullYear();
+  // Rentrées proposées : la prochaine rentrée de septembre puis les 5 suivantes (la liste avance d'un an chaque septembre)
+  const [an, mois] = new Date().toLocaleDateString("fr-CA", { timeZone: "Europe/Paris" }).split("-").map(Number);
+  const premiere = mois >= 9 ? an + 1 : an;
+  const rentrees = Array.from({ length: 6 }, (_, i) => premiere + i);
   const lienSur = sp.lien && /^https:\/\//.test(sp.lien) ? sp.lien : null;
 
   if (sp.merci) {
@@ -89,7 +92,7 @@ export default async function Brochure({ searchParams }: { searchParams: Promise
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-semibold">📅 Année de rentrée <span className="text-bad">*</span></legend>
           <div className="flex flex-wrap gap-2">
-            {[annee, annee + 1, annee + 2].map((a) => (
+            {rentrees.map((a) => (
               <label key={a} className="flex cursor-pointer items-center gap-1.5 rounded-full border border-line px-4 py-2 text-sm has-[:checked]:border-accent has-[:checked]:bg-[var(--sauge)] has-[:checked]:font-semibold">
                 <input type="radio" name="annee_rentree" value={a} required className="sr-only" />
                 Septembre {a}
