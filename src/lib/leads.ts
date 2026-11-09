@@ -9,10 +9,25 @@ export const STATUTS_LEAD = [
   { id: "contacte", label: "📞 Contacté", chip: "chip-tag" },
   { id: "rdv", label: "📅 RDV / JPO", chip: "chip-tag" },
   { id: "dossier", label: "📝 Dossier envoyé", chip: "chip-tag" },
-  { id: "entretien", label: "🗣️ Entretien prévu", chip: "chip-tag" },
-  { id: "admis", label: "✅ Admis à l'entretien", chip: "chip-plus" },
+  { id: "convoque", label: "📨 Convoqué au concours", chip: "chip-tag" },
+  { id: "present", label: "✍️ Présent au concours", chip: "chip-tag" },
+  { id: "absent", label: "🚫 Absent au concours", chip: "chip-minus" },
+  { id: "admis", label: "✅ Admis", chip: "chip-plus" },
   { id: "perdu", label: "❌ Perdu", chip: "chip-minus" },
 ] as const;
+
+/** Étapes du concours : la date de passage est gardée pour calculer les taux de conversion. */
+export const ETAPES_CONCOURS = ["convoque", "present", "admis"] as const;
+const ANCIENS: Record<string, string> = { inscrit: "admis", entretien: "convoque" };
+
+/** Dates d'étape à enregistrer quand le statut change (on n'écrase jamais une date déjà connue). */
+export function datesEtapes(avant: Partial<Lead> | null, statut: string) {
+  const maintenant = new Date().toISOString();
+  const d: Record<string, string> = {};
+  const atteint = (e: string) => statut === e || (e === "convoque" && ["present", "absent", "admis"].includes(statut)) || (e === "present" && statut === "admis");
+  for (const e of ETAPES_CONCOURS) if (atteint(e) && !avant?.[`${e}_le` as keyof Lead]) d[`${e}_le`] = maintenant;
+  return d;
+}
 
 export const ORIGINES_LEAD = ["Brochure (site de l'école)", "Journée portes ouvertes", "Salon", "Téléphone", "Réseaux sociaux", "Recommandation", "Autre"] as const;
 
@@ -30,12 +45,15 @@ export type Lead = {
   candidat_id: string | null;
   consentement: boolean;
   brochure_envoyee_le: string | null;
+  convoque_le?: string | null;
+  present_le?: string | null;
+  admis_le?: string | null;
   notes: string;
   created_at: string;
   updated_at: string;
 };
 
-export const statutLead = (id: string) => STATUTS_LEAD.find((s) => s.id === (id === "inscrit" ? "admis" : id)) ?? STATUTS_LEAD[0];
+export const statutLead = (id: string) => STATUTS_LEAD.find((s) => s.id === (ANCIENS[id] ?? id)) ?? STATUTS_LEAD[0];
 export const estLeadAdmis = (l: { statut: string }) => l.statut === "admis" || l.statut === "inscrit";
 export const nomLead = (l: Pick<Lead, "prenom" | "nom" | "email">) => [l.prenom, l.nom].filter(Boolean).join(" ") || l.email;
 
@@ -135,3 +153,18 @@ L'équipe Campus Magnus`),
   if (ok) await db().from("echanges").insert({ lead_id: l.id, type: "email", resume: "✅ Admis : lien de création d'espace envoyé par email.", auteur: "" });
   return ok;
 }
+
+/* ---------- Statistiques de recrutement ---------- */
+export type EchangeLead = { lead_id: string; date_echange: string; auteur: string; resume: string };
+
+/** Premier vrai contact de l'équipe (pas les notifications automatiques ni les emails envoyés par le site). */
+export function premierContact(l: Lead, echanges: EchangeLead[]) {
+  return echanges
+    .filter((e) => e.lead_id === l.id && e.auteur && !/^🧲|^✅ Admis : lien|^A redemandé/.test(e.resume) && e.date_echange >= l.created_at)
+    .map((e) => e.date_echange).sort()[0] ?? null;
+}
+
+const rang = (statut: string) => ({ convoque: 1, present: 2, absent: 1, admis: 3 } as Record<string, number>)[ANCIENS[statut] ?? statut] ?? 0;
+export const aEteConvoque = (l: Lead) => !!l.convoque_le || rang(l.statut) >= 1;
+export const aEtePresent = (l: Lead) => !!l.present_le || rang(l.statut) >= 2;
+export const aEteAdmis = (l: Lead) => !!l.admis_le || rang(l.statut) >= 3;

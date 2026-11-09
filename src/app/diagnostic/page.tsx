@@ -106,7 +106,11 @@ create index if not exists leads_email_idx on public.leads(email);
 alter table public.echanges add column if not exists lead_id uuid references public.leads(id) on delete cascade;
 alter table public.ecoles add column if not exists brochure text;
 insert into storage.buckets (id, name, public) values ('brochures', 'brochures', true) on conflict (id) do nothing;
-update public.leads set statut = 'admis' where statut = 'inscrit';`;
+update public.leads set statut = 'admis' where statut = 'inscrit';
+alter table public.leads add column if not exists convoque_le timestamptz;
+alter table public.leads add column if not exists present_le timestamptz;
+alter table public.leads add column if not exists admis_le timestamptz;
+update public.leads set statut = 'convoque' where statut = 'entretien';`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -158,6 +162,7 @@ async function verifierBase() {
     db.from("leads").select("id").limit(1),
     db.from("echanges").select("lead_id").limit(1),
     db.from("ecoles").select("brochure").limit(1),
+    db.from("leads").select("convoque_le, present_le, admis_le").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -207,6 +212,7 @@ async function verifierBase() {
     "Leads (CRM)",
     "Échanges et rappels des leads",
     "Brochures des formations",
+    "Étapes du concours (statistiques)",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

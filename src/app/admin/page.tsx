@@ -19,7 +19,8 @@ import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
 import { BROCHURES_PAR_DEFAUT, anneeLabel, lireFormations } from "@/lib/formations";
-import { ORIGINES_LEAD, STATUTS_LEAD, estLeadAdmis, listeLeads, nomLead } from "@/lib/leads";
+import { ORIGINES_LEAD, STATUTS_LEAD, estLeadAdmis, listeLeads, nomLead, type EchangeLead } from "@/lib/leads";
+import { StatsRecrutement } from "@/components/StatsRecrutement";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe } from "@/lib/entreprises";
 import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
@@ -47,7 +48,7 @@ const AUTRES = [
   { id: "reglages", label: "⚙️ Réglages" },
 ] as const;
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -149,6 +150,9 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const leads = vue === "leads" || vue === "accueil" || vue === "candidats" ? await listeLeads() : [];
   // Leads admis à l'entretien qui n'ont pas encore créé leur espace : déjà candidats
   const admisSansEspace = (leads ?? []).filter((l) => estLeadAdmis(l) && !l.candidat_id);
+  const { data: echLeadsData } = vue === "accueil" && leads?.length
+    ? await db.from("echanges").select("lead_id, date_echange, auteur, resume").not("lead_id", "is", null).limit(5000)
+    : { data: [] };
   const nbLeads = leads?.length ?? 0;
   const nouveauxLeads = (leads ?? []).filter((l) => l.statut === "nouveau").length;
   const ql = (sp.q ?? "").trim().toLowerCase();
@@ -251,6 +255,11 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               </Link>
             ))}
           </section>
+
+          {leads && leads.length > 0 && (
+            <StatsRecrutement leads={leads} echanges={(echLeadsData ?? []) as EchangeLead[]} maintenant={maintenant} annee={sp.stat_annee}
+              annees={[...new Set(leads.map((l) => l.annee_rentree).filter((a): a is number => !!a))].sort()} />
+          )}
 
           <div className="grid gap-4 lg:grid-cols-2 [&>*]:min-w-0">
             <section className="card flex flex-col gap-4 p-5">

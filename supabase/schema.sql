@@ -388,3 +388,9 @@ insert into storage.buckets (id, name, public) values ('brochures', 'brochures',
 
 -- Leads : « Inscrit » devient « Admis à l'entretien »
 update public.leads set statut = 'admis' where statut = 'inscrit';
+
+-- Dates des étapes du concours (taux de conversion)
+alter table public.leads add column if not exists convoque_le timestamptz;
+alter table public.leads add column if not exists present_le timestamptz;
+alter table public.leads add column if not exists admis_le timestamptz;
+update public.leads set statut = 'convoque' where statut = 'entretien';

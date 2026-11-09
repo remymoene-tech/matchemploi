@@ -23,7 +23,7 @@ import { ajouterEchange } from "@/lib/echanges";
 import { STATUTS_ENTREPRISE, lireEntreprise } from "@/lib/entreprises";
 import { entrepriseRecrute, genererFicheOffre, lancerRechercheCandidats, preparerFicheDePoste } from "@/lib/recherche-entreprise";
 import { lireFormations } from "@/lib/formations";
-import { STATUTS_LEAD, brochurePour, envoyerBrochure, envoyerInvitation, estLeadAdmis, leadParId } from "@/lib/leads";
+import { STATUTS_LEAD, datesEtapes, brochurePour, envoyerBrochure, envoyerInvitation, estLeadAdmis, leadParId } from "@/lib/leads";
 import { changerAdmission } from "@/lib/admission-serveur";
 import { majDiplome } from "@/lib/diplome-serveur";
 import { memeEntreprise } from "@/lib/prospections";
@@ -505,7 +505,8 @@ export async function enregistrerLead(f: FormData) {
   const db = createAdminClient();
   if (id) {
     const avant = await leadParId(id);
-    const { error } = await db.from("leads").update(d).eq("id", id);
+    let { error } = await db.from("leads").update({ ...d, ...datesEtapes(avant, d.statut) }).eq("id", id);
+    if (error) ({ error } = await db.from("leads").update(d).eq("id", id));
     if (error) redirect(`/admin/leads/${id}?erreur=base`);
     if (d.statut === "admis" && avant && !estLeadAdmis(avant) && !avant.candidat_id) {
       const ok = await envoyerInvitation({ ...avant, ...d });
@@ -513,7 +514,8 @@ export async function enregistrerLead(f: FormData) {
     }
     redirect(`/admin/leads/${id}?ok=1`);
   }
-  const { data, error } = await db.from("leads").insert({ ...d, consentement: f.get("consentement") === "on" }).select("id").single();
+  let { data, error } = await db.from("leads").insert({ ...d, ...datesEtapes(null, d.statut), consentement: f.get("consentement") === "on" }).select("id").single();
+  if (error) ({ data, error } = await db.from("leads").insert({ ...d, consentement: f.get("consentement") === "on" }).select("id").single());
   if (error || !data) redirect("/admin/leads/nouveau?erreur=base");
   redirect(`/admin/leads/${data.id}?ok=1`);
 }
@@ -524,7 +526,9 @@ export async function changerStatutLead(f: FormData) {
   if (!STATUTS_LEAD.some((x) => x.id === statut)) return;
   const id = t(f, "id", 60);
   const avant = await leadParId(id);
-  await createAdminClient().from("leads").update({ statut, updated_at: new Date().toISOString() }).eq("id", id);
+  const maj = { statut, updated_at: new Date().toISOString() };
+  const { error } = await createAdminClient().from("leads").update({ ...maj, ...datesEtapes(avant, statut) }).eq("id", id);
+  if (error) await createAdminClient().from("leads").update(maj).eq("id", id); // base pas encore à jour
   // Accepté à l'entretien : il reçoit son lien pour créer son espace
   if (statut === "admis" && avant && !estLeadAdmis(avant) && !avant.candidat_id) after(() => envoyerInvitation(avant).then(() => undefined));
   revalidatePath("/admin");
