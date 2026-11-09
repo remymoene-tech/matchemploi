@@ -400,3 +400,6 @@ alter table public.leads add column if not exists entretien_a timestamptz;
 alter table public.leads add column if not exists rappel_entretien_envoye boolean not null default false;
 alter table public.entretiens_conseil alter column candidat_id drop not null;
 alter table public.entretiens_conseil add column if not exists lead_id uuid references public.leads(id) on delete set null;
+
+-- Motif quand un lead est perdu
+alter table public.leads add column if not exists motif_perte text not null default '';

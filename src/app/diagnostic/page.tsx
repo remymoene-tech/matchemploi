@@ -114,7 +114,8 @@ update public.leads set statut = 'convoque' where statut = 'entretien';
 alter table public.leads add column if not exists entretien_a timestamptz;
 alter table public.leads add column if not exists rappel_entretien_envoye boolean not null default false;
 alter table public.entretiens_conseil alter column candidat_id drop not null;
-alter table public.entretiens_conseil add column if not exists lead_id uuid references public.leads(id) on delete set null;`;
+alter table public.entretiens_conseil add column if not exists lead_id uuid references public.leads(id) on delete set null;
+alter table public.leads add column if not exists motif_perte text not null default '';`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -169,6 +170,7 @@ async function verifierBase() {
     db.from("leads").select("convoque_le, present_le, admis_le").limit(1),
     db.from("leads").select("entretien_a, rappel_entretien_envoye").limit(1),
     db.from("entretiens_conseil").select("lead_id").limit(1),
+    db.from("leads").select("motif_perte").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -221,6 +223,7 @@ async function verifierBase() {
     "Étapes du concours (statistiques)",
     "Entretien d'admission des leads (date, rappel)",
     "Fiche d'entretien des leads",
+    "Motif des leads perdus",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

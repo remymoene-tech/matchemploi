@@ -493,6 +493,7 @@ function lireLead(f: FormData) {
     origine: t(f, "origine", 60) || "Autre",
     statut: STATUTS_LEAD.some((x) => x.id === statut) ? statut : "nouveau",
     notes: t(f, "notes", 4000),
+    motif_perte: statut === "perdu" ? t(f, "motif_perte", 500) : "",
     updated_at: new Date().toISOString(),
   };
 }
@@ -502,11 +503,13 @@ export async function enregistrerLead(f: FormData) {
   const id = t(f, "id", 60);
   const d = lireLead(f);
   if (!d.email && !d.telephone && !d.nom) redirect(`/admin/leads/${id || "nouveau"}?erreur=champs`);
+  if (d.statut === "perdu" && d.motif_perte.length < 3) redirect(`/admin/leads/${id || "nouveau"}?erreur=motif`);
   const db = createAdminClient();
   if (id) {
     const avant = await leadParId(id);
     let { error } = await db.from("leads").update({ ...d, ...datesEtapes(avant, d.statut) }).eq("id", id);
     if (error) ({ error } = await db.from("leads").update(d).eq("id", id));
+    if (error) { const { motif_perte: _m, ...sansMotif } = d; void _m; ({ error } = await db.from("leads").update(sansMotif).eq("id", id)); }
     if (error) redirect(`/admin/leads/${id}?erreur=base`);
     if (d.statut === "admis" && avant && !estLeadAdmis(avant) && !avant.candidat_id) {
       const ok = await envoyerInvitation({ ...avant, ...d });
@@ -525,10 +528,12 @@ export async function changerStatutLead(f: FormData) {
   const statut = t(f, "statut", 30);
   if (!STATUTS_LEAD.some((x) => x.id === statut)) return;
   const id = t(f, "id", 60);
+  const motif = t(f, "motif_perte", 500);
+  if (statut === "perdu" && motif.length < 3) return; // le motif est obligatoire
   const avant = await leadParId(id);
-  const maj = { statut, updated_at: new Date().toISOString() };
+  const maj = { statut, updated_at: new Date().toISOString(), ...(statut === "perdu" ? { motif_perte: motif } : {}) };
   const { error } = await createAdminClient().from("leads").update({ ...maj, ...datesEtapes(avant, statut) }).eq("id", id);
-  if (error) await createAdminClient().from("leads").update(maj).eq("id", id); // base pas encore à jour
+  if (error) await createAdminClient().from("leads").update({ statut, updated_at: maj.updated_at }).eq("id", id); // base pas encore à jour
   // Accepté à l'entretien : il reçoit son lien pour créer son espace
   if (statut === "admis" && avant && !estLeadAdmis(avant) && !avant.candidat_id) after(() => envoyerInvitation(avant).then(() => undefined));
   revalidatePath("/admin");

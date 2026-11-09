@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { exigerAdmin } from "@/lib/auth";
-import { ORIGINES_LEAD, STATUTS_LEAD, dateEntretienTexte, estLeadAdmis, isoVersParis, leadParId, nomLead, statutLead, type Lead } from "@/lib/leads";
+import { MOTIFS_PERTE, ORIGINES_LEAD, STATUTS_LEAD, dateEntretienTexte, estLeadAdmis, isoVersParis, leadParId, nomLead, statutLead, type Lead } from "@/lib/leads";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { echangesDuLead, echeance, maintenantMs } from "@/lib/echanges";
 import { formationsDeLEcole } from "@/lib/ecoles";
@@ -61,6 +61,7 @@ export default async function FicheLead({ params, searchParams }: {
         {l && (
           <div className="flex flex-wrap items-center gap-2">
             <span className={`chip ${st.chip}`}>{st.label}</span>
+            {l.statut === "perdu" && l.motif_perte && <span className="chip">Motif : {l.motif_perte}</span>}
             {l.candidat_id && <Link href={`/admin/candidats/${l.candidat_id}`} className="chip chip-plus">🎓 A créé son espace étudiant →</Link>}
             {estLeadAdmis(l) && !l.candidat_id && (
               <form action={renvoyerInvitation}>
@@ -85,6 +86,7 @@ export default async function FicheLead({ params, searchParams }: {
       {sp.erreur === "brochure" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Aucune brochure déposée pour cette formation : ajoute-la dans ⚙️ Écoles → Formations et brochures.</p>}
       {sp.erreur === "email" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">L&apos;email n&apos;a pas pu partir : vérifie l&apos;envoi d&apos;emails dans /diagnostic.</p>}
       {sp.erreur === "base" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Enregistrement impossible : exécute la mise à jour SQL de la page /diagnostic (« Leads »).</p>}
+      {sp.erreur === "motif" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Indique le motif pour passer ce lead en « ❌ Perdu ».</p>}
       {sp.erreur === "champs" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">Indique au moins un nom, un email ou un téléphone.</p>}
 
       {l && (
@@ -144,6 +146,11 @@ export default async function FicheLead({ params, searchParams }: {
               </select>
             </label>
           </div>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-semibold">Motif si ❌ Perdu <span className="font-normal text-muted">(obligatoire pour ce statut)</span></span>
+            <input className="input" name="motif_perte" list="motifs-perte" defaultValue={l?.motif_perte ?? ""} placeholder="Ex. A choisi une autre école" />
+            <datalist id="motifs-perte">{MOTIFS_PERTE.map((x) => <option key={x} value={x} />)}</datalist>
+          </label>
           <label className="flex flex-col gap-1 text-sm">
             <span className="font-semibold">Notes</span>
             <textarea className="input min-h-24" name="notes" defaultValue={l?.notes ?? ""} placeholder="Son projet, ses questions, ses parents…" />

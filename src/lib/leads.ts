@@ -29,6 +29,8 @@ export function datesEtapes(avant: Partial<Lead> | null, statut: string) {
   return d;
 }
 
+export const MOTIFS_PERTE = ["A choisi une autre école", "Projet abandonné ou reporté", "Ne répond plus", "Pas d'entreprise d'accueil trouvée", "Formation ne correspond pas", "Raisons financières", "Déménagement"] as const;
+
 export const ORIGINES_LEAD = ["Brochure (site de l'école)", "Journée portes ouvertes", "Salon", "Téléphone", "Réseaux sociaux", "Recommandation", "Autre"] as const;
 
 export type Lead = {
@@ -52,6 +54,8 @@ export type Lead = {
   entretien_a?: string | null;
   rappel_entretien_envoye?: boolean;
   notes: string;
+  /** Motif quand le lead est « Perdu ». */
+  motif_perte?: string | null;
   created_at: string;
   updated_at: string;
 };

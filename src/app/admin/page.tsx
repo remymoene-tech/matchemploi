@@ -20,7 +20,7 @@ import { estExpiree, texteExpiration } from "@/lib/expiration";
 import { BriefingSemaine } from "@/components/BriefingSemaine";
 import { briefingEtudiants } from "@/lib/briefing";
 import { BROCHURES_PAR_DEFAUT, anneeLabel, lireFormations } from "@/lib/formations";
-import { ORIGINES_LEAD, STATUTS_LEAD, estLeadAdmis, listeLeads, nomLead, premierContact, statutLead, type EchangeLead } from "@/lib/leads";
+import { MOTIFS_PERTE, ORIGINES_LEAD, STATUTS_LEAD, estLeadAdmis, listeLeads, nomLead, premierContact, statutLead, type EchangeLead } from "@/lib/leads";
 import { StatsRecrutement } from "@/components/StatsRecrutement";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, listeEntreprises, offresDe } from "@/lib/entreprises";
 import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
@@ -489,7 +489,9 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                       <td className="p-3">
                         <form action={changerStatutLead}>
                           <input type="hidden" name="id" value={l.id} />
-                          <SelectEnregistrer name="statut" label={`Statut de ${nomLead(l)}`} defaultValue={statutLead(l.statut).id} options={STATUTS_LEAD} />
+                          <SelectEnregistrer name="statut" label={`Statut de ${nomLead(l)}`} defaultValue={statutLead(l.statut).id} options={STATUTS_LEAD}
+                            motif={{ pour: ["perdu"], champ: "motif_perte", actuel: l.motif_perte ?? "", suggestions: MOTIFS_PERTE }} />
+                          {l.statut === "perdu" && l.motif_perte && <div className="mt-1 max-w-[220px] truncate text-xs text-muted" title={l.motif_perte}>Motif : {l.motif_perte}</div>}
                         </form>
                       </td>
                       <td className="p-3">{l.formation || "—"}</td>
