@@ -3,13 +3,16 @@ import { nomLead, type Lead } from "@/lib/leads";
 import { SITUATIONS_INTERVENANT, SPECIALITES, specialitesDe } from "@/lib/intervenants";
 import { nomPersonne, type Personne } from "@/lib/equipe";
 
+/** « Autre » : au moins une spécialité hors de la liste (ex. kiné), ou aucune spécialité. */
+const estAutre = (c: Lead) => { const s = specialitesDe(c.formation); return !s.length || s.some((x) => !(SPECIALITES as readonly string[]).includes(x)); };
+
 /** Carnet d'adresses des intervenants (questionnaire /intervenant). Ne compte dans aucun chiffre du recrutement. */
 export function VueIntervenants({ contacts, personnes, q, specialite }: { contacts: Lead[]; personnes: Personne[]; q?: string; specialite?: string }) {
   const cherche = (q ?? "").trim().toLowerCase();
   const liste = contacts
     .filter((c) => !cherche || [c.prenom, c.nom, c.email, c.formation, c.message, c.entreprise].some((x) => (x ?? "").toLowerCase().includes(cherche)))
-    .filter((c) => !specialite || specialitesDe(c.formation).includes(specialite));
-  const nb = (x: string) => contacts.filter((c) => specialitesDe(c.formation).includes(x)).length;
+    .filter((c) => !specialite || (specialite === "Autre" ? estAutre(c) : specialitesDe(c.formation).includes(specialite)));
+  const nb = (x: string) => contacts.filter((c) => (x === "Autre" ? estAutre(c) : specialitesDe(c.formation).includes(x))).length;
   const site = process.env.NEXT_PUBLIC_SITE_URL || "https://magnusmatch.vercel.app";
   return (
     <div className="flex flex-col gap-4">
@@ -26,7 +29,7 @@ export function VueIntervenants({ contacts, personnes, q, specialite }: { contac
       </div>
       <nav className="flex flex-wrap gap-2 text-sm" aria-label="Spécialités">
         <Link href="/admin?vue=intervenants" className={`rounded-full border px-3 py-1 ${!specialite ? "border-accent bg-accent-soft font-semibold" : "border-line text-muted hover:text-ink"}`}>Toutes ({contacts.length})</Link>
-        {SPECIALITES.map((x) => (
+        {[...SPECIALITES, "Autre"].map((x) => (
           <Link key={x} href={`/admin?vue=intervenants&specialite=${encodeURIComponent(x)}`} className={`rounded-full border px-3 py-1 ${specialite === x ? "border-accent bg-accent-soft font-semibold" : "border-line text-muted hover:text-ink"}`}>{x} ({nb(x)})</Link>
         ))}
       </nav>
