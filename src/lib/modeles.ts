@@ -144,7 +144,7 @@ export const MODELES: Modele[] = [
   {
     id: "ent_merci", cible: "entreprise", pour: ["rencontree"], titre: "🤝 Merci pour la rencontre",
     sujet: "Suite à notre rencontre · Campus Magnus",
-    email: "Bonjour {contact},\n\nMerci pour notre échange. Je vous rappelle en quelques mots ce que le Campus Magnus peut vous apporter.\n\n## Nos formations en alternance\n\n- Commerce et vente\n- Gestion d'unité commerciale\n- Tourisme, hôtellerie et loisirs\n\n## Notre accompagnement\n\n1. Vous nous décrivez votre besoin\n2. Nous vous proposons des profils sélectionnés sous 48 heures\n3. Nous vous aidons dans les démarches du contrat d'apprentissage\n\nCe service est gratuit. N'hésitez pas à me contacter pour tout besoin.\n\nBien cordialement,\n\n{signature}",
+    email: "Bonjour {contact},\n\nMerci pour notre échange. Je vous rappelle en quelques mots ce que le Campus Magnus peut vous apporter.\n\n## Nos formations en alternance\n\n- Bachelor EGC Business School (Bac+3) : commerce, vente et gestion\n- Gestionnaire d'Unité Commerciale (Bac+2)\n- Assistant(e) Manager Loisirs Hébergement Restauration (Bac+2)\n\n## Notre accompagnement\n\n1. Vous nous décrivez votre besoin\n2. Nous vous proposons des profils sélectionnés sous 48 heures\n3. Nous vous aidons dans les démarches du contrat d'apprentissage\n\nCe service est gratuit. N'hésitez pas à me contacter pour tout besoin.\n\nBien cordialement,\n\n{signature}",
     sms: "Campus Magnus · {moi}\nBonjour {contact}, merci pour notre échange.\nSi vous cherchez un alternant, je vous propose des profils sélectionnés sous 48 h. Une question ? Répondez à ce SMS.",
   },
   {
