@@ -296,6 +296,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           {AUTRES.filter((v) => !RESERVEES_ADMIN.includes(v.id) && permise(v.id)).map((v) => (
             <Link key={v.id} href={`/admin?vue=${v.id}`} className={vue === v.id ? "font-semibold text-ink underline underline-offset-4" : "text-muted hover:text-ink"}>{v.label}</Link>
           ))}
+          {superAdmin && <Link href="/admin/export" className="text-muted hover:text-ink">📤 Export Excel</Link>}
         </nav>
       </div>
 
