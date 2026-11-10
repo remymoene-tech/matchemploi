@@ -127,7 +127,7 @@ export default async function Brochure({ searchParams }: { searchParams: Promise
         </fieldset>
         <label className="flex items-start gap-3 text-sm">
           <input type="checkbox" name="consentement" required className="mt-1 accent-[var(--accent)]" />
-          <span>J&apos;accepte que le Campus Magnus utilise ces informations pour m&apos;envoyer la brochure et me recontacter au sujet de ses formations. Je peux demander leur suppression à tout moment.</span>
+          <span>J&apos;accepte que le Campus Magnus utilise ces informations pour m&apos;envoyer la brochure et me recontacter au sujet de ses formations. Je peux demander leur suppression à tout moment. <a href="/confidentialite" target="_blank" className="underline">Politique de confidentialité</a>.</span>
         </label>
         <button className="btn btn-primary w-full sm:w-fit sm:self-end"><span className="si-prospect">📬 Recevoir la brochure</span><span className="si-alumni hidden">🎓 Être recontacté(e)</span></button>
       </form>

@@ -105,7 +105,7 @@ export function FormIntervenant() {
       </label>
       <label className="flex items-start gap-3 text-sm">
         <input type="checkbox" name="consentement" required className="mt-1 accent-[var(--accent)]" />
-        <span>J&apos;accepte que le Campus Magnus conserve ces informations et mon CV pour me proposer des interventions. Je peux demander leur suppression à tout moment.</span>
+        <span>J&apos;accepte que le Campus Magnus conserve ces informations et mon CV pour me proposer des interventions. Je peux demander leur suppression à tout moment. <a href="/confidentialite" target="_blank" className="underline">Politique de confidentialité</a>.</span>
       </label>
       <button className="btn btn-primary w-full sm:w-fit sm:self-end" disabled={envoi}>{envoi ? "Envoi en cours…" : "📨 Envoyer mon profil"}</button>
     </form>

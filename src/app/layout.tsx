@@ -72,8 +72,12 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </header>
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">{children}</main>
-        <footer className="bg-[#0d0d0d] py-6 text-center text-xs tracking-[.08em] text-[#c9ccc4] print:hidden">
-          MagnusMatch · Tes données ne sont partagées avec une entreprise qu&apos;avec ton accord.
+        <footer className="flex flex-col items-center gap-2 bg-[#0d0d0d] px-4 py-6 text-center text-xs tracking-[.08em] text-[#c9ccc4] print:hidden">
+          <span>MagnusMatch · Tes données ne sont partagées avec une entreprise qu&apos;avec ton accord.</span>
+          <nav className="flex flex-wrap justify-center gap-4" aria-label="Informations légales">
+            <Link href="/mentions-legales" className="underline-offset-4 hover:text-white hover:underline">Mentions légales</Link>
+            <Link href="/confidentialite" className="underline-offset-4 hover:text-white hover:underline">Politique de confidentialité</Link>
+          </nav>
         </footer>
       </body>
     </html>

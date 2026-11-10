@@ -186,7 +186,7 @@ export function FormProfil({ c, codeEcole, nomEcole, formations = [] }: { c: Par
       <section className="card flex flex-col gap-3 p-5">
         <label className="flex items-start gap-3 text-sm">
           <input type="checkbox" name="consentement" defaultChecked={c.consentement} className="mt-1 accent-[var(--accent)]" />
-          <span>J&apos;accepte que mon profil et mon CV soient analysés pour me proposer des offres, et transmis à mon école et aux entreprises partenaires uniquement pour les offres qui me correspondent.</span>
+          <span>J&apos;accepte que mon profil et mon CV soient analysés pour me proposer des offres, et transmis à mon école et aux entreprises partenaires uniquement pour les offres qui me correspondent. <a href="/confidentialite" target="_blank" className="underline">Politique de confidentialité</a>.</span>
         </label>
         <label className="flex items-start gap-3 text-sm">
           <input type="checkbox" name="alertes_email" defaultChecked={c.alertes_email ?? true} className="mt-1 accent-[var(--accent)]" />
