@@ -133,7 +133,10 @@ export default async function Parametres({ searchParams }: { searchParams: Promi
       <section className="card flex flex-col gap-3 p-6">
         <h2 className="text-xl font-semibold">💾 Sauvegarde</h2>
         <p className="text-sm text-muted">Un fichier Excel avec toutes les données du site : leads, candidats, entreprises, échanges, offres, prospections, entretiens, événements, classes, écoles et équipe (une feuille par sujet). Les CV ne sont pas dedans : ils restent dans Supabase (Storage → cv).</p>
-        <a href="/admin/sauvegarde" className="btn btn-primary w-fit">💾 Télécharger une sauvegarde (Excel)</a>
+        <div className="flex flex-wrap gap-2">
+          <a href="/admin/sauvegarde" className="btn btn-primary w-fit">💾 Télécharger une sauvegarde (Excel)</a>
+          <Link href="/admin/export" className="btn w-fit">📤 Export Excel à la carte (filtres, colonnes)</Link>
+        </div>
         <p className="text-xs text-muted">Conseil : une fois par semaine, range le fichier dans un dossier sûr (OneDrive de la CCI). Il contient des données personnelles : ne l&apos;envoie pas par email.</p>
       </section>
 
