@@ -11,5 +11,6 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) return NextResponse.redirect(`${origin}${next.startsWith("/") ? next : "/espace"}`);
   }
-  return NextResponse.redirect(`${origin}/connexion`);
+  // Lien expiré ou déjà utilisé
+  return NextResponse.redirect(`${origin}${next === "/nouveau-mot-de-passe" ? "/nouveau-mot-de-passe" : "/connexion"}`);
 }

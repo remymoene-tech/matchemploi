@@ -56,3 +56,31 @@ export async function deconnexion() {
   await supabase.auth.signOut();
   redirect("/");
 }
+
+/** « Mot de passe oublié » : Supabase envoie un email avec un lien pour en choisir un nouveau. */
+export async function demanderReinitialisation(_: EtatForm, form: FormData): Promise<EtatForm> {
+  const email = String(form.get("email") ?? "").trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { erreur: "Indique une adresse email valide." };
+  const supabase = await createClient();
+  const origine = process.env.NEXT_PUBLIC_SITE_URL ?? `https://${(await headers()).get("host")}`;
+  const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${origine}/auth/callback?next=${encodeURIComponent("/nouveau-mot-de-passe")}` });
+  // Même message que le compte existe ou non (on ne dévoile pas qui est inscrit)
+  if (error && /rate limit|too many|security purposes|after \d+ seconds/i.test(error.message)) return { erreur: traduire(error.message) };
+  if (error && /error sending|smtp/i.test(error.message)) return { erreur: traduire(error.message) };
+  return { info: `Si un compte existe avec ${email}, un email vient de partir avec un lien pour choisir un nouveau mot de passe. Pense à regarder dans les courriers indésirables.` };
+}
+
+/** Nouveau mot de passe (après le lien reçu par email : la personne est connectée pour quelques minutes). */
+export async function changerMotDePasse(_: EtatForm, form: FormData): Promise<EtatForm> {
+  const mdp = String(form.get("password") ?? "");
+  const confirmation = String(form.get("confirmation") ?? "");
+  if (mdp.length < 8) return { erreur: "Le mot de passe doit faire au moins 8 caractères." };
+  if (mdp !== confirmation) return { erreur: "Les deux mots de passe ne sont pas identiques." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { erreur: "Le lien a expiré. Refais une demande « Mot de passe oublié »." };
+  const { error } = await supabase.auth.updateUser({ password: mdp });
+  if (error) return { erreur: /same|different/i.test(error.message) ? "Choisis un mot de passe différent de l'ancien." : traduire(error.message) };
+  const { roleDe } = await import("@/lib/equipe");
+  redirect((await roleDe(user.email)) ? "/admin?mdp=1" : "/espace?mdp=1");
+}

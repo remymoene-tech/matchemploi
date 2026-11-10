@@ -11,7 +11,7 @@ export default function Page() {
       <div className="card p-6">
         <FormAuth action={connexion} bouton="Se connecter" />
       </div>
-      <p className="text-sm text-muted">Pas encore de compte ? <Link className="font-semibold text-accent" href="/inscription">Créer mon espace</Link></p>
+      <p className="text-sm text-muted">Pas encore de compte ? Ton espace s&apos;ouvre quand tu es admis(e) : tu reçois alors un email avec ton lien personnel. <Link className="font-semibold text-accent" href="/brochure">Découvrir nos formations</Link></p>
     </div>
   );
 }
