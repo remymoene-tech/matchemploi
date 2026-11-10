@@ -25,6 +25,11 @@ export async function inscription(_: EtatForm, form: FormData): Promise<EtatForm
   const password = String(form.get("password") ?? "");
   if (!email || password.length < 8) return { erreur: "Indique ton email et un mot de passe d'au moins 8 caractères." };
 
+  // Inscription réservée : leads admis (lien reçu par email), équipe du Campus, responsables d'école
+  if (process.env.INSCRIPTION_LIBRE !== "1" && !(await inscriptionAutorisee(email))) {
+    return { erreur: "Ton espace MagnusMatch s'ouvre quand tu es admis(e) : utilise l'adresse email à laquelle tu as reçu ton lien d'admission. Une question ? Contacte le Campus Magnus au 04 90 99 08 08." };
+  }
+
   const supabase = await createClient();
   const origine = process.env.NEXT_PUBLIC_SITE_URL ?? `https://${(await headers()).get("host")}`;
   const ecole = String(form.get("ecole") ?? "").trim().replace(/[^A-Za-z0-9-]/g, "");
@@ -83,4 +88,16 @@ export async function changerMotDePasse(_: EtatForm, form: FormData): Promise<Et
   if (error) return { erreur: /same|different/i.test(error.message) ? "Choisis un mot de passe différent de l'ancien." : traduire(error.message) };
   const { roleDe } = await import("@/lib/equipe");
   redirect((await roleDe(user.email)) ? "/admin?mdp=1" : "/espace?mdp=1");
+}
+
+/** Qui peut créer un compte : un lead admis (même email), un membre de l'équipe, un responsable d'école. */
+async function inscriptionAutorisee(email: string): Promise<boolean> {
+  const cle = email.trim().toLowerCase();
+  const { roleDe } = await import("@/lib/equipe");
+  if (await roleDe(cle)) return true;
+  const { ecoleDuResponsable } = await import("@/lib/ecoles");
+  if (await ecoleDuResponsable(cle).catch(() => null)) return true;
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const { data } = await createAdminClient().from("leads").select("statut").eq("email", cle).in("statut", ["admis", "inscrit"]).limit(1);
+  return !!data?.length;
 }

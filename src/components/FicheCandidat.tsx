@@ -77,6 +77,8 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
   const db = createAdminClient();
   const { data: c } = await db.from("candidats").select("*").eq("user_id", candidatId).single<Candidat>();
   if (!c) return <p className="card p-6">Candidat introuvable.</p>;
+  const { data: classeData } = c.classe_id ? await db.from("classes").select("nom").eq("id", c.classe_id).maybeSingle() : { data: null };
+  const classe = (classeData?.nom as string | undefined) ?? null;
 
   const [{ data: rData }, { data: mData }, { data: eData }, { data: entData }] = await Promise.all([
     db.from("recherches").select("*").eq("candidat_id", candidatId).order("created_at"),
@@ -188,7 +190,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         <div className="flex flex-col gap-1">
           <span className="eyebrow">Fiche candidat</span>
           <h1 className="text-3xl font-extrabold">{c.nom || c.email}</h1>
-          <p className="text-muted">{[c.formation && `🎓 ${diplomeLabel(c)}`, c.poste_vise && `vise ${c.poste_vise}`].filter(Boolean).join(" · ")}</p>
+          <p className="text-muted">{[c.formation && `🎓 ${diplomeLabel(c)}`, classe && `🏫 ${classe}`, c.poste_vise && `vise ${c.poste_vise}`].filter(Boolean).join(" · ")}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           {tests.disc && (() => {

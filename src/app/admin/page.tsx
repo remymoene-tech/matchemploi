@@ -67,7 +67,7 @@ const AUTRES = [
 /** Pages réservées à l'administrateur (accessibles depuis ⚙️). */
 const RESERVEES_ADMIN = ["ecoles", "reglages"];
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string; specialite?: string; ltraite?: string; rentree?: string; classe?: string; lpage?: string; cpage?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string; specialite?: string; ltraite?: string; rentree?: string; classe?: string; lpage?: string; cpage?: string; kclasse?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -237,6 +237,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const lienPage = (cle: string, n: number) => `/admin?${new URLSearchParams({ ...Object.fromEntries(Object.entries(sp).filter(([, v]) => typeof v === "string" && v)) as Record<string, string>, [cle]: String(n) })}`;
   const pageLeads = Math.max(1, Number(sp.lpage) || 1);
   const pageCand = Math.max(1, Number(sp.cpage) || 1);
+  const classesListe = vue === "candidats" ? ((await listeClasses().catch(() => null)) ?? []) : [];
   const candidatsAffiches = tousCandidats.filter((c) => {
     const t = c.created_at ? new Date(c.created_at).getTime() : 0;
     if (filtreDates && !(t > +du! && t <= +au!)) return false;
@@ -246,10 +247,11 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     if (sp.entretien && (sp.entretien === "fait") !== dernierEntretien.has(c.user_id)) return false;
     if (sp.bilan && bilanDe(c.user_id) !== sp.bilan) return false;
     if (sp.annee && String(rentreeDe(c) ?? "") !== sp.annee) return false;
+    if (sp.kclasse && (sp.kclasse === "sans" ? !!c.classe_id : c.classe_id !== sp.kclasse)) return false;
     if (sp.admission && admission(c.statut_admission).id !== sp.admission) return false;
     return true;
   });
-  const filtresCandActifs = !!(qc || sp.admission || sp.annee || sp.ecole || sp.cv || sp.entretien || sp.bilan || filtreDates);
+  const filtresCandActifs = !!(qc || sp.admission || sp.annee || sp.ecole || sp.cv || sp.entretien || sp.bilan || filtreDates || sp.kclasse);
   const meilleure = new Map<string, number>();
   for (const m of toutes) meilleure.set(m.candidat_id, Math.max(meilleure.get(m.candidat_id) ?? 0, m.score));
 
@@ -675,6 +677,16 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 <option value="aucune">Sans école</option>
               </select>
             </label>
+            {classesListe.length > 0 && (
+              <label className="flex flex-col gap-1 text-sm">
+                <span className="font-semibold">🏫 Classe</span>
+                <select className="input" name="kclasse" defaultValue={sp.kclasse ?? ""}>
+                  <option value="">Toutes</option>
+                  <option value="sans">Sans classe</option>
+                  {classesListe.map((k) => <option key={k.id} value={k.id}>{k.nom}</option>)}
+                </select>
+              </label>
+            )}
             <label className="flex flex-col gap-1 text-sm">
               <span className="font-semibold">📅 Rentrée</span>
               <select className="input" name="annee" defaultValue={sp.annee ?? ""}>
@@ -752,7 +764,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                         </form>
                         {c.motif_admission && ["refus", "abandon"].includes(c.statut_admission ?? "") && <div className="mt-1 max-w-[180px] truncate text-xs text-muted" title={c.motif_admission}>Motif : {c.motif_admission}</div>}
                       </td>
-                      <td className="p-3">{c.formation ? <><span className="font-semibold">{c.formation}</span>{c.annee_cursus ? <span className="text-muted"> · {c.annee_cursus === 1 ? "1re" : `${c.annee_cursus}e`} année</span> : null}<form action={changerRentreeAdmin} className="mt-1">
+                      <td className="p-3">{c.formation ? <><span className="font-semibold">{c.formation}</span>{c.annee_cursus ? <span className="text-muted"> · {c.annee_cursus === 1 ? "1re" : `${c.annee_cursus}e`} année</span> : null}{c.classe_id && classesListe.find((k) => k.id === c.classe_id) && <div className="mt-0.5 whitespace-nowrap text-xs">🏫 {classesListe.find((k) => k.id === c.classe_id)!.nom}</div>}<form action={changerRentreeAdmin} className="mt-1">
                           <input type="hidden" name="candidat_id" value={c.user_id} />
                           <SelectEnregistrer name="annee_rentree" label={`Rentrée de ${c.nom || c.email}`} defaultValue={String(rentreeDe(c) ?? "")}
                             options={[{ id: "", label: "📅 Rentrée ?" }, ...Array.from({ length: 8 }, (_, i) => new Date().getFullYear() - 5 + i).map((a) => ({ id: String(a), label: `📅 Sept. ${a}` }))]} />
