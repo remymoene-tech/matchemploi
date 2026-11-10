@@ -10,8 +10,9 @@ import { formationsDeLEcole } from "@/lib/ecoles";
 import { OngletsCartes } from "@/components/OngletsCartes";
 import { StatutLeadRapide } from "@/components/StatutLeadRapide";
 import { FormEchange } from "@/components/FormEchange";
+import { ModelesMessage } from "@/components/ModelesMessage";
 import { JournalEchanges } from "@/components/JournalEchanges";
-import { attribuerLeadAction, requalifierLead, changerStatutLeadFiche, planifierEntretienLead, renvoyerInvitation, actionFaiteLead, ajouterEchangeLead, enregistrerLead, renvoyerBrochure, supprimerEchangeLead, supprimerLead } from "../../actions";
+import { attribuerLeadAction, requalifierLead, changerStatutLeadFiche, envoyerModeleLead, planifierEntretienLead, renvoyerInvitation, actionFaiteLead, ajouterEchangeLead, enregistrerLead, renvoyerBrochure, supprimerEchangeLead, supprimerLead } from "../../actions";
 
 export const metadata = { title: "Lead · MagnusMatch" };
 
@@ -153,6 +154,14 @@ export default async function FicheLead({ params, searchParams }: {
           { href: `${base}?onglet=echanges`, icone: "💬", label: "Échanges", sous: rappels.length ? `${rappels.length} rappel${rappels.length > 1 ? "s" : ""}` : `${echanges.length} noté${echanges.length > 1 ? "s" : ""}`, actif: onglet === "echanges" },
         ]} />
       )}
+
+      {l && !l.categorie && onglet !== "entretien" && (l.telephone || l.email) && (() => {
+        const moi = equipe.find((p) => p.email === (user.email ?? "").toLowerCase());
+        return <ModelesMessage leadId={l.id} email={l.email} telephone={l.telephone} action={envoyerModeleLead} valeurs={{
+          prenom: l.prenom || nomLead(l), formation: l.formation || "", rentree: l.annee_rentree ? String(l.annee_rentree) : "{rentree}",
+          entretien: l.entretien_a ? dateEntretienTexte(l.entretien_a) : "{entretien}", moi: nomPersonne(moi, user.email ?? ""), poste: droits.poste || moi?.poste || "Admissions",
+        }} />;
+      })()}
 
       {l && rappels.length > 0 && onglet === "infos" && (
         <div className="flex flex-wrap gap-2 text-sm">
