@@ -7,7 +7,7 @@
  */
 export type Cible = "lead" | "candidat" | "entreprise";
 /** `pour` : statuts où le modèle est conseillé (affiché en premier). Vide = toujours utile. */
-export type Modele = { id: string; titre: string; cible: Cible; pour: string[]; sujet: string; email: string; sms: string };
+export type Modele = { id: string; titre: string; cible: Cible; pour: string[]; sujet: string; email: string; sms: string; /** Créé par l'administrateur : rangé dans « Autres modèles ». */ perso?: boolean };
 
 export const MODELES: Modele[] = [
   /* ---------- Leads (prospects) ---------- */
@@ -174,11 +174,13 @@ export const MODELES: Modele[] = [
 ];
 
 /** Modèles d'une cible : conseillés pour ce statut d'abord. */
-export function modelesPour(cible: Cible, statut?: string) {
-  const liste = MODELES.filter((m) => m.cible === cible);
-  const conseilles = liste.filter((m) => !m.pour.length || (statut && m.pour.includes(statut)));
+export function modelesPour(tous: Modele[], cible: Cible, statut?: string) {
+  const liste = tous.filter((m) => m.cible === cible);
+  const conseilles = liste.filter((m) => !m.perso && (!m.pour.length || (statut && m.pour.includes(statut))));
   return { conseilles, autres: liste.filter((m) => !conseilles.includes(m)) };
 }
+
+export const CIBLES: Cible[] = ["lead", "candidat", "entreprise"];
 
 export function remplir(texte: string, v: Record<string, string>) {
   return texte.replace(/\{(\w+)\}/g, (m, k: string) => (v[k] ? v[k] : m));

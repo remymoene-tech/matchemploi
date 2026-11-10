@@ -144,7 +144,10 @@ alter table public.leads add column if not exists entreprise_id uuid references 
 alter table public.candidats add column if not exists annee_rentree integer;
 create table if not exists public.classes (id uuid primary key default gen_random_uuid(), nom text not null, annee integer not null, formation text not null default '', created_at timestamptz not null default now());
 alter table public.classes enable row level security;
-alter table public.candidats add column if not exists classe_id uuid references public.classes(id) on delete set null;`;
+alter table public.candidats add column if not exists classe_id uuid references public.classes(id) on delete set null;
+create table if not exists public.modeles_messages (id text primary key, titre text not null default '', sujet text not null default '', email text not null default '', sms text not null default '', updated_at timestamptz not null default now());
+alter table public.modeles_messages enable row level security;
+alter table public.modeles_messages add column if not exists cible text not null default '';`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -212,6 +215,7 @@ async function verifierBase() {
     db.from("candidats").select("annee_rentree").limit(1),
     db.from("classes").select("id").limit(1),
     db.from("candidats").select("classe_id").limit(1),
+    db.from("modeles_messages").select("id, cible").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -277,6 +281,7 @@ async function verifierBase() {
     "Année de rentrée des étudiants",
     "Classes (pédagogie)",
     "Classe des étudiants",
+    "Modèles de SMS et d'emails modifiés",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

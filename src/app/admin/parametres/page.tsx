@@ -135,7 +135,7 @@ export default async function Parametres({ searchParams }: { searchParams: Promi
         )}
 
         <p className="rounded-xl border border-line p-4 text-sm text-muted">
-          🔒 <b className="text-ink">Toujours réservé à toi (⚙️)</b> : toutes les suppressions (leads, entreprises, offres, échanges, événements, classes), la sauvegarde, cette page, les écoles et leurs formations, les brochures, la fréquence de recherche, et refaire le QR code d&apos;une carte de visite.
+          🔒 <b className="text-ink">Toujours réservé à toi (⚙️)</b> : les modèles de SMS et d&apos;emails, toutes les suppressions (leads, entreprises, offres, échanges, événements, classes), la sauvegarde, cette page, les écoles et leurs formations, les brochures, la fréquence de recherche, et refaire le QR code d&apos;une carte de visite.
           <br />🔔 <b className="text-ink">Notifications</b> : toute l&apos;équipe reçoit les nouvelles notifications (nouveaux leads, entreprises qui recrutent…). Dès qu&apos;un lead est attribué, seule la personne qui le suit reçoit ses notifications.
         </p>
       </section>
@@ -144,6 +144,7 @@ export default async function Parametres({ searchParams }: { searchParams: Promi
       <section className="card flex flex-col gap-3 p-6">
         <h2 className="text-xl font-semibold">🛠️ Réglages du site</h2>
         <div className="grid gap-3 sm:grid-cols-3">
+          <Link href="/admin/parametres/modeles" className="rounded-xl border border-line p-4 hover:border-ink sm:col-span-3"><p className="font-semibold">✉️ Modèles de SMS et d&apos;emails</p><p className="text-sm text-muted">Voir et modifier les messages proposés à l&apos;équipe dans « Noter un échange »</p></Link>
           <Link href="/admin?vue=ecoles" className="rounded-xl border border-line p-4 hover:border-ink"><p className="font-semibold">🏫 Écoles et formations</p><p className="text-sm text-muted">Écoles, codes, formations, brochures, responsables</p></Link>
           <Link href="/admin?vue=reglages" className="rounded-xl border border-line p-4 hover:border-ink"><p className="font-semibold">🔄 Recherche d&apos;offres</p><p className="text-sm text-muted">Fréquence de la recherche automatique</p></Link>
           <Link href="/diagnostic" className="rounded-xl border border-line p-4 hover:border-ink"><p className="font-semibold">🩺 Diagnostic</p><p className="text-sm text-muted">État du site et mises à jour SQL</p></Link>

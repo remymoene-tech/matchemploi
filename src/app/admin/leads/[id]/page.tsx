@@ -10,7 +10,7 @@ import { formationsDeLEcole } from "@/lib/ecoles";
 import { OngletsCartes } from "@/components/OngletsCartes";
 import { StatutLeadRapide } from "@/components/StatutLeadRapide";
 import { FormEchange } from "@/components/FormEchange";
-import { valeursCommunes } from "@/lib/modeles-serveur";
+import { modelesActifs, valeursCommunes } from "@/lib/modeles-serveur";
 import { JournalEchanges } from "@/components/JournalEchanges";
 import { attribuerLeadAction, requalifierLead, changerStatutLeadFiche, planifierEntretienLead, renvoyerInvitation, actionFaiteLead, ajouterEchangeLead, enregistrerLead, renvoyerBrochure, supprimerEchangeLead, supprimerLead } from "../../actions";
 
@@ -288,7 +288,7 @@ export default async function FicheLead({ params, searchParams }: {
           <section className="card flex flex-col gap-3 p-5">
             <h2 className="text-lg font-semibold">✍️ Noter un échange</h2>
             <FormEchange candidatId={l.id} champ="lead_id" action={ajouterEchangeLead}
-              messages={{ cible: "lead", statut: l.categorie ? undefined : statutLead(l.statut).id, email: l.email, telephone: l.telephone, valeurs: {
+              messages={{ cible: "lead", modeles: await modelesActifs(), statut: l.categorie ? undefined : statutLead(l.statut).id, email: l.email, telephone: l.telephone, valeurs: {
                 ...(await valeursCommunes(user.email)), prenom: l.prenom || nomLead(l), formation: l.formation || "",
                 ...(l.annee_rentree ? { rentree: String(l.annee_rentree) } : {}), ...(l.entretien_a ? { entretien: dateEntretienTexte(l.entretien_a) } : {}),
               } }}

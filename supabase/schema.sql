@@ -434,3 +434,6 @@ alter table public.candidats add column if not exists annee_rentree integer;
 create table if not exists public.classes (id uuid primary key default gen_random_uuid(), nom text not null, annee integer not null, formation text not null default '', created_at timestamptz not null default now());
 alter table public.classes enable row level security;
 alter table public.candidats add column if not exists classe_id uuid references public.classes(id) on delete set null;
+create table if not exists public.modeles_messages (id text primary key, titre text not null default '', sujet text not null default '', email text not null default '', sms text not null default '', updated_at timestamptz not null default now());
+alter table public.modeles_messages enable row level security;
+alter table public.modeles_messages add column if not exists cible text not null default '';

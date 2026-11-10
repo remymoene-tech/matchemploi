@@ -4,12 +4,12 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { modelesPour, remplir, telInternational, type Cible, type Modele } from "@/lib/modeles";
 
-export type Messagerie = { cible: Cible; statut?: string; email?: string; telephone?: string; valeurs: Record<string, string> };
+export type Messagerie = { cible: Cible; statut?: string; email?: string; telephone?: string; valeurs: Record<string, string>; modeles: Modele[] };
 
 /** Choix d'un modèle (SMS ou email), à côté de la date dans « Noter un échange ». */
 export function EnvoiMessage({ messages, canal, onModele }: { messages: Messagerie; canal: "sms" | "email"; onModele: (texte: string, sujet: string) => void }) {
   const [choisi, setChoisi] = useState("");
-  const { conseilles, autres } = modelesPour(messages.cible, messages.statut);
+  const { conseilles, autres } = modelesPour(messages.modeles, messages.cible, messages.statut);
   const bouton = (m: Modele) => (
     <button key={m.id} type="button" onClick={() => { setChoisi(m.id); onModele(remplir(canal === "sms" ? m.sms : m.email, messages.valeurs), remplir(m.sujet, messages.valeurs)); }}
       className={`rounded-full border px-3 py-1 text-sm ${choisi === m.id ? "border-accent bg-accent-soft font-semibold" : "border-line hover:border-ink"}`}>{m.titre}</button>

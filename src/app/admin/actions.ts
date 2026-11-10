@@ -956,3 +956,27 @@ export async function attribuerClasse(f: FormData) {
   redirect(`${t(f, "retour", 200) || "/admin?vue=classes"}${error ? "&erreur=base" : ""}`);
 }
 
+
+/* ---------- Modèles de SMS et d'emails (⚙️ administrateur) ---------- */
+export async function enregistrerModele(f: FormData) {
+  await exigerSuperAdmin();
+  const { MODELES } = await import("@/lib/modeles");
+  const { CIBLES } = await import("@/lib/modeles");
+  const nouveau = t(f, "id", 60) === "nouveau";
+  const id = nouveau ? `perso-${crypto.randomUUID().slice(0, 8)}` : t(f, "id", 60);
+  const cible = t(f, "cible", 20);
+  if (!nouveau && !MODELES.some((m) => m.id === id) && !/^perso-[\w-]{1,40}$/.test(id)) redirect("/admin/parametres/modeles");
+  if (nouveau && !(CIBLES as string[]).includes(cible)) redirect("/admin/parametres/modeles");
+  const lire = (k: string, max: number) => String(f.get(k) ?? "").replace(/\r/g, "").trim().slice(0, max);
+  const { error } = await createAdminClient().from("modeles_messages").upsert({
+    id, ...(nouveau ? { cible } : {}), titre: lire("titre", 80), sujet: lire("sujet", 200), email: lire("email", 6000), sms: lire("sms", 1000), updated_at: new Date().toISOString(),
+  });
+  redirect(error ? "/admin/parametres/modeles?erreur=base" : `/admin/parametres/modeles?ok=1&ouvert=${id}#${id}`);
+}
+
+export async function reinitialiserModele(f: FormData) {
+  await exigerSuperAdmin();
+  const id = t(f, "id", 60);
+  await createAdminClient().from("modeles_messages").delete().eq("id", id);
+  redirect(id.startsWith("perso-") ? "/admin/parametres/modeles?ok=supprime" : `/admin/parametres/modeles?ok=origine&ouvert=${id}#${id}`);
+}

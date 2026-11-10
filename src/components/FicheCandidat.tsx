@@ -16,7 +16,7 @@ import { BoutonSynthese } from "@/components/BoutonSynthese";
 import { CvRendu } from "@/components/CvRendu";
 import { ResultatLinkedin } from "@/components/ResultatLinkedin";
 import { FormEchange } from "@/components/FormEchange";
-import { prenomDe, valeursCommunes } from "@/lib/modeles-serveur";
+import { modelesActifs, prenomDe, valeursCommunes } from "@/lib/modeles-serveur";
 import { TYPES_ECHANGE, echangesDuCandidat, echeance, maintenantMs } from "@/lib/echanges";
 import { ResultatDisc, ResultatManagement } from "@/components/ResultatsTests";
 import { COULEURS } from "@/lib/tests";
@@ -495,7 +495,7 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
         <>
       <Bloc titre="Noter un échange">
         <FormEchange candidatId={candidatId} action={ajouterEchange}
-          messages={{ cible: "candidat", statut: admission(c.statut_admission).id, email: c.email, telephone: c.telephone, valeurs: valeursMessages }} />
+          messages={{ cible: "candidat", modeles: await modelesActifs(), statut: admission(c.statut_admission).id, email: c.email, telephone: c.telephone, valeurs: valeursMessages }} />
       </Bloc>
 
       <Bloc titre={`Historique des échanges (${echanges.length})`}>

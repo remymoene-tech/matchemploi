@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { exigerAcces } from "@/lib/auth";
-import { valeursCommunes } from "@/lib/modeles-serveur";
+import { modelesActifs, valeursCommunes } from "@/lib/modeles-serveur";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ORIGINES_ENTREPRISE, STATUTS_ENTREPRISE, entrepriseParId, offresDe, statutEntreprise, type Entreprise } from "@/lib/entreprises";
 import { echangesDeLEntreprise, echeance, maintenantMs } from "@/lib/echanges";
@@ -321,7 +321,7 @@ export default async function FicheEntreprise({ params, searchParams }: {
           <section className="card flex flex-col gap-3 p-5">
             <h2 className="text-lg font-semibold">✍️ Noter un échange</h2>
             <FormEchange candidatId={e.id} champ="entreprise_id" action={ajouterEchangeEntreprise}
-              messages={{ cible: "entreprise", statut: e.statut, email: e.contact_email, telephone: e.contact_tel, valeurs: {
+              messages={{ cible: "entreprise", modeles: await modelesActifs(), statut: e.statut, email: e.contact_email, telephone: e.contact_tel, valeurs: {
                 ...(await valeursCommunes(user.email)), entreprise: e.nom, contact: e.contact_nom || "Madame, Monsieur",
                 rentree: String(new Date().getMonth() >= 8 ? new Date().getFullYear() + 1 : new Date().getFullYear()),
               } }}
