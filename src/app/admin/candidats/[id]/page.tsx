@@ -6,11 +6,12 @@ export const metadata = { title: "Fiche candidat · MagnusMatch" };
 
 export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string; admission?: string; carte?: string; diplome?: string }> }) {
   const { onglet, admission: admissionDemandee, carte, diplome } = await searchParams;
-  const { role } = await exigerAcces("candidats", "alumni");
+  const { role, user } = await exigerAcces("candidats", "alumni");
   const { id } = await params;
   return (
     <FicheCandidat
       candidatId={id}
+      auteur={user.email}
       autoriserTest={autoriserTestAdmin}
       genererSynthese={genererSyntheseAdmin}
       genererCvAmeliore={genererCvAmelioreAdmin}

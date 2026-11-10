@@ -39,8 +39,14 @@ export function localVersISO(local: string, tz: number): string | null {
 /** Ajoute un échange pour un candidat, ou pour une entreprise ({ entreprise: id }). */
 export async function ajouterEchange(cible: string | { entreprise: string } | { lead: string }, f: FormData, auteur: string): Promise<{ erreur?: string }> {
   const type = txt(f, "type", 20);
-  const resume = txt(f, "resume");
+  let resume = txt(f, "resume");
   if (!resume) return { erreur: "Écris ce qui s'est dit." };
+  // Email écrit dans « Noter un échange » (souvent depuis un modèle) : il part depuis le site
+  if (type === "email" && f.get("envoyer") === "1") {
+    const r = await envoyerEmailEchange(cible, txt(f, "sujet", 200), resume, auteur);
+    if (r.erreur) return r;
+    resume = r.resume!;
+  }
   const tz = Number(f.get("tz") ?? -60);
   const quand = localVersISO(txt(f, "date_echange", 30), tz);
   const relanceA = localVersISO(txt(f, "action_a", 30), tz);
@@ -56,6 +62,27 @@ export async function ajouterEchange(cible: string | { entreprise: string } | { 
   });
   if (error) return { erreur: /echanges|entreprise|candidat_id|lead_id/.test(error.message) ? "La base n'est pas à jour : exécute la mise à jour SQL de la page /diagnostic." : "L'enregistrement a échoué." };
   return {};
+}
+
+async function envoyerEmailEchange(cible: string | { entreprise: string } | { lead: string }, sujet: string, texte: string, auteur: string): Promise<{ erreur?: string; resume?: string }> {
+  if (!sujet) return { erreur: "Indique l'objet de l'email." };
+  const base = createAdminClient();
+  const { data } = typeof cible === "string"
+    ? await base.from("candidats").select("email").eq("user_id", cible).maybeSingle()
+    : "lead" in cible
+      ? await base.from("leads").select("email").eq("id", cible.lead).maybeSingle()
+      : await base.from("entreprises").select("email:contact_email").eq("id", cible.entreprise).maybeSingle();
+  const dest = String((data as { email?: string } | null)?.email ?? "").trim();
+  if (!dest) return { erreur: "Pas d'adresse email sur la fiche : l'email ne peut pas partir." };
+  const { envoyerEmail, moyenEnvoi, texteEnHtml } = await import("@/lib/email");
+  if (!moyenEnvoi()) return { erreur: "L'envoi d'emails n'est pas configuré (voir /diagnostic)." };
+  const { nomPersonne, personnesEquipe } = await import("@/lib/equipe");
+  const moi = (await personnesEquipe().catch(() => [])).find((p) => p.email === auteur.toLowerCase());
+  const ok = await envoyerEmail(dest, sujet, texteEnHtml(texte), {
+    nomExpediteur: `${nomPersonne(moi, auteur) || "L'équipe"} · Campus Magnus`, repondreA: auteur || undefined, texte,
+  });
+  if (!ok) return { erreur: "L'email n'a pas pu partir : vérifie l'envoi d'emails dans /diagnostic. Rien n'a été enregistré." };
+  return { resume: `✉️ Email envoyé à ${dest} · Objet : ${sujet}\n\n${texte}`.slice(0, 5000) };
 }
 
 /** Note automatiquement un email envoyé depuis MagnusMatch (n'échoue jamais). */

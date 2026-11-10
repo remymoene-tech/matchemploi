@@ -8,7 +8,7 @@ export const metadata = { title: "Fiche étudiant · MagnusMatch" };
 
 export default async function Page({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ onglet?: string; admission?: string }> }) {
   const { onglet, admission: admissionDemandee } = await searchParams;
-  const { ecole } = await exigerResponsable();
+  const { ecole, user } = await exigerResponsable();
   const { id } = await params;
   // Une école ne voit que ses propres étudiants
   const { data } = await createAdminClient().from("candidats").select("user_id").eq("user_id", id).eq("ecole_id", ecole.id).maybeSingle();
@@ -16,6 +16,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
   return (
     <FicheCandidat
       candidatId={id}
+      auteur={user.email}
       autoriserTest={autoriserTestEcole}
       genererSynthese={genererSyntheseEcole}
       genererCvAmeliore={genererCvAmelioreEcole}

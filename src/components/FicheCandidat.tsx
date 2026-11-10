@@ -16,6 +16,7 @@ import { BoutonSynthese } from "@/components/BoutonSynthese";
 import { CvRendu } from "@/components/CvRendu";
 import { ResultatLinkedin } from "@/components/ResultatLinkedin";
 import { FormEchange } from "@/components/FormEchange";
+import { prenomDe, valeursCommunes } from "@/lib/modeles-serveur";
 import { TYPES_ECHANGE, echangesDuCandidat, echeance, maintenantMs } from "@/lib/echanges";
 import { ResultatDisc, ResultatManagement } from "@/components/ResultatsTests";
 import { COULEURS } from "@/lib/tests";
@@ -47,7 +48,9 @@ const Ligne = ({ l, v }: { l: string; v: React.ReactNode }) => (
  * Fiche complète d'un candidat pour l'équipe : profil, CV, recherches, offres.
  * Les droits sont vérifiés par la page qui l'affiche.
  */
-export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite, changerAdmission, changerDiplome, ajouterAuxEntreprises, admissionDemandee, refaireQrCarte, carteRefaite, messageDiplome }: {
+export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi, baseFiche, onglet = "profil", autoriserTest, genererSynthese, genererCvAmeliore, ajouterEchange, supprimerEchange, actionFaite, changerAdmission, changerDiplome, ajouterAuxEntreprises, admissionDemandee, refaireQrCarte, carteRefaite, messageDiplome, auteur }: {
+  /** Email de la personne connectée : signe les modèles de SMS et d'emails. */
+  auteur?: string | null;
   /** Retour de l'enregistrement du diplôme : ok, sql (colonne rentrée manquante), erreur. */
   messageDiplome?: string;
   /** Administrateur : refaire le QR code de la carte de visite. */
@@ -97,6 +100,10 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
     return d.toLocaleString("fr-FR", { day: "numeric", month: long ? "long" : "short", timeZone: "Europe/Paris", ...(e.action_a ? { hour: "2-digit", minute: "2-digit" } : {}) });
   };
   const dernierEchange = echanges[0];
+  const valeursMessages = onglet === "echanges" ? {
+    ...(await valeursCommunes(auteur)), prenom: prenomDe(c.nom), formation: c.formation ?? "",
+    ...(c.annee_rentree ? { rentree: String(c.annee_rentree) } : {}),
+  } : {};
   // Lien temporaire (10 min) pour afficher le CV directement dans la page
   const urlCV = c.cv_chemin && onglet === "cv" ? (await db.storage.from("cv").createSignedUrl(c.cv_chemin, 600)).data?.signedUrl ?? null : null;
   const etat = await etatSynthese(candidatId);
@@ -487,7 +494,8 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
       {onglet === "echanges" && (
         <>
       <Bloc titre="Noter un échange">
-        <FormEchange candidatId={candidatId} action={ajouterEchange} />
+        <FormEchange candidatId={candidatId} action={ajouterEchange}
+          messages={{ cible: "candidat", statut: admission(c.statut_admission).id, email: c.email, telephone: c.telephone, valeurs: valeursMessages }} />
       </Bloc>
 
       <Bloc titre={`Historique des échanges (${echanges.length})`}>

@@ -956,33 +956,3 @@ export async function attribuerClasse(f: FormData) {
   redirect(`${t(f, "retour", 200) || "/admin?vue=classes"}${error ? "&erreur=base" : ""}`);
 }
 
-/** Modèle de message à un lead : l'email part du site ; le SMS part de l'iPhone, on le note ici. */
-export async function envoyerModeleLead(_: { erreur?: string; ok?: string }, f: FormData): Promise<{ erreur?: string; ok?: string }> {
-  const { user, droits } = await exigerAcces("leads", "intervenants", "alumni");
-  const id = t(f, "lead_id", 60);
-  await verifierContact(id, droits);
-  const canal = t(f, "canal", 10) === "sms" ? "sms" : "email";
-  const titre = t(f, "titre", 120);
-  const sujet = t(f, "sujet", 200);
-  const texte = t(f, "texte", 4000);
-  if (!texte) return { erreur: "Le message est vide." };
-  const base = createAdminClient();
-  if (canal === "email") {
-    const { data: l } = await base.from("leads").select("email").eq("id", id).maybeSingle();
-    if (!l?.email) return { erreur: "Ce lead n'a pas d'adresse email." };
-    const { texteEnHtml, envoyerEmail } = await import("@/lib/email");
-    const { nomPersonne, personnesEquipe } = await import("@/lib/equipe");
-    const moi = (await personnesEquipe()).find((p) => p.email === (user.email ?? "").toLowerCase());
-    const ok = await envoyerEmail(l.email as string, sujet || "Campus Magnus", texteEnHtml(texte), {
-      nomExpediteur: `${nomPersonne(moi, user.email ?? "")} · Campus Magnus`, repondreA: user.email ?? undefined, texte,
-    });
-    if (!ok) return { erreur: "L'email n'a pas pu partir : vérifie l'envoi d'emails dans /diagnostic." };
-  }
-  await base.from("echanges").insert({
-    lead_id: id, type: canal, date_echange: new Date().toISOString(), auteur: user.email ?? "",
-    resume: `${canal === "sms" ? "💬 SMS" : "✉️ Email"}${titre ? ` « ${titre} »` : ""} :\n${canal === "email" && sujet ? `${sujet}\n\n` : ""}${texte}`.slice(0, 5000),
-  });
-  await prendreSiLibre(id, user.email);
-  revalidatePath(`/admin/leads/${id}`);
-  return { ok: canal === "sms" ? "💬 SMS noté dans les échanges ✓" : "✉️ Email envoyé et noté dans les échanges ✓" };
-}

@@ -10,9 +10,9 @@ import { formationsDeLEcole } from "@/lib/ecoles";
 import { OngletsCartes } from "@/components/OngletsCartes";
 import { StatutLeadRapide } from "@/components/StatutLeadRapide";
 import { FormEchange } from "@/components/FormEchange";
-import { ModelesMessage } from "@/components/ModelesMessage";
+import { valeursCommunes } from "@/lib/modeles-serveur";
 import { JournalEchanges } from "@/components/JournalEchanges";
-import { attribuerLeadAction, requalifierLead, changerStatutLeadFiche, envoyerModeleLead, planifierEntretienLead, renvoyerInvitation, actionFaiteLead, ajouterEchangeLead, enregistrerLead, renvoyerBrochure, supprimerEchangeLead, supprimerLead } from "../../actions";
+import { attribuerLeadAction, requalifierLead, changerStatutLeadFiche, planifierEntretienLead, renvoyerInvitation, actionFaiteLead, ajouterEchangeLead, enregistrerLead, renvoyerBrochure, supprimerEchangeLead, supprimerLead } from "../../actions";
 
 export const metadata = { title: "Lead · MagnusMatch" };
 
@@ -155,13 +155,9 @@ export default async function FicheLead({ params, searchParams }: {
         ]} />
       )}
 
-      {l && !l.categorie && onglet !== "entretien" && (l.telephone || l.email) && (() => {
-        const moi = equipe.find((p) => p.email === (user.email ?? "").toLowerCase());
-        return <ModelesMessage leadId={l.id} email={l.email} telephone={l.telephone} action={envoyerModeleLead} valeurs={{
-          prenom: l.prenom || nomLead(l), formation: l.formation || "", rentree: l.annee_rentree ? String(l.annee_rentree) : "{rentree}",
-          entretien: l.entretien_a ? dateEntretienTexte(l.entretien_a) : "{entretien}", moi: nomPersonne(moi, user.email ?? ""), poste: droits.poste || moi?.poste || "Admissions",
-        }} />;
-      })()}
+      {l && onglet === "infos" && (l.telephone || l.email) && (
+        <Link href={`${base}?onglet=echanges`} className="btn w-fit">💬 Envoyer un SMS ou un email (modèles)</Link>
+      )}
 
       {l && rappels.length > 0 && onglet === "infos" && (
         <div className="flex flex-wrap gap-2 text-sm">
@@ -292,6 +288,10 @@ export default async function FicheLead({ params, searchParams }: {
           <section className="card flex flex-col gap-3 p-5">
             <h2 className="text-lg font-semibold">✍️ Noter un échange</h2>
             <FormEchange candidatId={l.id} champ="lead_id" action={ajouterEchangeLead}
+              messages={{ cible: "lead", statut: l.categorie ? undefined : statutLead(l.statut).id, email: l.email, telephone: l.telephone, valeurs: {
+                ...(await valeursCommunes(user.email)), prenom: l.prenom || nomLead(l), formation: l.formation || "",
+                ...(l.annee_rentree ? { rentree: String(l.annee_rentree) } : {}), ...(l.entretien_a ? { entretien: dateEntretienTexte(l.entretien_a) } : {}),
+              } }}
               exemple="Ex. Appel avec sa mère : hésite entre EGC et un BTS, viendra à la JPO du 18 novembre."
               exempleRelance="Ex. Le rappeler après la journée portes ouvertes" />
           </section>
