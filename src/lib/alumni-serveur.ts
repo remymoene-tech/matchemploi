@@ -5,6 +5,7 @@ import { memeEntreprise } from "@/lib/prospections";
 import { nouveauJeton, VALIDITE_JOURS } from "@/lib/fiche-besoin";
 import { envoyerEmail, moyenEnvoi, texteEnHtml } from "@/lib/email";
 import { AIDES, lireParcours, type Parcours } from "@/lib/alumni";
+import { toutLire } from "@/lib/tout-lire";
 
 const db = () => createAdminClient();
 
@@ -39,7 +40,7 @@ const promo = (c: Alumni) => [c.formation, c.diplome_annee].filter(Boolean).join
 export async function lierEntrepriseAlumni(c: Alumni, p: Parcours): Promise<string | null> {
   if (!p.entreprise.trim()) return null;
   const base = db();
-  const { data: toutes } = await base.from("entreprises").select("id, nom, contact_nom, contact_email, ville");
+  const { data: toutes } = await toutLire<Record<string, string>>((de, a) => base.from("entreprises").select("id, nom, contact_nom, contact_email, ville").order("id").range(de, a));
   const existante = (toutes ?? []).find((e) => memeEntreprise(e.nom as string, p.entreprise));
   const qui = `${c.nom || c.email} (alumni${promo(c) ? ` ${promo(c)}` : ""})`;
   let id = existante?.id as string | undefined;
@@ -87,7 +88,7 @@ export async function bienvenueAlumni(c: { email: string; nom: string }) {
 export async function rappelsAnnuelsAlumni(): Promise<number> {
   if (!moyenEnvoi()) return 0;
   const base = db();
-  const { data, error } = await base.from("candidats").select("user_id, email, nom, parcours, alumni_rappel_le").eq("statut_admission", "alumni");
+  const { data, error } = await toutLire((de, a) => base.from("candidats").select("user_id, email, nom, parcours, alumni_rappel_le").eq("statut_admission", "alumni").order("user_id").range(de, a));
   if (error) return 0;
   const site = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const unAn = 365 * 864e5;

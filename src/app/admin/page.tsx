@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { toutLire } from "@/lib/tout-lire";
 import { exigerAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { franceTravailConfigure } from "@/lib/france-travail";
@@ -21,6 +22,7 @@ import { ADMISSIONS, admission } from "@/lib/admission";
 import { VueAlumni } from "@/components/VueAlumni";
 import { VueIntervenants } from "@/components/VueIntervenants";
 import { VueClasses } from "@/components/VueClasses";
+import { Pagination } from "@/components/Pagination";
 import { listeClasses } from "@/lib/classes";
 import { ActiviteEquipe } from "@/components/ActiviteEquipe";
 import { nomPersonne, personnesEquipe, peut, type Acces } from "@/lib/equipe";
@@ -65,7 +67,7 @@ const AUTRES = [
 /** Pages réservées à l'administrateur (accessibles depuis ⚙️). */
 const RESERVEES_ADMIN = ["ecoles", "reglages"];
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string; specialite?: string; ltraite?: string; rentree?: string; classe?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string; specialite?: string; ltraite?: string; rentree?: string; classe?: string; lpage?: string; cpage?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -97,8 +99,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
   const [{ frequence, tableOk }, { data: candidats }, { data: offres }, { data: matchs }] = await Promise.all([
     lireFrequence(),
-    db.from("candidats").select("*").order("nom"),
-    db.from("offres").select("*").not("source", "in", `(${SOURCES_AUTO.join(",")})`).order("created_at", { ascending: false }),
+    toutLire<Candidat>((de, a) => db.from("candidats").select("*").order("nom").order("user_id").range(de, a)),
+    toutLire<Offre>((de, a) => db.from("offres").select("*").not("source", "in", `(${SOURCES_AUTO.join(",")})`).order("created_at", { ascending: false }).order("id").range(de, a)),
     db.from("correspondances").select("*").gte("score", SEUIL).order("score", { ascending: false }).limit(500),
   ]);
   // Requalifiés en intervenants (sur leur fiche candidat ou sur leur lead) : ils ne sont plus des candidats.
@@ -154,7 +156,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   }
   const nbEntreprises = entreprises?.length ?? 0;
   const { data: echEnt } = vue === "entreprises" && sous === "entreprises" && entreprises?.length
-    ? await db.from("echanges").select("entreprise_id, date_echange, action, action_a, action_le, action_faite").not("entreprise_id", "is", null).order("date_echange", { ascending: false }).limit(1000)
+    ? await toutLire((de, a) => db.from("echanges").select("entreprise_id, date_echange, action, action_a, action_le, action_faite").not("entreprise_id", "is", null).order("date_echange", { ascending: false }).order("id").range(de, a))
     : { data: [] };
   const echangesEnt = (echEnt ?? []) as { entreprise_id: string; date_echange: string; action: string; action_a: string | null; action_le: string | null; action_faite: boolean }[];
   // Filtres de « Mes entreprises » (les anciens liens ?filtre=… restent valables)
@@ -190,7 +192,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   // Leads admis à l'entretien qui n'ont pas encore créé leur espace : déjà candidats
   const admisSansEspace = (leads ?? []).filter((l) => estLeadAdmis(l) && !l.candidat_id);
   const { data: echLeadsData } = (vue === "accueil" || vue === "leads") && leads?.length
-    ? await db.from("echanges").select("lead_id, date_echange, auteur, resume, type").not("lead_id", "is", null).limit(5000)
+    ? await toutLire((de, a) => db.from("echanges").select("lead_id, date_echange, auteur, resume, type").not("lead_id", "is", null).order("date_echange").order("id").range(de, a))
     : { data: [] };
   const nbLeads = leads?.length ?? 0;
   // Admis : ils deviennent candidats et quittent la liste des leads (mais restent dans les calculs du recrutement)
@@ -230,6 +232,11 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const filtreDates = du && au && !isNaN(+du) && !isNaN(+au);
   const qc = (sp.q ?? "").trim().toLowerCase();
   const bilanDe = (id: string) => dernierEntretien.get(id)?.bilan ?? "";
+  // Pages de 50 lignes (les filtres sont gardés dans l'adresse)
+  const PAR_PAGE = 50;
+  const lienPage = (cle: string, n: number) => `/admin?${new URLSearchParams({ ...Object.fromEntries(Object.entries(sp).filter(([, v]) => typeof v === "string" && v)) as Record<string, string>, [cle]: String(n) })}`;
+  const pageLeads = Math.max(1, Number(sp.lpage) || 1);
+  const pageCand = Math.max(1, Number(sp.cpage) || 1);
   const candidatsAffiches = tousCandidats.filter((c) => {
     const t = c.created_at ? new Date(c.created_at).getTime() : 0;
     if (filtreDates && !(t > +du! && t <= +au!)) return false;
@@ -567,7 +574,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                   </tr>
                 </thead>
                 <tbody>
-                  {leadsAffiches.map((l) => (
+                  {leadsAffiches.slice((pageLeads - 1) * PAR_PAGE, pageLeads * PAR_PAGE).map((l) => (
                     <tr key={l.id} className="border-b border-line align-top last:border-0 hover:bg-bg">
                       {superAdmin && <td className="p-3"><input type="checkbox" name="ids" value={l.id} form="attribution-groupee" className="h-4 w-4" defaultChecked={!l.attribue_a && sp.lsuivi === "libre"} aria-label={`Sélectionner ${nomLead(l)}`} /></td>}
                       <td className="p-3">
@@ -619,6 +626,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               </table>
             </div>
           )}
+          <Pagination total={leadsAffiches.length} page={pageLeads} parPage={PAR_PAGE} lien={(n) => lienPage("lpage", n)} />
           {leads && !leadsAffiches.length && (
             <p className="card border-dashed p-6 text-sm text-muted">{filtresLeadsActifs ? "Aucun lead ne correspond à ces filtres." : nbLeads ? "Aucun lead en cours : les admis sont dans 👥 Mes candidats." : "Pas encore de lead. Ils arriveront ici dès qu'une personne demandera la brochure, ou ajoute-les toi-même (JPO, salon…)."}</p>
           )}
@@ -724,7 +732,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 </tr>
               </thead>
               <tbody>
-                {[...candidatsAffiches].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")).map((c) => {
+                {[...candidatsAffiches].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? "")).slice((pageCand - 1) * PAR_PAGE, pageCand * PAR_PAGE).map((c) => {
                   const e = dernierEntretien.get(c.user_id);
                   const best = meilleure.get(c.user_id);
                   const bilan = e?.bilan === "autonome" ? ["Autonome", "chip-plus"] : e?.bilan === "renforce" ? ["Renforcé", "chip-minus"] : e?.bilan === "accompagner" ? ["À accompagner", "chip-tag"] : null;
@@ -771,6 +779,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 })}
               </tbody>
             </table>
+            <Pagination total={candidatsAffiches.length} page={pageCand} parPage={PAR_PAGE} lien={(n) => lienPage("cpage", n)} />
             {!candidatsAffiches.length && (
               <p className="p-6 text-sm text-muted">{C.size ? "Aucun candidat ne correspond à ces filtres." : "Aucun candidat inscrit. Envoie le lien d'inscription à tes étudiants."}</p>
             )}

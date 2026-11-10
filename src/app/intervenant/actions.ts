@@ -7,6 +7,7 @@ import { memeEntreprise } from "@/lib/prospections";
 import { emailsEquipe } from "@/lib/equipe";
 import { lienBesoinEntreprise } from "@/lib/alumni-serveur";
 import { SITUATIONS_INTERVENANT, SPECIALITES } from "@/lib/intervenants";
+import { toutLire } from "@/lib/tout-lire";
 
 const txt = (f: FormData, k: string, max = 200) => String(f.get(k) ?? "").trim().slice(0, max);
 
@@ -22,7 +23,7 @@ export async function preparerDepotIntervenant(): Promise<{ chemin: string; jeto
 async function entrepriseQuiRecrute(l: Lead): Promise<string | null> {
   if (!l.entreprise) return null;
   const db = createAdminClient();
-  const { data: toutes } = await db.from("entreprises").select("id, nom, contact_nom, contact_email, statut");
+  const { data: toutes } = await toutLire<Record<string, string>>((de, a) => db.from("entreprises").select("id, nom, contact_nom, contact_email, statut").order("id").range(de, a));
   const existante = (toutes ?? []).find((e) => memeEntreprise(e.nom as string, l.entreprise!));
   const qui = [l.prenom, l.nom].filter(Boolean).join(" ") || l.email;
   let id = existante?.id as string | undefined;

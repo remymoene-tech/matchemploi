@@ -10,6 +10,7 @@ import { envoyerEmail, echapper } from "@/lib/email";
 import { distanceKm, localiserLieu } from "@/lib/geo";
 import { avecDisc } from "@/lib/tests-serveur";
 import { SEUIL, SOURCES_AUTO, estOffreEquipe, type Candidat, type Offre, type Correspondance, type Piste, type Recherche } from "@/lib/types";
+import { toutLire } from "@/lib/tout-lire";
 
 const PAR_APPEL = 8;      // offres notées par appel à l'IA
 const MAX_PAR_RUN = 32;   // offres notées au maximum par recherche (maîtrise des coûts)
@@ -314,9 +315,11 @@ export async function noterOffrePourTous(offreId: string) {
   if (!iaConfiguree()) return;
   const { data: o } = await db.from("offres").select("*").eq("id", offreId).single<Offre>();
   if (!o || !o.ouverte) return;
-  let requete = db.from("candidats").select("*").eq("consentement", true);
-  if (o.ecole_id) requete = requete.eq("ecole_id", o.ecole_id);
-  const { data: candidats } = await requete;
+  const { data: candidats } = await toutLire<Candidat>((de, a) => {
+    let q = db.from("candidats").select("*").eq("consentement", true);
+    if (o.ecole_id) q = q.eq("ecole_id", o.ecole_id);
+    return q.order("user_id").range(de, a);
+  });
   const cibles = ((candidats ?? []) as Candidat[]).filter((c) => estAdmis(c) && compatible(c, o));
   await parLots(cibles, 4, async (sansDisc) => {
     const c = await avecDisc(sansDisc);

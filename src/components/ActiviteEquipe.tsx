@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { jourParis } from "@/lib/planning";
 import { nomPersonne, personnesEquipe } from "@/lib/equipe";
 import { Colonnes } from "@/components/Graphiques";
+import { toutLire } from "@/lib/tout-lire";
 
 type Periode = "jour" | "semaine" | "mois";
 
@@ -59,12 +60,12 @@ export async function ActiviteEquipe({ periode: p, date, historique, leads }: {
   const [debut, fin] = bornes(periode, jour);
 
   const db = createAdminClient();
-  const { data: horsData } = await db.from("leads").select("id").in("categorie", ["alumni", "intervenant"]);
+  const { data: horsData } = await toutLire<{ id: string }>((de, a) => db.from("leads").select("id").in("categorie", ["alumni", "intervenant"]).order("id").range(de, a));
   const hors = new Set((horsData ?? []).map((x) => x.id as string));
-  const { data } = await db.from("echanges").select("auteur, type, date_echange, lead_id")
+  const { data } = await toutLire((de, a) => db.from("echanges").select("auteur, type, date_echange, lead_id")
     .in("type", TYPES.map((t) => t.id)).neq("auteur", "")
     .gte("date_echange", `${plusJours(debut, -1)}T00:00:00Z`).lte("date_echange", `${plusJours(fin, 1)}T23:59:59Z`)
-    .limit(20000);
+    .order("date_echange").order("id").range(de, a));
   const echanges = ((data ?? []) as { auteur: string; type: string; date_echange: string; lead_id: string | null }[])
     .filter((e) => { const j = jourParis(e.date_echange); return j >= debut && j <= fin && !(e.lead_id && hors.has(e.lead_id)); });
 

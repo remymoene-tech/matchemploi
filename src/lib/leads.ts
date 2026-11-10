@@ -1,5 +1,6 @@
 import "server-only";
 import { emailsEquipe } from "@/lib/equipe";
+import { toutLire } from "@/lib/tout-lire";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { envoyerEmail, moyenEnvoi, texteEnHtml } from "@/lib/email";
 import { BROCHURES_PAR_DEFAUT, lireFormations } from "@/lib/formations";
@@ -86,13 +87,13 @@ export const estProspect = (l: Pick<Lead, "categorie">) => !l.categorie || !CATE
 
 /** Leads du recrutement (sans les alumni ni les intervenants, qui ne comptent dans aucun chiffre). */
 export async function listeLeads(): Promise<Lead[] | null> {
-  const { data, error } = await db().from("leads").select("*").order("created_at", { ascending: false }).limit(2000);
+  const { data, error } = await toutLire<Lead>((de, a) => db().from("leads").select("*").order("created_at", { ascending: false }).order("id").range(de, a));
   return error ? null : ((data ?? []) as Lead[]).filter(estProspect);
 }
 
 /** Contacts hors recrutement : alumni qui veulent être recontactés, carnet d'adresses des intervenants. */
 export async function listeContacts(categorie: "alumni" | "intervenant"): Promise<Lead[]> {
-  const { data, error } = await db().from("leads").select("*").eq("categorie", categorie).order("created_at", { ascending: false }).limit(2000);
+  const { data, error } = await toutLire<Lead>((de, a) => db().from("leads").select("*").eq("categorie", categorie).order("created_at", { ascending: false }).order("id").range(de, a));
   return error ? [] : ((data ?? []) as Lead[]);
 }
 

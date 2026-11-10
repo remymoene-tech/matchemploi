@@ -14,6 +14,7 @@ import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
 import { changerSuiviEcole, envoyerMessageEcole, relancerEcole } from "./actions";
 import { AVIS, SEUIL, SUIVIS, contratLabel, sourceLabel, type Candidat, type Correspondance, type Offre } from "@/lib/types";
+import { toutLire } from "@/lib/tout-lire";
 
 export const metadata = { title: "Espace École · MagnusMatch" };
 export const maxDuration = 300;
@@ -36,7 +37,7 @@ export default async function EspaceEcole({ searchParams }: { searchParams: Prom
   const lien = `${site}/inscription?ecole=${ecole.code}`;
 
   const [{ data: cData }, { data: oEcole }] = await Promise.all([
-    db.from("candidats").select("*").eq("ecole_id", ecole.id).order("nom"),
+    toutLire<Candidat>((de, a) => db.from("candidats").select("*").eq("ecole_id", ecole.id).order("nom").order("user_id").range(de, a)),
     db.from("offres").select("*").eq("ecole_id", ecole.id).order("created_at", { ascending: false }),
   ]);
   const etudiants = (cData ?? []) as Candidat[];

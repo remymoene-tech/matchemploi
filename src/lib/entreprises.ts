@@ -1,5 +1,6 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { toutLire } from "@/lib/tout-lire";
 import type { Offre } from "@/lib/types";
 import { lireAttentes, type Attentes } from "@/lib/attentes";
 
@@ -61,7 +62,7 @@ export function lireEntreprise(f: FormData) {
 
 /** Toutes les entreprises (null si la table n'existe pas encore : mise à jour SQL à faire). */
 export async function listeEntreprises(): Promise<Entreprise[] | null> {
-  const { data, error } = await createAdminClient().from("entreprises").select("*").order("nom");
+  const { data, error } = await toutLire<Entreprise>((de, a) => createAdminClient().from("entreprises").select("*").order("nom").order("id").range(de, a));
   return error ? null : ((data ?? []) as Entreprise[]);
 }
 

@@ -34,6 +34,7 @@ import type { TestId } from "@/lib/tests";
 import type { EtatTest } from "@/components/FormTests";
 import type { EtatEntretien } from "@/components/FormEntretienConseil";
 import { FREQUENCES, ecrireFrequence, type Frequence } from "@/lib/reglages";
+import { toutLire } from "@/lib/tout-lire";
 
 const t = (f: FormData, k: string, max = 300) => String(f.get(k) ?? "").trim().slice(0, max);
 
@@ -373,7 +374,7 @@ export async function ajouterProspectionAuxEntreprises(f: FormData) {
   const db = createAdminClient();
   const { data: p } = await db.from("prospections").select("*").eq("id", t(f, "prospection_id", 60)).maybeSingle();
   if (!p) return;
-  const { data: toutes } = await db.from("entreprises").select("id, nom");
+  const { data: toutes } = await toutLire<Record<string, string>>((de, a) => db.from("entreprises").select("id, nom").order("id").range(de, a));
   let entrepriseId = (toutes ?? []).find((e) => memeEntreprise(e.nom, p.entreprise))?.id as string | undefined;
   if (!entrepriseId) {
     const { data } = await db.from("entreprises").insert({
