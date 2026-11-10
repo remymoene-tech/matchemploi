@@ -21,7 +21,7 @@ export const LEGAL = {
 /** Sous-traitants techniques (à vérifier avec les contrats en place). */
 export const SOUS_TRAITANTS = [
   { nom: "Vercel Inc.", role: "Hébergement du site", lieu: "440 N Barranca Ave #4133, Covina, CA 91723, États-Unis" },
-  { nom: "Supabase Inc.", role: "Base de données, comptes et stockage des fichiers (CV, brochures)", lieu: "Serveurs dans la région choisie pour le projet (à vérifier : de préférence Union européenne)" },
+  { nom: "Supabase Inc.", role: "Base de données, comptes et stockage des fichiers (CV, brochures)", lieu: "Données hébergées à Paris, France (région eu-west-3, Union européenne)" },
   { nom: "Anthropic PBC", role: "Intelligence artificielle (lecture des CV et des offres, notes de correspondance, conseils)", lieu: "États-Unis" },
   { nom: "Service d'envoi d'emails", role: "Envoi des brochures, convocations, invitations et alertes", lieu: "Selon le service configuré (boîte mail de l'école ou Resend)" },
 ] as const;
