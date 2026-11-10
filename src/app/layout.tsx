@@ -13,8 +13,12 @@ import "./globals.css";
 const jost = Jost({ variable: "--font-jost", subsets: ["latin"], weight: ["300", "400", "500", "600", "700"] });
 const jetbrains = JetBrains_Mono({ variable: "--font-jetbrains", subsets: ["latin"], weight: ["500", "700"] });
 
+/** Site test (Vercel « Preview ») : NEXT_PUBLIC_SITE_TEST=1 → bandeau orange, pas d'indexation Google. */
+const SITE_TEST = process.env.NEXT_PUBLIC_SITE_TEST === "1";
+
 export const metadata: Metadata = {
-  title: "MagnusMatch",
+  title: SITE_TEST ? "🧪 TEST · MagnusMatch" : "MagnusMatch",
+  ...(SITE_TEST ? { robots: { index: false, follow: false } } : {}),
   description: "Dépose ton CV, on cherche pour toi les offres qui te correspondent à 75 % ou plus.",
   appleWebApp: { capable: true, title: "MagnusMatch", statusBarStyle: "default" },
 };
@@ -37,6 +41,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="fr" className={`${jost.variable} ${jetbrains.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col overflow-x-clip font-sans text-[15px] leading-relaxed">
+        {SITE_TEST && <p className="bg-[#f59e0b] px-4 py-1.5 text-center text-sm font-bold text-black print:hidden">🧪 SITE TEST : les données ici sont fictives, rien n&apos;arrive sur le vrai MagnusMatch.</p>}
         <div className="h-1.5 bg-[var(--sauge)] print:hidden" aria-hidden />
         <header className="border-b border-line bg-surface print:hidden">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">

@@ -6,7 +6,7 @@ export const SITUATIONS_INTERVENANT: Record<string, string> = {
 };
 
 /** Spécialités proposées aux intervenants (plusieurs choix possibles). */
-export const SPECIALITES = ["Vente", "Achat", "Marketing", "Communication", "Droit", "Comptabilité", "Tourisme"] as const;
+export const SPECIALITES = ["Vente", "Achat", "Marketing", "Communication", "Droit", "Comptabilité", "Tourisme", "Hôtellerie", "Restauration", "Loisirs"] as const;
 
 /** « Vente · Marketing » → ["Vente", "Marketing"] */
 export const specialitesDe = (texte?: string | null) => (texte ?? "").split("·").map((x) => x.trim()).filter(Boolean);

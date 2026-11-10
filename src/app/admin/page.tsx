@@ -67,7 +67,7 @@ const AUTRES = [
 /** Pages réservées à l'administrateur (accessibles depuis ⚙️). */
 const RESERVEES_ADMIN = ["ecoles", "reglages"];
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string; specialite?: string; ltraite?: string; rentree?: string; classe?: string; lpage?: string; cpage?: string; kclasse?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string; specialite?: string; ltraite?: string; rentree?: string; classe?: string; lpage?: string; cpage?: string; epage?: string; kclasse?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
@@ -237,6 +237,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
   const lienPage = (cle: string, n: number) => `/admin?${new URLSearchParams({ ...Object.fromEntries(Object.entries(sp).filter(([, v]) => typeof v === "string" && v)) as Record<string, string>, [cle]: String(n) })}`;
   const pageLeads = Math.max(1, Number(sp.lpage) || 1);
   const pageCand = Math.max(1, Number(sp.cpage) || 1);
+  const pageEnt = Math.max(1, Number(sp.epage) || 1);
   const classesListe = vue === "candidats" ? ((await listeClasses().catch(() => null)) ?? []) : [];
   const candidatsAffiches = tousCandidats.filter((c) => {
     const t = c.created_at ? new Date(c.created_at).getTime() : 0;
@@ -1153,7 +1154,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                   </tr>
                 </thead>
                 <tbody>
-                  {entreprisesAffichees.map((e) => {
+                  {entreprisesAffichees.slice((pageEnt - 1) * PAR_PAGE, pageEnt * PAR_PAGE).map((e) => {
                     const nOffres = parEntreprise.get(e.id)!.filter((o) => o.ouverte).length;
                     const ech = echangesEnt.filter((x) => x.entreprise_id === e.id);
                     const rappel = ech.filter((x) => x.action && !x.action_faite).map((x) => echeance(x)).filter((d): d is Date => !!d).sort((a, b) => +a - +b)[0];
@@ -1199,6 +1200,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               </table>
             </div>
           )}
+          <Pagination total={entreprisesAffichees.length} page={pageEnt} parPage={PAR_PAGE} lien={(n) => lienPage("epage", n)} />
         </div>
       )}
 

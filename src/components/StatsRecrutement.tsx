@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Barres } from "@/components/Graphiques";
 import { aEteAdmis, aEteConvoque, aEtePresent, nomLead, premierContact, statutLead, type EchangeLead, type Lead } from "@/lib/leads";
 
 /** Tableaux de recrutement : délai de rappel des leads et conversion lead → convoqué → présent → admis. */
@@ -47,6 +48,18 @@ export function StatsRecrutement({ leads, echanges, maintenant, annee, annees }:
     const x = liste.filter((l) => (l.formation || "Non précisée") === f);
     return { f, leads: x.length, conv: x.filter(aEteConvoque).length, pres: x.filter(aEtePresent).length, adm: x.filter(aEteAdmis).length };
   });
+
+  // 4. Pourquoi on perd des leads (motif noté au passage en « Perdu »)
+  const perdus = liste.filter((l) => statutLead(l.statut).id === "perdu");
+  const motifs = new Map<string, { label: string; n: number }>();
+  for (const l of perdus) {
+    const brut = (l.motif_perte ?? "").trim().replace(/\s+/g, " ");
+    const cle = brut.toLowerCase() || "—";
+    const m = motifs.get(cle) ?? { label: brut ? brut.charAt(0).toUpperCase() + brut.slice(1) : "Sans motif noté", n: 0 };
+    m.n++;
+    motifs.set(cle, m);
+  }
+  const lignesMotifs = [...motifs.values()].sort((a, b) => b.n - a.n);
 
   const th = "p-3 font-semibold";
   const td = "p-3 tabular-nums";
@@ -145,6 +158,17 @@ export function StatsRecrutement({ leads, echanges, maintenant, annee, annees }:
             </tbody>
           </table>
         </div>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="font-semibold">❌ Pourquoi on perd des leads</h3>
+          <Link href="/admin?vue=leads&lstatut=perdu" className="text-sm text-muted hover:text-ink">{perdus.length} lead{perdus.length > 1 ? "s" : ""} perdu{perdus.length > 1 ? "s" : ""} · {pct(perdus.length, liste.length)} des leads →</Link>
+        </div>
+        {lignesMotifs.length
+          ? <Barres resume="Motifs des leads perdus" total={perdus.length} donnees={lignesMotifs.map((m) => ({ label: m.label, valeur: m.n }))} />
+          : <p className="text-sm text-muted">Aucun lead perdu{annee ? " pour cette rentrée" : ""} 🎉</p>}
+        {motifs.has("—") && <p className="text-xs text-muted">Astuce : note le motif quand tu passes un lead en « Perdu », pour mieux comprendre ce qui bloque.</p>}
       </div>
     </section>
   );
