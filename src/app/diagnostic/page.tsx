@@ -141,7 +141,10 @@ alter table public.leads add column if not exists situation text not null defaul
 alter table public.leads add column if not exists entreprise text not null default '';
 alter table public.leads add column if not exists recrute boolean not null default false;
 alter table public.leads add column if not exists entreprise_id uuid references public.entreprises(id) on delete set null;
-alter table public.candidats add column if not exists annee_rentree integer;`;
+alter table public.candidats add column if not exists annee_rentree integer;
+create table if not exists public.classes (id uuid primary key default gen_random_uuid(), nom text not null, annee integer not null, formation text not null default '', created_at timestamptz not null default now());
+alter table public.classes enable row level security;
+alter table public.candidats add column if not exists classe_id uuid references public.classes(id) on delete set null;`;
 
 async function verifierBase() {
   const db = createAdminClient();
@@ -207,6 +210,8 @@ async function verifierBase() {
     db.from("leads").select("attribue_a, attribue_le").limit(1),
     db.from("leads").select("categorie, message, cv_chemin, situation, entreprise, recrute, entreprise_id").limit(1),
     db.from("candidats").select("annee_rentree").limit(1),
+    db.from("classes").select("id").limit(1),
+    db.from("candidats").select("classe_id").limit(1),
   ]);
   const noms = [
     "Table des candidats",
@@ -270,6 +275,8 @@ async function verifierBase() {
     "Leads attribués à l'équipe",
     "Alumni et intervenants (formulaires)",
     "Année de rentrée des étudiants",
+    "Classes (pédagogie)",
+    "Classe des étudiants",
   ];
   return noms.map((nom, i) => ({ nom, ok: !essais[i].error }));
 }

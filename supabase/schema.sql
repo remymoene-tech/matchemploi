@@ -431,3 +431,6 @@ alter table public.leads add column if not exists entreprise text not null defau
 alter table public.leads add column if not exists recrute boolean not null default false;
 alter table public.leads add column if not exists entreprise_id uuid references public.entreprises(id) on delete set null;
 alter table public.candidats add column if not exists annee_rentree integer;
+create table if not exists public.classes (id uuid primary key default gen_random_uuid(), nom text not null, annee integer not null, formation text not null default '', created_at timestamptz not null default now());
+alter table public.classes enable row level security;
+alter table public.candidats add column if not exists classe_id uuid references public.classes(id) on delete set null;

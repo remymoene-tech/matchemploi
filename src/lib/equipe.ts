@@ -36,7 +36,7 @@ export const ACCES = [
   { id: "entreprises", label: "Entreprises et offres", icone: "🏢", aide: "Fiches entreprises, offres, annonces d'alumni à valider" },
   { id: "planning", label: "Planning", icone: "📅", aide: "Entretiens programmés" },
   { id: "evenements", label: "Événements", icone: "🎪", aide: "JPO, salons, QR codes" },
-  { id: "intervenants", label: "Intervenants", icone: "🧑‍🏫", aide: "Carnet d'adresses des intervenants et leurs CV · d'habitude la pédagogie · notifié des nouveaux intervenants" },
+  { id: "intervenants", label: "Pédagogie", icone: "📚", aide: "Classes (créer, attribuer aux admis) et carnet d'adresses des intervenants · notifié des nouveaux intervenants" },
 ] as const;
 
 export type Acces = (typeof ACCES)[number]["id"];

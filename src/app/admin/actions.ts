@@ -917,3 +917,34 @@ export async function changerRentreeAdmin(f: FormData) {
   revalidatePath("/admin");
   redirect(`/admin?vue=candidats${error ? "&rentree=sql" : ""}`);
 }
+
+/* ---------- 📚 Pédagogie : classes ---------- */
+
+export async function creerClasse(f: FormData) {
+  await exigerAcces("intervenants");
+  const nom = t(f, "nom", 120);
+  const a = Number(f.get("annee"));
+  if (!nom || !Number.isInteger(a) || a < 2000 || a > 2100) redirect("/admin?vue=classes&erreur=classe");
+  const { error } = await createAdminClient().from("classes").insert({ nom, annee: a, formation: t(f, "formation", 60) });
+  revalidatePath("/admin");
+  redirect(`/admin?vue=classes${error ? "&erreur=base" : "&ok=classe"}`);
+}
+
+export async function supprimerClasse(f: FormData) {
+  await exigerAcces("intervenants");
+  const db = createAdminClient();
+  const id = t(f, "id", 60);
+  await db.from("candidats").update({ classe_id: null }).eq("classe_id", id);
+  await db.from("classes").delete().eq("id", id);
+  revalidatePath("/admin");
+  redirect("/admin?vue=classes");
+}
+
+/** Attribue (ou retire) la classe d'un étudiant admis. */
+export async function attribuerClasse(f: FormData) {
+  await exigerAcces("intervenants");
+  const classe = t(f, "classe_id", 60);
+  const { error } = await createAdminClient().from("candidats").update({ classe_id: classe || null }).eq("user_id", t(f, "candidat_id", 60));
+  revalidatePath("/admin");
+  redirect(`${t(f, "retour", 200) || "/admin?vue=classes"}${error ? "&erreur=base" : ""}`);
+}

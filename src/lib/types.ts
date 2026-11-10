@@ -47,6 +47,8 @@ export type Candidat = {
   diplome_annee?: number | null;
   /** Année de rentrée dans la formation (septembre). */
   annee_rentree?: number | null;
+  /** Classe attribuée par la pédagogie. */
+  classe_id?: string | null;
   /** prospect | admis | admis_condition | liste_attente (choisi par l'équipe). */
   statut_admission?: string | null;
   /** Motif du refus ou de l'abandon. */

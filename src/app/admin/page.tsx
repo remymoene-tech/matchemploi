@@ -20,6 +20,8 @@ import { FormBrochure } from "@/components/FormBrochure";
 import { ADMISSIONS, admission } from "@/lib/admission";
 import { VueAlumni } from "@/components/VueAlumni";
 import { VueIntervenants } from "@/components/VueIntervenants";
+import { VueClasses } from "@/components/VueClasses";
+import { listeClasses } from "@/lib/classes";
 import { ActiviteEquipe } from "@/components/ActiviteEquipe";
 import { nomPersonne, personnesEquipe, peut, type Acces } from "@/lib/equipe";
 import { AnnoncesAValider } from "@/components/AnnoncesAValider";
@@ -34,7 +36,7 @@ import { decouvreursDesEntreprises, type Decouvreur } from "@/lib/prospections";
 import { echeance, lienRelance, maintenantMs, relancesDe } from "@/lib/echanges";
 import { moyenEnvoi } from "@/lib/email";
 import { messageEntreprise, messageEtudiant } from "@/lib/messages";
-import { changerRentreeAdmin, attribuerLeadAction, attribuerLeadsGroupe, creerEvenement, supprimerEvenement, basculerAccueilEvenement, validerAnnonceAlumni, refuserAnnonceAlumni, changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
+import { creerClasse, supprimerClasse, attribuerClasse, changerRentreeAdmin, attribuerLeadAction, attribuerLeadsGroupe, creerEvenement, supprimerEvenement, basculerAccueilEvenement, validerAnnonceAlumni, refuserAnnonceAlumni, changerStatutLeadFiche, renvoyerInvitation, genererFicheDePosteOffre, changerStatutEntreprise, ajouterFormation, retirerFormation, changerAdmissionAdmin, ajouterResponsable, changerFrequence, changerSuivi, creerEcole, envoyerMessageAdmin, relancerTout, retirerResponsable } from "./actions";
 import { FREQUENCES, lireFrequence } from "@/lib/reglages";
 import { AVIS, SEUIL, SOURCES_AUTO, SUIVIS, estOffreEquipe, contratLabel, sourceLabel, type Candidat, type Offre, type Correspondance } from "@/lib/types";
 
@@ -50,6 +52,7 @@ const VUES = [
   { id: "planning", label: "Planning" },
   { id: "evenements", label: "Événements" },
   { id: "intervenants", label: "Intervenants" },
+  { id: "classes", label: "Classes" },
 ] as const;
 /** Pages secondaires, en petit à droite des onglets. */
 const AUTRES = [
@@ -62,14 +65,14 @@ const AUTRES = [
 /** Pages réservées à l'administrateur (accessibles depuis ⚙️). */
 const RESERVEES_ADMIN = ["ecoles", "reglages"];
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string; specialite?: string; ltraite?: string; rentree?: string }> }) {
+export default async function Admin({ searchParams }: { searchParams: Promise<{ vue?: string; ok?: string; relance?: string; erreur?: string; source?: string; tous?: string; suivi?: string; du?: string; au?: string; sous?: string; filtre?: string; trouvee?: string; q?: string; annee?: string; admission?: string; stat_annee?: string; pvue?: string; pdate?: string; pfiltre?: string; lstatut?: string; lformation?: string; lannee?: string; lorigine?: string; ecole?: string; cv?: string; entretien?: string; bilan?: string; statut?: string; offre?: string; origine?: string; apromo?: string; aaide?: string; refuse?: string; lsuivi?: string; attribution?: string; aperiode?: string; adate?: string; requalifie?: string; specialite?: string; ltraite?: string; rentree?: string; classe?: string }> }) {
   const moi = await exigerAdmin();
   const sp = await searchParams;
   // Anciennes adresses : « offres » et « correspondances » sont maintenant dans « Mes entreprises »
   const superAdmin = moi.role === "admin";
   const vueDemandee = sp.vue === "offres" || sp.vue === "correspondances" ? "entreprises" : [...VUES, ...AUTRES].some((v) => v.id === sp.vue) ? sp.vue! : "accueil";
   // Chaque vue demande un accès (l'administrateur a tout) ; sinon on ouvre la première vue permise
-  const ACCES_VUE: Record<string, Acces | null> = { accueil: "accueil", leads: "leads", candidats: "candidats", alumni: "alumni", entreprises: "entreprises", planning: "planning", evenements: "evenements", briefing: "candidats", entretiens: "candidats", intervenants: "intervenants", relances: null, ecoles: null, reglages: null };
+  const ACCES_VUE: Record<string, Acces | null> = { accueil: "accueil", leads: "leads", candidats: "candidats", alumni: "alumni", entreprises: "entreprises", planning: "planning", evenements: "evenements", briefing: "candidats", entretiens: "candidats", intervenants: "intervenants", classes: "intervenants", relances: null, ecoles: null, reglages: null };
   const permise = (v: string) => v === "accueil" || (RESERVEES_ADMIN.includes(v) ? superAdmin : ACCES_VUE[v] == null || peut(moi.droits, ACCES_VUE[v]!));
   const premiere = ["accueil", "leads", "candidats", "alumni", "entreprises", "planning", "evenements"].find(permise) ?? "relances";
   const vue = permise(vueDemandee) ? vueDemandee : premiere;
@@ -268,7 +271,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           Aucune source d&apos;offres automatique n&apos;est branchée : ajoute les identifiants France Travail, Adzuna ou La bonne alternance dans Vercel (voir le guide). En attendant, seules tes offres sont proposées.
         </p>
       )}
-      {sp.ok && vue !== "reglages" && vue !== "ecoles" && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Offre enregistrée. Elle est comparée aux candidats en arrière-plan.</p>}
+      {sp.ok && vue !== "reglages" && vue !== "ecoles" && vue !== "classes" && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Offre enregistrée. Elle est comparée aux candidats en arrière-plan.</p>}
       {sp.erreur === "fiche-base" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">📄 La fiche de poste ne peut pas encore être enregistrée : exécute la mise à jour SQL de la page /diagnostic, puis recommence.</p>}
       {sp.erreur === "fiche-ia" && <p className="rounded-xl bg-bad-soft p-4 text-sm text-bad">📄 MagnusMatch n&apos;a pas pu rédiger la fiche de poste (crédit Claude épuisé ou service indisponible). Réessaie dans un instant.</p>}
       {sp.relance && <p className="rounded-xl bg-good-soft p-4 text-sm text-good">Recherche relancée pour tous les candidats. Les résultats arrivent dans quelques minutes.</p>}
@@ -280,7 +283,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           ...(a("entreprises") ? [{ href: "/admin?vue=entreprises", icone: "🏢", label: "Mes entreprises", sous: entreprises ? `${nbEntreprises} rencontrée${nbEntreprises > 1 ? "s" : ""}` : `${mesOffresOuvertes} offre${mesOffresOuvertes > 1 ? "s" : ""}`, actif: vue === "entreprises" }] : []),
           ...(a("planning") ? [{ href: "/admin?vue=planning", icone: "📅", label: "Planning", sous: "Entretiens programmés", actif: vue === "planning" }] : []),
           ...(a("evenements") ? [{ href: "/admin?vue=evenements", icone: "🎪", label: "Événements", sous: "JPO, salons · QR code", actif: vue === "evenements" }] : []),
-          ...(a("intervenants") ? [{ href: "/admin?vue=intervenants", icone: "🧑‍🏫", label: "Intervenants", sous: "Carnet d'adresses · pédagogie", actif: vue === "intervenants" }] : []),
+          ...(a("intervenants") ? [{ href: "/admin?vue=classes", icone: "📚", label: "Pédagogie", sous: "Classes · intervenants", actif: vue === "classes" || vue === "intervenants" }] : []),
         ]} />
         <nav className="flex flex-wrap justify-end gap-3 text-sm" aria-label="Autres pages">
           {AUTRES.filter((v) => !RESERVEES_ADMIN.includes(v.id) && permise(v.id)).map((v) => (
@@ -428,6 +431,20 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           ["candidats", "👥", "Mes candidats", `${C.size + admisSansEspace.length} candidat${C.size + admisSansEspace.length > 1 ? "s" : ""}`],
           ["alumni", "🎓", "Alumni", `${tousCandidats.filter((c) => c.statut_admission === "alumni").length} ancien${tousCandidats.filter((c) => c.statut_admission === "alumni").length > 1 ? "s" : ""} élève${tousCandidats.filter((c) => c.statut_admission === "alumni").length > 1 ? "s" : ""}`],
         ] as const).filter(([id]) => permise(id)).map(([id, icone, label, sous]) => ({ href: `/admin?vue=${id}`, icone, label, sous, actif: vue === id }))} />
+      )}
+
+      {(vue === "classes" || vue === "intervenants") && (
+        <OngletsCartes label="Pédagogie" onglets={[
+          { href: "/admin?vue=classes", icone: "🏫", label: "Classes", sous: "Créer, attribuer aux admis", actif: vue === "classes" },
+          { href: "/admin?vue=intervenants", icone: "🧑‍🏫", label: "Intervenants", sous: "Carnet d'adresses", actif: vue === "intervenants" },
+        ]} />
+      )}
+
+      {vue === "classes" && (
+        <VueClasses classes={await listeClasses()} admis={tousCandidats.filter((c) => c.statut_admission === "admis" || c.statut_admission == null)}
+          formations={[...new Set(ecoles.flatMap((e) => lireFormations(e.formations).map((f) => f.nom)))]} filtre={sp.classe}
+          creer={creerClasse} supprimer={supprimerClasse} attribuer={attribuerClasse}
+          message={sp.ok === "classe" ? "classe" : sp.erreur === "classe" ? "erreur-classe" : undefined} />
       )}
 
       {vue === "intervenants" && <VueIntervenants contacts={await listeContacts("intervenant")} personnes={await personnesEquipe()} q={sp.q} specialite={sp.specialite} />}
