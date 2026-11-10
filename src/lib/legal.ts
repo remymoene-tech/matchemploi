@@ -14,7 +14,7 @@ export const LEGAL = {
   /** SIRET de la CCI du Pays d'Arles (ou de l'établissement). */
   siret: "181 300 039 00011" as string | null,
   /** Adresse du délégué à la protection des données (DPO) de la CCI. */
-  emailDpo: null as string | null,
+  emailDpo: "rmoene@arles.cci.fr" as string | null,
   miseAJour: "10 novembre 2026",
 };
 
