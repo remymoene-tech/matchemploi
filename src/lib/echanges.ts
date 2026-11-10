@@ -74,11 +74,12 @@ async function envoyerEmailEchange(cible: string | { entreprise: string } | { le
       : await base.from("entreprises").select("email:contact_email").eq("id", cible.entreprise).maybeSingle();
   const dest = String((data as { email?: string } | null)?.email ?? "").trim();
   if (!dest) return { erreur: "Pas d'adresse email sur la fiche : l'email ne peut pas partir." };
-  const { envoyerEmail, moyenEnvoi, texteEnHtml } = await import("@/lib/email");
+  const { envoyerEmail, moyenEnvoi } = await import("@/lib/email");
+  const { emailPro } = await import("@/lib/email-pro");
   if (!moyenEnvoi()) return { erreur: "L'envoi d'emails n'est pas configuré (voir /diagnostic)." };
   const { nomPersonne, personnesEquipe } = await import("@/lib/equipe");
   const moi = (await personnesEquipe().catch(() => [])).find((p) => p.email === auteur.toLowerCase());
-  const ok = await envoyerEmail(dest, sujet, texteEnHtml(texte), {
+  const ok = await envoyerEmail(dest, sujet, emailPro(texte, { vous: typeof cible === "object" && "entreprise" in cible }), {
     nomExpediteur: `${nomPersonne(moi, auteur) || "L'équipe"} · Campus Magnus`, repondreA: auteur || undefined, texte,
   });
   if (!ok) return { erreur: "L'email n'a pas pu partir : vérifie l'envoi d'emails dans /diagnostic. Rien n'a été enregistré." };

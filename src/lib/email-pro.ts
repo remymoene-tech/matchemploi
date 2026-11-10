@@ -40,19 +40,21 @@ function bloc(p: string, dernier: boolean): string {
   return `<p style="margin:0 0 14px">${lignes.map(liens).join("<br>")}</p>`;
 }
 
-export function emailPro(texte: string): string {
+/** Mise en page complète. `vous` : pied de page au vouvoiement (entreprises). */
+export function emailPro(texte: string, o: { vous?: boolean } = {}): string {
+  const site = process.env.NEXT_PUBLIC_SITE_URL || "https://magnusmatch.vercel.app";
   const paras = texte.replace(/\r/g, "").split(/\n{2,}/);
   const corps = paras.map((p, i) => bloc(p, i === paras.length - 1)).join("");
   return `<!doctype html><html lang="fr"><body style="margin:0;padding:0;background:#f4f4f1">
 <table role="presentation" width="100%" style="background:#f4f4f1;border-collapse:collapse"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="600" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;border-collapse:separate;overflow:hidden;${POLICE}">
-<tr><td style="background:#aebaa2;padding:20px 28px">
-<p style="margin:0;font-size:20px;font-weight:bold;letter-spacing:2px;color:#111111">CAMPUS MAGNUS</p>
-<p style="margin:4px 0 0;font-size:13px;color:#2b2b2b">EGC Business School · CFA Négoventis · Arles</p>
+<tr><td style="background:#aebaa2;height:6px;line-height:6px;font-size:0">&nbsp;</td></tr>
+<tr><td align="center" style="padding:22px 28px 14px;border-bottom:1px solid #e6e8e2">
+<img src="${site}/email-logo.png" width="172" height="60" alt="Magnus Global Business School · Arles" style="display:block;border:0;width:172px;height:60px">
 </td></tr>
 <tr><td style="padding:28px;font-size:15px;line-height:1.6;color:#222222">${corps}</td></tr>
 <tr><td style="background:#f7f7f4;padding:16px 28px;font-size:12px;line-height:1.5;color:#777777">
-Campus Magnus · CCI du Pays d'Arles · 45 boulevard Marcellin Berthelot, 13200 Arles<br>Tu peux répondre directement à cet email.
+Campus Magnus · CCI du Pays d'Arles · 45 boulevard Marcellin Berthelot, 13200 Arles<br>${o.vous ? "Vous pouvez répondre directement à cet email." : "Tu peux répondre directement à cet email."}
 </td></tr>
 </table></td></tr></table></body></html>`;
 }
