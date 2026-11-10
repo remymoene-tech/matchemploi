@@ -10,7 +10,7 @@ export const LEGAL = {
   telephone: "04 90 99 08 08",
   emailContact: "egc@arles.cci.fr",
   /** Nom et fonction du directeur ou de la directrice de la publication. */
-  directeurPublication: null as string | null,
+  directeurPublication: "Remy Moene, directeur du Campus Magnus" as string | null,
   /** SIRET de la CCI du Pays d'Arles (ou de l'établissement). */
   siret: "181 300 039 00011" as string | null,
   /** Adresse du délégué à la protection des données (DPO) de la CCI. */
