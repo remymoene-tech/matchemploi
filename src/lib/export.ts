@@ -147,3 +147,10 @@ export async function lignesExport(type: TypeExport, f: Filtres, colonnesChoisie
 }
 
 export const libelleClasse = (k: Classe) => `${k.nom} · ${anneeScolaire(k.annee)}`;
+
+/** Types qu'une personne peut exporter : tout pour l'administrateur ; classes (candidats) et intervenants pour la pédagogie. */
+export function typesPermis(d: { admin: boolean; acces: string[] } | null): TypeExport[] {
+  if (!d) return [];
+  if (d.admin) return TYPES_EXPORT.map((t) => t.id);
+  return d.acces.includes("intervenants") ? ["candidats", "intervenants"] : [];
+}

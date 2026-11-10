@@ -899,6 +899,12 @@ export async function enregistrerFicheIntervenant(f: FormData) {
     ({ error } = await db.from("leads").update(base).eq("id", id));
   }
   if (error) redirect(`/admin/intervenants/${id}/fiche?erreur=base`);
+  // Il recrute (nouvellement coché) : son entreprise arrive dans « Mes entreprises » et l'équipe est prévenue
+  if (maj.recrute && maj.entreprise && !(l.recrute && l.entreprise_id)) {
+    const { entrepriseQuiRecrute } = await import("@/lib/intervenants-serveur");
+    const entrepriseId = await entrepriseQuiRecrute({ ...l, ...maj } as import("@/lib/leads").Lead).catch(() => null);
+    if (entrepriseId) await db.from("leads").update({ entreprise_id: entrepriseId }).eq("id", id);
+  }
   const { peut } = await import("@/lib/equipe");
   const { droits } = await exigerAcces("intervenants", "leads", "candidats");
   redirect(peut(droits, "intervenants") ? `/admin/leads/${id}?ok=1` : "/admin?vue=leads&requalifie=intervenant");

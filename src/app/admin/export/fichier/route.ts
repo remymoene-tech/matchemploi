@@ -1,23 +1,24 @@
 import ExcelJS from "exceljs";
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { estSuperAdmin } from "@/lib/equipe";
-import { lignesExport, TYPES_EXPORT, type TypeExport } from "@/lib/export";
+import { droitsDe } from "@/lib/equipe";
+import { lignesExport, typesPermis, type TypeExport } from "@/lib/export";
 
 export const maxDuration = 60;
 
 /** Fichier Excel « à la carte » (administrateur uniquement). */
 export async function GET(req: NextRequest) {
   const { data: { user } } = await (await createClient()).auth.getUser();
-  if (!user || !estSuperAdmin(user.email)) return new NextResponse("Réservé à l'administrateur", { status: 403 });
+  const permis = typesPermis(user ? await droitsDe(user.email) : null);
   const p = req.nextUrl.searchParams;
-  const type = (TYPES_EXPORT.some((t) => t.id === p.get("type")) ? p.get("type") : "candidats") as TypeExport;
+  const type = p.get("type") as TypeExport;
+  if (!user || !permis.includes(type)) return new NextResponse("Accès réservé", { status: 403 });
   const filtres = Object.fromEntries(["statut", "formation", "rentree", "classe", "promo", "specialite", "admission"].map((k) => [k, p.get(k) || undefined]));
   const { titres, lignes } = await lignesExport(type, filtres, p.getAll("col"));
 
   const classeur = new ExcelJS.Workbook();
   classeur.creator = "MagnusMatch";
-  const nom = TYPES_EXPORT.find((t) => t.id === type)!.label.replace(/^\S+\s/, "");
+  const nom = { leads: "Leads", candidats: "Candidats", alumni: "Alumni", entreprises: "Entreprises", intervenants: "Intervenants" }[type];
   const feuille = classeur.addWorksheet(nom);
   feuille.addRow(titres);
   for (const l of lignes) feuille.addRow(l);

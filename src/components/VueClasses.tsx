@@ -69,7 +69,7 @@ export function VueClasses({ classes, admis, formations, filtre, creer, supprime
 
       <section className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">🎓 Étudiants admis ({admis.length})</h2>
+          <h2 className="flex flex-wrap items-center gap-3 text-lg font-semibold">🎓 Étudiants admis ({admis.length}) <Link href="/admin/export?type=candidats" className="btn btn-sm">📤 Exporter en Excel</Link></h2>
           <nav className="flex flex-wrap gap-2 text-sm" aria-label="Filtrer par classe">
             <Link href="/admin?vue=classes" className={`rounded-full border px-3 py-1 ${!filtre ? "border-accent bg-accent-soft font-semibold" : "border-line text-muted hover:text-ink"}`}>Tous ({admis.length})</Link>
             <Link href="/admin?vue=classes&classe=sans" className={`rounded-full border px-3 py-1 ${filtre === "sans" ? "border-bad bg-bad-soft font-semibold" : sansClasse.length ? "border-bad text-bad" : "border-line text-muted"}`}>Sans classe ({sansClasse.length})</Link>

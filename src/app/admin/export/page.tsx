@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { exigerSuperAdmin } from "@/lib/auth";
-import { COLONNES, TYPES_EXPORT, libelleClasse, type TypeExport } from "@/lib/export";
+import { exigerAcces } from "@/lib/auth";
+import { COLONNES, TYPES_EXPORT, libelleClasse, typesPermis, type TypeExport } from "@/lib/export";
 import { STATUTS_LEAD } from "@/lib/leads";
 import { STATUTS_ENTREPRISE } from "@/lib/entreprises";
 import { ADMISSIONS } from "@/lib/admission";
@@ -11,9 +11,10 @@ import { formationsDeLEcole } from "@/lib/ecoles";
 export const metadata = { title: "Export Excel · MagnusMatch" };
 
 export default async function ExportExcel({ searchParams }: { searchParams: Promise<{ type?: string }> }) {
-  await exigerSuperAdmin();
+  const { droits } = await exigerAcces("intervenants");
+  const permis = typesPermis(droits);
   const sp = await searchParams;
-  const type = (TYPES_EXPORT.some((t) => t.id === sp.type) ? sp.type : "candidats") as TypeExport;
+  const type = (permis.includes(sp.type as TypeExport) ? sp.type : permis[0]) as TypeExport;
   const classes = (await listeClasses().catch(() => null)) ?? [];
   const formations = (await formationsDeLEcole(null).catch(() => [])).map((f) => f.nom);
   const an = new Date().getFullYear();
@@ -30,13 +31,13 @@ export default async function ExportExcel({ searchParams }: { searchParams: Prom
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
       <div>
-        <Link href="/admin/parametres" className="text-sm text-muted hover:text-ink">← ⚙️ Paramètres</Link>
+        <Link href={droits.admin ? "/admin/parametres" : "/admin?vue=classes"} className="text-sm text-muted hover:text-ink">← {droits.admin ? "⚙️ Paramètres" : "📚 Pédagogie"}</Link>
         <h1 className="text-3xl font-extrabold">📤 Export Excel</h1>
         <p className="text-muted">Choisis quoi exporter, filtre, coche les colonnes : tu télécharges un fichier Excel prêt à trier.</p>
       </div>
 
       <nav className="flex flex-wrap gap-2" aria-label="Quoi exporter">
-        {TYPES_EXPORT.map((t) => (
+        {TYPES_EXPORT.filter((t) => permis.includes(t.id)).map((t) => (
           <Link key={t.id} href={`/admin/export?type=${t.id}`} aria-current={t.id === type ? "page" : undefined}
             className={`rounded-full border px-4 py-2 text-sm font-semibold ${t.id === type ? "border-accent bg-accent-soft" : "border-line bg-surface text-muted hover:text-ink"}`}>{t.label}</Link>
         ))}

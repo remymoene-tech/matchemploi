@@ -18,7 +18,7 @@ export function VueIntervenants({ contacts, personnes, q, specialite }: { contac
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-2xl font-extrabold">🧑‍🏫 Intervenants</h2>
+          <h2 className="flex flex-wrap items-center gap-3 text-2xl font-extrabold">🧑‍🏫 Intervenants <Link href="/admin/export?type=intervenants" className="btn btn-sm text-sm font-semibold">📤 Exporter en Excel</Link></h2>
           <p className="text-sm text-muted">Le carnet d&apos;adresses des intervenants, réservé au directeur campus et aux personnes qui ont l&apos;accès « Intervenants » (d&apos;habitude la pédagogie). Ils arrivent par le questionnaire « Devenir intervenant » ({site.replace(/^https?:\/\//, "")}/intervenant). Ils ne comptent dans aucun chiffre du recrutement.</p>
         </div>
         <form className="flex gap-2">
