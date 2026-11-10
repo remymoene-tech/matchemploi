@@ -23,7 +23,7 @@ export default async function FicheEntreprise({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ onglet?: string; ok?: string; erreur?: string; besoins?: string; besoin?: string; recherche?: string }>;
 }) {
-  await exigerAcces("entreprises");
+  const { droits } = await exigerAcces("entreprises");
   const { id } = await params;
   const sp = await searchParams;
   const nouvelle = id === "nouvelle";
@@ -325,7 +325,7 @@ export default async function FicheEntreprise({ params, searchParams }: {
           <section className="card flex flex-col gap-3 p-5">
             <h2 className="text-lg font-semibold">📜 Mes échanges avec l&apos;entreprise ({echanges.length})</h2>
             <p className="text-xs text-muted">Visible uniquement par l&apos;équipe.</p>
-            <JournalEchanges echanges={echanges} champ="entreprise_id" cibleId={e.id} actionFaite={actionFaiteEntreprise} supprimer={supprimerEchangeEntreprise} />
+            <JournalEchanges echanges={echanges} champ="entreprise_id" cibleId={e.id} actionFaite={actionFaiteEntreprise} supprimer={droits.admin ? supprimerEchangeEntreprise : undefined} />
           </section>
           {prospEtudiants.length > 0 && (
           <section className="card flex flex-col gap-4 p-5">
@@ -353,7 +353,7 @@ export default async function FicheEntreprise({ params, searchParams }: {
         </>
       )}
 
-      {e && onglet === "infos" && (
+      {e && onglet === "infos" && droits.admin && (
         <details className="rounded-xl border border-line p-4 text-sm">
           <summary className="cursor-pointer text-muted">Supprimer cette entreprise</summary>
           <form action={supprimerEntreprise} className="mt-3 flex items-center justify-between gap-3">

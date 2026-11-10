@@ -97,6 +97,10 @@ export async function enregistrerOffreEcole(f: FormData) {
 }
 
 export async function supprimerOffreEcole(f: FormData) {
+  // Les suppressions sont réservées à l'administrateur du site
+  const { estAdmin } = await import("@/lib/auth");
+  const moi = (await (await (await import("@/lib/supabase/server")).createClient()).auth.getUser()).data.user;
+  if (!estAdmin(moi?.email)) return;
   const { ecole } = await exigerResponsable();
   await createAdminClient().from("offres").delete().eq("id", t(f, "id")).eq("ecole_id", ecole.id);
   redirect("/ecole?vue=entreprises");
@@ -209,6 +213,10 @@ export async function ajouterEchangeEcole(_: { erreur?: string; ok?: boolean }, 
 }
 
 export async function supprimerEchangeEcole(f: FormData) {
+  // Les suppressions sont réservées à l'administrateur du site
+  const { estAdmin } = await import("@/lib/auth");
+  const moi = (await (await (await import("@/lib/supabase/server")).createClient()).auth.getUser()).data.user;
+  if (!estAdmin(moi?.email)) return;
   const { ecole } = await exigerResponsable();
   const candidat = t(f, "candidat_id", 60);
   if (!(await etudiantDeLEcole(candidat, ecole.id))) return;

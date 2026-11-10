@@ -64,7 +64,8 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
   /** Équipe : ajouter une entreprise prospectée par l'étudiant à « Mes entreprises ». */
   ajouterAuxEntreprises?: (f: FormData) => Promise<void>;
   ajouterEchange: (e: { erreur?: string; ok?: boolean }, f: FormData) => Promise<{ erreur?: string; ok?: boolean }>;
-  supprimerEchange: (f: FormData) => Promise<void>;
+  /** Absent : pas de suppression des échanges (réservé à l'administrateur). */
+  supprimerEchange?: (f: FormData) => Promise<void>;
   actionFaite: (f: FormData) => Promise<void>;
   genererCvAmeliore: (e: { erreur?: string }, f: FormData) => Promise<{ erreur?: string }>;
   /** Adresse de cette fiche, pour les liens vers les entretiens (ex. /admin/candidats/<id>). */
@@ -520,11 +521,11 @@ export async function FicheCandidat({ candidatId, cheminCV, retour, changerSuivi
                   )}
                   <details className="text-xs">
                     <summary className="cursor-pointer text-muted">Supprimer</summary>
-                    <form action={supprimerEchange} className="mt-1">
+                    {supprimerEchange && (<form action={supprimerEchange} className="mt-1">
                       <input type="hidden" name="candidat_id" value={candidatId} />
                       <input type="hidden" name="id" value={e.id} />
                       <button className="btn btn-sm text-bad">Confirmer la suppression</button>
-                    </form>
+                    </form>)}
                   </details>
                 </div>
               </li>

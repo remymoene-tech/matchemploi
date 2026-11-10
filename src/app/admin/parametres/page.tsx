@@ -125,9 +125,16 @@ export default async function Parametres({ searchParams }: { searchParams: Promi
         )}
 
         <p className="rounded-xl border border-line p-4 text-sm text-muted">
-          🔒 <b className="text-ink">Toujours réservé à toi (⚙️)</b> : cette page, les écoles et leurs formations, les brochures, la fréquence de recherche, et refaire le QR code d&apos;une carte de visite.
+          🔒 <b className="text-ink">Toujours réservé à toi (⚙️)</b> : toutes les suppressions (leads, entreprises, offres, échanges, événements, classes), la sauvegarde, cette page, les écoles et leurs formations, les brochures, la fréquence de recherche, et refaire le QR code d&apos;une carte de visite.
           <br />🔔 <b className="text-ink">Notifications</b> : toute l&apos;équipe reçoit les nouvelles notifications (nouveaux leads, entreprises qui recrutent…). Dès qu&apos;un lead est attribué, seule la personne qui le suit reçoit ses notifications.
         </p>
+      </section>
+
+      <section className="card flex flex-col gap-3 p-6">
+        <h2 className="text-xl font-semibold">💾 Sauvegarde</h2>
+        <p className="text-sm text-muted">Un fichier Excel avec toutes les données du site : leads, candidats, entreprises, échanges, offres, prospections, entretiens, événements, classes, écoles et équipe (une feuille par sujet). Les CV ne sont pas dedans : ils restent dans Supabase (Storage → cv).</p>
+        <a href="/admin/sauvegarde" className="btn btn-primary w-fit">💾 Télécharger une sauvegarde (Excel)</a>
+        <p className="text-xs text-muted">Conseil : une fois par semaine, range le fichier dans un dossier sûr (OneDrive de la CCI). Il contient des données personnelles : ne l&apos;envoie pas par email.</p>
       </section>
 
       <section className="card flex flex-col gap-3 p-6">

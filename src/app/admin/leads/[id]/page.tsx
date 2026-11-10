@@ -288,7 +288,7 @@ export default async function FicheLead({ params, searchParams }: {
           </section>
           <section className="card flex flex-col gap-3 p-5">
             <h2 className="text-lg font-semibold">📜 Historique ({echanges.length})</h2>
-            <JournalEchanges echanges={echanges} champ="lead_id" cibleId={l.id} actionFaite={actionFaiteLead} supprimer={supprimerEchangeLead} />
+            <JournalEchanges echanges={echanges} champ="lead_id" cibleId={l.id} actionFaite={actionFaiteLead} supprimer={droits.admin ? supprimerEchangeLead : undefined} />
           </section>
         </>
       )}
@@ -315,7 +315,7 @@ export default async function FicheLead({ params, searchParams }: {
         </details>
       )}
 
-      {l && onglet === "infos" && (
+      {l && onglet === "infos" && droits.admin && (
         <details className="rounded-xl border border-line p-4 text-sm">
           <summary className="cursor-pointer text-muted">Supprimer ce lead (RGPD)</summary>
           <form action={supprimerLead} className="mt-3 flex items-center justify-between gap-3">

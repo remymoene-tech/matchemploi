@@ -8,7 +8,7 @@ type Action = (f: FormData) => Promise<void>;
 /** 📚 Pédagogie → Classes : créer des classes et rattacher chaque admis à une classe. */
 export function VueClasses({ classes, admis, formations, filtre, creer, supprimer, attribuer, message }: {
   classes: Classe[] | null; admis: Candidat[]; formations: string[]; filtre?: string;
-  creer: Action; supprimer: Action; attribuer: Action; message?: string;
+  creer: Action; supprimer?: Action; attribuer: Action; message?: string;
 }) {
   if (classes === null) {
     return <p className="rounded-xl bg-warn-soft p-4 text-sm">Les classes ne sont pas encore activées : exécute la mise à jour SQL de la page <a href="/diagnostic" className="underline">/diagnostic</a> (lignes « Classes »).</p>;
@@ -57,10 +57,10 @@ export function VueClasses({ classes, admis, formations, filtre, creer, supprime
                   <span className="chip chip-tag tabular-nums">{eleves.length} étudiant{eleves.length > 1 ? "s" : ""}</span>
                 </div>
                 {eleves.length > 0 && <p className="line-clamp-2 text-sm text-muted">{eleves.map((c) => c.nom || c.email).join(", ")}</p>}
-                <form action={supprimer} className="mt-auto">
+                {supprimer && <form action={supprimer} className="mt-auto">
                   <input type="hidden" name="id" value={k.id} />
                   <button className="text-xs text-muted hover:text-bad">Supprimer la classe{eleves.length ? " (les étudiants restent, sans classe)" : ""}</button>
-                </form>
+                </form>}
               </article>
             );
           })}

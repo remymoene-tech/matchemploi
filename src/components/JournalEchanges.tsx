@@ -6,7 +6,8 @@ export function JournalEchanges({ echanges, champ, cibleId, actionFaite, supprim
   champ: "candidat_id" | "entreprise_id" | "lead_id";
   cibleId: string;
   actionFaite: (f: FormData) => Promise<void>;
-  supprimer: (f: FormData) => Promise<void>;
+  /** Absent : pas de bouton de suppression (réservé à l'administrateur). */
+  supprimer?: (f: FormData) => Promise<void>;
 }) {
   const maintenant = maintenantMs();
   const dateRelance = (e: Echange) => {
@@ -46,11 +47,11 @@ export function JournalEchanges({ echanges, champ, cibleId, actionFaite, supprim
               )}
               <details className="text-xs">
                 <summary className="cursor-pointer text-muted">Supprimer</summary>
-                <form action={supprimer} className="mt-1">
+                {supprimer && (<form action={supprimer} className="mt-1">
                   <input type="hidden" name={champ} value={cibleId} />
                   <input type="hidden" name="id" value={e.id} />
                   <button className="btn btn-sm text-bad">Confirmer la suppression</button>
-                </form>
+                </form>)}
               </details>
             </div>
           </li>

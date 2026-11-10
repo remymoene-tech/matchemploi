@@ -90,7 +90,7 @@ export default async function Page({ params, searchParams }: {
         </div>
       </form>
 
-      {o.id && (
+      {o.id && false && (
         <details className="rounded-xl border border-line p-4 text-sm">
           <summary className="cursor-pointer text-muted">Supprimer cette offre</summary>
           <form action={supprimerOffre} className="mt-3 flex items-center justify-between gap-3">

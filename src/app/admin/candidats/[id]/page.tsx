@@ -15,7 +15,7 @@ export default async function Page({ params, searchParams }: { params: Promise<{
       genererSynthese={genererSyntheseAdmin}
       genererCvAmeliore={genererCvAmelioreAdmin}
       ajouterEchange={ajouterEchangeAdmin}
-      supprimerEchange={supprimerEchangeAdmin}
+      supprimerEchange={role === "admin" ? supprimerEchangeAdmin : undefined}
       admissionDemandee={admissionDemandee}
       changerAdmission={changerAdmissionAdmin}
       changerDiplome={changerDiplomeAdmin}

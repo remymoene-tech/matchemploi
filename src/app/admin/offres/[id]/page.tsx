@@ -15,7 +15,7 @@ export default async function Page({ params, searchParams }: {
   params: Promise<{ id: string }>;
   searchParams: Promise<{ verifier?: string; erreur?: string; entreprise?: string }>;
 }) {
-  await exigerAcces("entreprises");
+  const { droits } = await exigerAcces("entreprises");
   const { id } = await params;
   const sp = await searchParams;
   let o: Partial<Offre> = { source: "partenaire", ouverte: true };
@@ -110,7 +110,7 @@ export default async function Page({ params, searchParams }: {
         </div>
       </form>
 
-      {o.id && (
+      {o.id && droits.admin && (
         <details className="rounded-xl border border-line p-4 text-sm">
           <summary className="cursor-pointer text-muted">Supprimer cette offre</summary>
           <form action={supprimerOffre} className="mt-3 flex items-center justify-between gap-3">

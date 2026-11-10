@@ -450,7 +450,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
       {vue === "classes" && (
         <VueClasses classes={await listeClasses()} admis={tousCandidats.filter((c) => c.statut_admission === "admis" || c.statut_admission == null)}
           formations={[...new Set(ecoles.flatMap((e) => lireFormations(e.formations).map((f) => f.nom)))]} filtre={sp.classe}
-          creer={creerClasse} supprimer={supprimerClasse} attribuer={attribuerClasse}
+          creer={creerClasse} supprimer={superAdmin ? supprimerClasse : undefined} attribuer={attribuerClasse}
           message={sp.ok === "classe" ? "classe" : sp.erreur === "classe" ? "erreur-classe" : undefined} />
       )}
 
@@ -885,7 +885,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                         <td className="p-3 text-right">
                           <span className="flex justify-end gap-2">
                             <Link href={`/admin/evenements/${ev.id}`} className="btn btn-sm btn-primary">📲 QR code</Link>
-                            <form action={supprimerEvenement}><input type="hidden" name="id" value={ev.id} /><button className="btn btn-sm btn-ghost text-bad">Supprimer</button></form>
+                            {superAdmin && <form action={supprimerEvenement}><input type="hidden" name="id" value={ev.id} /><button className="btn btn-sm btn-ghost text-bad">Supprimer</button></form>}
                           </span>
                         </td>
                       </tr>

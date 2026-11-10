@@ -111,7 +111,7 @@ export async function enregistrerOffre(f: FormData) {
 }
 
 export async function supprimerOffre(f: FormData) {
-  await exigerAcces("entreprises");
+  await exigerSuperAdmin();
   await createAdminClient().from("offres").delete().eq("id", t(f, "id"));
   redirect("/admin?vue=entreprises&sous=offres");
 }
@@ -246,7 +246,7 @@ export async function ajouterEchangeAdmin(_: { erreur?: string; ok?: boolean }, 
 }
 
 export async function supprimerEchangeAdmin(f: FormData) {
-  await exigerAcces("candidats", "alumni");
+  await exigerSuperAdmin();
   const candidat = t(f, "candidat_id", 60);
   await createAdminClient().from("echanges").delete().eq("id", t(f, "id", 60)).eq("candidat_id", candidat);
   revalidatePath(`/admin/candidats/${candidat}`);
@@ -292,7 +292,7 @@ export async function enregistrerEntreprise(f: FormData) {
 }
 
 export async function supprimerEntreprise(f: FormData) {
-  await exigerAcces("entreprises");
+  await exigerSuperAdmin();
   await createAdminClient().from("entreprises").delete().eq("id", t(f, "id", 60));
   redirect("/admin?vue=entreprises");
 }
@@ -307,7 +307,7 @@ export async function ajouterEchangeEntreprise(_: { erreur?: string; ok?: boolea
 }
 
 export async function supprimerEchangeEntreprise(f: FormData) {
-  await exigerAcces("entreprises");
+  await exigerSuperAdmin();
   const id = t(f, "entreprise_id", 60);
   await createAdminClient().from("echanges").delete().eq("id", t(f, "id", 60)).eq("entreprise_id", id);
   revalidatePath(`/admin/entreprises/${id}`);
@@ -557,7 +557,7 @@ export async function renvoyerInvitation(f: FormData) {
 }
 
 export async function supprimerLead(f: FormData) {
-  await exigerAcces("leads");
+  await exigerSuperAdmin();
   await createAdminClient().from("leads").delete().eq("id", t(f, "id", 60));
   redirect("/admin?vue=leads");
 }
@@ -586,7 +586,7 @@ export async function ajouterEchangeLead(_: { erreur?: string; ok?: boolean }, f
 }
 
 export async function supprimerEchangeLead(f: FormData) {
-  await exigerAcces("leads", "intervenants", "alumni");
+  await exigerSuperAdmin();
   const id = t(f, "lead_id", 60);
   await createAdminClient().from("echanges").delete().eq("id", t(f, "id", 60)).eq("lead_id", id);
   revalidatePath(`/admin/leads/${id}`);
@@ -706,7 +706,7 @@ export async function basculerAccueilEvenement(f: FormData) {
 }
 
 export async function supprimerEvenement(f: FormData) {
-  await exigerAcces("evenements");
+  await exigerSuperAdmin();
   await createAdminClient().from("evenements").delete().eq("id", t(f, "id", 60));
   revalidatePath("/");
   redirect("/admin?vue=evenements");
@@ -932,7 +932,7 @@ export async function creerClasse(f: FormData) {
 }
 
 export async function supprimerClasse(f: FormData) {
-  await exigerAcces("intervenants");
+  await exigerSuperAdmin();
   const db = createAdminClient();
   const id = t(f, "id", 60);
   await db.from("candidats").update({ classe_id: null }).eq("classe_id", id);
