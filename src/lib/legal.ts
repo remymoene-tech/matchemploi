@@ -12,7 +12,7 @@ export const LEGAL = {
   /** Nom et fonction du directeur ou de la directrice de la publication. */
   directeurPublication: null as string | null,
   /** SIRET de la CCI du Pays d'Arles (ou de l'établissement). */
-  siret: null as string | null,
+  siret: "181 300 039 00011" as string | null,
   /** Adresse du délégué à la protection des données (DPO) de la CCI. */
   emailDpo: null as string | null,
   miseAJour: "10 novembre 2026",
