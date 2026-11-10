@@ -79,7 +79,7 @@ export async function envoyerEmail(to: string, subject: string, html: string, o:
 /** Transforme un texte simple en HTML lisible (paragraphes, retours à la ligne, liens). */
 export function texteEnHtml(texte: string) {
   return echapper(texte)
-    .replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1">$1</a>')
+    .replace(/(https?:\/\/[^\s<]*[^\s<.,;:!?)])/g, '<a href="$1">$1</a>')
     .split(/\n{2,}/)
     .map((p) => `<p style="margin:0 0 12px">${p.replace(/\n/g, "<br>")}</p>`)
     .join("");
